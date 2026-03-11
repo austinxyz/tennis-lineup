@@ -104,20 +104,47 @@ context: |
 
   ## Testing Strategy
 
-  ### Unit Testing
-  - Java: JUnit 5 for all service methods
-  - Vue: Vitest for components and composables
+  ### Unit Testing - Backend
+  - Java: JUnit 5 + Mockito for all service methods
   - Focus areas:
     - ConstraintService: All 7 validation rules
     - CombinationGenerator: Backtracking algorithm correctness
     - Validation utilities: UTR calculations, edge cases
 
+  ### Unit Testing - Frontend (Vue)
+  - Framework: Vitest + Vue Test Utils
+  - Testing library: @vue/test-utils (latest for Vue 3)
+  - Focus areas:
+
+  #### Component Testing
+  - **PlayerForm.vue**: Test form submission, validation, error handling
+  - **LineupCard.vue**: Test proper data display, UTR formatting
+  - **StrategySelector.vue**: Test preset selection, custom text input
+  - **TeamList.vue**: Test team rendering, delete confirmation
+  - **TeamDetail.vue**: Test player list, add/delete player actions
+  - **LineupGenerator.vue**: Test lineup generation flow, loading states
+  - **OpponentAnalysis.vue**: Test opponent selection, analysis display
+  - **Sidebar.vue**: Test navigation, active state
+
+  #### Composables Testing
+  - **useTeams**: Test fetch teams, add team, delete team
+  - **useLineups**: Test generate lineup, get history, delete lineup
+  - **usePlayers**: Test add player, update player, delete player
+  - **useApi**: Test API call formatting, error handling
+
+  #### Utilities Testing
+  - **formatUtr**: Test UTR decimal formatting
+  - **formatTennisScore**: Test tennis score display format
+  - **validatePlayerForm**: Test form validation rules
+
   ### Integration Testing
   - REST API endpoints with test data
   - JSON file read/write operations
   - AI service integration (mocked for reliability)
+  - API layer: Test request/response handling
 
   ### E2E Testing
+  - Framework: Playwright or Cypress
   - Core user flows (optional for MVP):
     - Create team and add players
     - Generate lineup with preset strategy
