@@ -1,0 +1,14 @@
+server:
+  port: 8080
+  servlet:
+    encoding:
+      charset: UTF-8
+      force: true
+
+spring:
+  application:
+    name: tennis-lineup-app
+  mandatory-file-encoding: UTF-8
+
+storage:
+  data-file: ./data/tennis-data.json

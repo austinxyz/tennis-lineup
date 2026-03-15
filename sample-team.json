@@ -1,0 +1,103 @@
+{
+  "teamName": "网球精英队",
+  "teamCode": "TENNIS-ELITE",
+  "season": 2024,
+  "homeCourt": "中央网球中心",
+  "coach": {
+    "name": "张教练",
+    "email": "coach.zhang@tennis.com",
+    "phone": "138-0000-0001"
+  },
+  "players": [
+    {
+      "id": "P001",
+      "name": "李明",
+      "gender": "男",
+      "age": 25,
+      "position": "单打",
+      "ranking": 1,
+      "experience": 5,
+      "handedness": "右手",
+      "strengths": ["发球", "底线"],
+      "weaknesses": ["网前"],
+      "contactInfo": {
+        "phone": "139-0000-0001",
+        "email": "liming@tennis.com"
+      },
+      "isActive": true
+    },
+    {
+      "id": "P002",
+      "name": "王芳",
+      "gender": "女",
+      "age": 23,
+      "position": "单打",
+      "ranking": 2,
+      "experience": 4,
+      "handedness": "右手",
+      "strengths": ["速度", "防守"],
+      "weaknesses": ["力量"],
+      "contactInfo": {
+        "phone": "139-0000-0002",
+        "email": "wangfang@tennis.com"
+      },
+      "isActive": true
+    },
+    {
+      "id": "P003",
+      "name": "陈强",
+      "gender": "男",
+      "age": 28,
+      "position": "双打",
+      "ranking": 3,
+      "experience": 8,
+      "handedness": "左手",
+      "strengths": ["配合", "经验"],
+      "weaknesses": ["体能"],
+      "contactInfo": {
+        "phone": "139-0000-0003",
+        "email": "chenqiang@tennis.com"
+      },
+      "isActive": true
+    },
+    {
+      "id": "P004",
+      "name": "刘婷",
+      "gender": "女",
+      "age": 22,
+      "position": "双打",
+      "ranking": 4,
+      "experience": 3,
+      "handedness": "右手",
+      "strengths": ["网前", "技术"],
+      "weaknesses": ["心理素质"],
+      "contactInfo": {
+        "phone": "139-0000-0004",
+        "email": "liuting@tennis.com"
+      },
+      "isActive": true
+    },
+    {
+      "id": "P005",
+      "name": "赵磊",
+      "gender": "男",
+      "age": 26,
+      "position": "替补",
+      "ranking": 5,
+      "experience": 6,
+      "handedness": "右手",
+      "strengths": ["全面", "稳定"],
+      "weaknesses": ["爆发力"],
+      "contactInfo": {
+        "phone": "139-0000-0005",
+        "email": "zhaolei@tennis.com"
+      },
+      "isActive": true
+    }
+  ],
+  "defaultLineup": {
+    "singles": ["P001", "P002"],
+    "doubles": ["P003", "P004"]
+  },
+  "notes": "2024赛季主力阵容，重点培养年轻选手"
+}

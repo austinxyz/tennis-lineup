@@ -1,0 +1,302 @@
+package com.tennis.service;
+
+import com.tennis.model.Player;
+import com.tennis.model.Team;
+import com.tennis.model.TeamData;
+import com.tennis.repository.JsonRepository;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.time.Instant;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(MockitoExtension.class)
+@DisplayName("PlayerService Test")
+class PlayerServiceTest {
+
+    @Mock
+    private JsonRepository jsonRepository;
+
+    @InjectMocks
+    private PlayerService playerService;
+
+    private TeamData mockTeamData;
+    private Team mockTeam;
+
+    @BeforeEach
+    void setUp() {
+        mockTeamData = new TeamData();
+        mockTeam = new Team();
+        mockTeam.setId("team-1");
+        mockTeam.setName("Test Team");
+        mockTeam.setCreatedAt(Instant.now());
+        mockTeamData.getTeams().add(mockTeam);
+    }
+
+    @Test
+    @DisplayName("Should add player to team with valid data")
+    void shouldAddPlayerToTeamWithValidData() {
+        // Arrange
+        String playerName = "John Doe";
+        String gender = "male";
+        double utr = 1.5;
+        boolean verified = true;
+
+        when(jsonRepository.readData()).thenReturn(mockTeamData);
+
+        // Act
+        Player result = playerService.addPlayer("team-1", playerName, gender, utr, null, verified);
+
+        // Assert
+        assertNotNull(result);
+        assertEquals(playerName, result.getName());
+        assertEquals(gender, result.getGender());
+        assertEquals(utr, result.getUtr());
+        assertEquals(verified, result.getVerified());
+        assertEquals(1, mockTeam.getPlayers().size());
+        assertEquals(result, mockTeam.getPlayers().get(0));
+    }
+
+    @Test
+    @DisplayName("Should throw exception when adding player with empty name")
+    void shouldThrowExceptionWhenAddingPlayerWithEmptyName() {
+        // Arrange
+        when(jsonRepository.readData()).thenReturn(mockTeamData);
+
+        // Act & Assert
+        assertThrows(IllegalArgumentException.class, () -> {
+            playerService.addPlayer("team-1", "", "male", 1.5, null, true);
+        });
+    }
+
+    @Test
+    @DisplayName("Should throw exception when adding player with null name")
+    void shouldThrowExceptionWhenAddingPlayerWithNullName() {
+        // Arrange
+        when(jsonRepository.readData()).thenReturn(mockTeamData);
+
+        // Act & Assert
+        assertThrows(IllegalArgumentException.class, () -> {
+            playerService.addPlayer("team-1", null, "male", 1.5, null, true);
+        });
+    }
+
+    @Test
+    @DisplayName("Should throw exception when adding player with invalid gender")
+    void shouldThrowExceptionWhenAddingPlayerWithInvalidGender() {
+        // Arrange
+        when(jsonRepository.readData()).thenReturn(mockTeamData);
+
+        // Act & Assert
+        assertThrows(IllegalArgumentException.class, () -> {
+            playerService.addPlayer("team-1", "John Doe", "unknown", 1.5, null, true);
+        });
+    }
+
+    @Test
+    @DisplayName("Should throw exception when adding player with invalid UTR")
+    void shouldThrowExceptionWhenAddingPlayerWithInvalidUTR() {
+        // Arrange
+        when(jsonRepository.readData()).thenReturn(mockTeamData);
+
+        // Act & Assert
+        assertThrows(IllegalArgumentException.class, () -> {
+            playerService.addPlayer("team-1", "John Doe", "male", -1.0, null, true);
+        });
+
+        assertThrows(IllegalArgumentException.class, () -> {
+            playerService.addPlayer("team-1", "John Doe", "male", 16.1, null, true);
+        });
+    }
+
+    @Test
+    @DisplayName("Should throw exception when adding player to non-existent team")
+    void shouldThrowExceptionWhenAddingPlayerToNonExistentTeam() {
+        // Arrange
+        when(jsonRepository.readData()).thenReturn(mockTeamData);
+
+        // Act & Assert
+        assertThrows(IllegalArgumentException.class, () -> {
+            playerService.addPlayer("non-existent-team", "John Doe", "male", 1.5, null, true);
+        });
+    }
+
+    @Test
+    @DisplayName("Should update player with valid data")
+    void shouldUpdatePlayerWithValidData() {
+        // Arrange
+        Player originalPlayer = new Player();
+        originalPlayer.setId("player-1");
+        originalPlayer.setName("Original Name");
+        originalPlayer.setGender("male");
+        originalPlayer.setUtr(1.0);
+        originalPlayer.setVerified(false);
+        mockTeam.getPlayers().add(originalPlayer);
+
+        when(jsonRepository.readData()).thenReturn(mockTeamData);
+
+        // Act
+        Player result = playerService.updatePlayer("team-1", "player-1",
+            "Updated Name", "female", 2.0, null, true);
+
+        // Assert
+        assertNotNull(result);
+        assertEquals("Updated Name", result.getName());
+        assertEquals("female", result.getGender());
+        assertEquals(2.0, result.getUtr());
+        assertTrue(result.getVerified());
+    }
+
+    @Test
+    @DisplayName("Should throw exception when updating non-existent player")
+    void shouldThrowExceptionWhenUpdatingNonExistentPlayer() {
+        // Arrange
+        when(jsonRepository.readData()).thenReturn(mockTeamData);
+
+        // Act & Assert
+        assertThrows(IllegalArgumentException.class, () -> {
+            playerService.updatePlayer("team-1", "non-existent-player",
+                "Name", "male", 1.5, null, true);
+        });
+    }
+
+    @Test
+    @DisplayName("Should delete player from team")
+    void shouldDeletePlayerFromTeam() {
+        // Arrange
+        Player player = new Player();
+        player.setId("player-1");
+        player.setName("John Doe");
+        player.setGender("male");
+        player.setUtr(1.5);
+        player.setVerified(true);
+        mockTeam.getPlayers().add(player);
+
+        when(jsonRepository.readData()).thenReturn(mockTeamData);
+
+        // Act
+        playerService.deletePlayer("team-1", "player-1");
+
+        // Assert
+        assertEquals(0, mockTeam.getPlayers().size());
+    }
+
+    @Test
+    @DisplayName("Should throw exception when deleting non-existent player")
+    void shouldThrowExceptionWhenDeletingNonExistentPlayer() {
+        // Arrange
+        when(jsonRepository.readData()).thenReturn(mockTeamData);
+
+        // Act & Assert
+        assertThrows(IllegalArgumentException.class, () -> {
+            playerService.deletePlayer("team-1", "non-existent-player");
+        });
+    }
+
+    @Test
+    @DisplayName("Should get players by team ID")
+    void shouldGetPlayersByTeamId() {
+        // Arrange
+        Player player1 = new Player();
+        player1.setId("player-1");
+        player1.setName("Player 1");
+        player1.setGender("male");
+        player1.setUtr(1.0);
+
+        Player player2 = new Player();
+        player2.setId("player-2");
+        player2.setName("Player 2");
+        player2.setGender("female");
+        player2.setUtr(2.0);
+
+        mockTeam.getPlayers().add(player1);
+        mockTeam.getPlayers().add(player2);
+
+        when(jsonRepository.readData()).thenReturn(mockTeamData);
+
+        // Act
+        List<Player> result = playerService.getPlayersByTeamId("team-1");
+
+        // Assert
+        assertEquals(2, result.size());
+        assertTrue(result.contains(player1));
+        assertTrue(result.contains(player2));
+    }
+
+    @Test
+    @DisplayName("Should return empty list when getting players from team with no players")
+    void shouldReturnEmptyListWhenGettingPlayersFromTeamWithNoPlayers() {
+        // Arrange
+        when(jsonRepository.readData()).thenReturn(mockTeamData);
+
+        // Act
+        List<Player> result = playerService.getPlayersByTeamId("team-1");
+
+        // Assert
+        assertNotNull(result);
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    @DisplayName("Should throw exception when getting players from non-existent team")
+    void shouldThrowExceptionWhenGettingPlayersFromNonExistentTeam() {
+        // Arrange
+        when(jsonRepository.readData()).thenReturn(mockTeamData);
+
+        // Act & Assert
+        assertThrows(IllegalArgumentException.class, () -> {
+            playerService.getPlayersByTeamId("non-existent-team");
+        });
+    }
+
+    @Test
+    @DisplayName("Should convert gender to lowercase")
+    void shouldConvertGenderToLowercase() {
+        // Arrange
+        when(jsonRepository.readData()).thenReturn(mockTeamData);
+
+        // Act
+        Player result = playerService.addPlayer("team-1", "John Doe", "MALE", 1.5, null, true);
+
+        // Assert
+        assertEquals("male", result.getGender());
+    }
+
+    @Test
+    @DisplayName("Should trim player name")
+    void shouldTrimPlayerName() {
+        // Arrange
+        when(jsonRepository.readData()).thenReturn(mockTeamData);
+
+        // Act
+        Player result = playerService.addPlayer("team-1", "  John Doe  ", "male", 1.5, null, true);
+
+        // Assert
+        assertEquals("John Doe", result.getName());
+    }
+
+    @Test
+    @DisplayName("Should generate unique player IDs")
+    void shouldGenerateUniquePlayerIds() {
+        // Arrange
+        when(jsonRepository.readData()).thenReturn(mockTeamData);
+
+        // Act
+        Player player1 = playerService.addPlayer("team-1", "Player 1", "male", 1.0, null, true);
+        Player player2 = playerService.addPlayer("team-1", "Player 2", "female", 2.0, null, false);
+
+        // Assert
+        assertNotEquals(player1.getId(), player2.getId());
+        assertTrue(player1.getId().startsWith("player-"));
+        assertTrue(player2.getId().startsWith("player-"));
+    }
+}

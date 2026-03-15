@@ -7,165 +7,242 @@ context: |
   ## Tech Stack
 
   ### Backend
-  - Framework: Spring Boot (Java 17+)
-  - AI Service: 智谱 AI Java SDK (GLM-4 model)
-  - Storage: JSON files (no database for MVP)
-  - Build Tool: Maven
-  - JDK Version: 17 or later
+  - Framework: Spring Boot 3.2 (Java 17)
+  - Storage: JSON file via Jackson ObjectMapper（无数据库）
+  - Build Tool: Maven 3.6+
+  - 启动必须加 JVM 参数：-Dfile.encoding=UTF-8（Windows 中文环境必须）
+  - 数据文件路径配置项：storage.data-file（application.yml）
 
   ### Frontend
-  - Framework: Vue 3 with Composition API
-  - UI Library: Tailwind CSS (no custom CSS)
+  - Framework: Vue 3 with Composition API（<script setup> 强制）
+  - UI Library: Tailwind CSS（无自定义 CSS，无 scoped styles，无 inline styles）
   - Router: Vue Router 4
-  - Build Tool: Vite
+  - Build Tool: Vite 4（dev server port 5173，代理 /api → localhost:8080）
+  - State: Composition API composables（无 Pinia/Vuex）
 
-  ### Architecture Pattern
-  - REST API with JSON file storage
-  - Frontend-Backend separation
-  - Sidebar + Main Content layout (reference: finance project)
+  ### Architecture
+  ```
+  frontend (Vue 3, :5173)
+      ↓ /api proxy
+  backend (Spring Boot, :8080)
+      ├── Controller  → 接收请求、参数提取、响应包装
+      ├── Service     → 业务逻辑、验证、数据变更
+      ├── Repository  → JSON 文件读写（ReadWriteLock 并发安全）
+      └── Exception   → GlobalExceptionHandler 统一错误响应
+  ```
+
+  ### 文件结构
+  ```
+  tennis/
+  ├── backend/src/main/java/com/tennis/
+  │   ├── controller/   TeamController（含 PlayerRequest）
+  │   ├── service/      TeamService, PlayerService, BatchImportService
+  │   ├── repository/   JsonRepository（ReadWriteLock + 原子写入）
+  │   ├── model/        Team, Player, TeamData, ErrorResponse
+  │   └── exception/    GlobalExceptionHandler, NotFoundException,
+  │                     ValidationException, InternalErrorException
+  ├── frontend/src/
+  │   ├── views/        TeamDetail.vue, TeamManagerView.vue, HomeView.vue
+  │   ├── components/   NavSidebar.vue, TeamListPanel.vue, PlayerForm.vue,
+  │   │                 BatchImport.vue
+  │   ├── composables/  useApi.js, useTeams.js, usePlayers.js, useBatchImport.js
+  │   └── router/       index.js（嵌套路由：MainLayout > TeamManagerView > Detail）
+  └── data/             tennis-data.json（运行时自动创建）
+  ```
 
   ## Conventions
 
   ### Code Style
-  - Java: Use Spring Boot conventions, standard naming
-  - Vue: Always use `<script setup>`, no Options API
-  - CSS: Always use Tailwind utility classes, no inline styles or scoped CSS
+  - Java: Spring Boot 标准命名，Lombok（@Slf4j, @Data 等）
+  - Vue: 必须用 `<script setup>`，不用 Options API
+  - CSS: 只用 Tailwind utility classes，不写 scoped/inline styles
+  - 验证：后端 service 层验证，抛 IllegalArgumentException → 400；
+          前端 composable 层验证，错误显示在 UI
 
-  ### API Design
-  - RESTful endpoints with proper HTTP methods
-  - Response format: `{ success: boolean, data?: any, error?: { code, message, details } }`
-  - Error codes: CONSTRAINT_VIOLATION, NOT_FOUND, INTERNAL_ERROR
+  ### API Design（实际实现）
+  - RESTful endpoints，Base URL: /api
+  - 成功响应：直接返回数据对象或数组（无包装层）
+  - 错误响应格式：
+    ```json
+    { "code": "VALIDATION_ERROR", "message": "描述", "details": null }
+    ```
+  - HTTP 状态码映射：
+    - 400 → IllegalArgumentException（VALIDATION_ERROR）
+    - 404 → NotFoundException（NOT_FOUND）
+    - 500 → RuntimeException（INTERNAL_ERROR）
+  - 注意：NotFoundException extends IllegalArgumentException，Spring 优先匹配具体类型
+
+  ### 已实现 API 端点
+  ```
+  GET    /api/teams                     获取所有队伍（按创建时间倒序）
+  POST   /api/teams                     创建队伍
+  GET    /api/teams/{id}                获取单个队伍
+  PUT    /api/teams/{id}                修改队伍名称
+  DELETE /api/teams/{id}                删除队伍
+  GET    /api/teams/{id}/players        获取队伍球员列表
+  POST   /api/teams/{id}/players        添加球员
+  PUT    /api/teams/{id}/players/{pid}  修改球员
+  DELETE /api/teams/{id}/players/{pid}  删除球员
+  POST   /api/teams/import              批量导入（multipart CSV/JSON）
+  ```
 
   ### Git Workflow
-  - Use conventional commits
-  - Commit format: `type(scope): description`
+  - Conventional commits: `type(scope): description`
   - Types: feat, fix, docs, refactor, test, chore
 
   ## Domain Knowledge
 
   ### Tennis Tournament Format
-  - Four-doubles scoring system: D1 (1 point), D2 (2 points), D3 (3 points), D4 (4 points)
-  - Each pair can be men's doubles, women's doubles, or mixed doubles
-  - No "strategy" ordering: UTR must satisfy D1 >= D2 >= D3 >= D4
-  - Each team needs 8 players for a full lineup
+  - 四线双打计分制：D1（1分）、D2（2分）、D3（3分）、D4（4分）
+  - 每线可为男双、女双或混双
+  - 禁止田忌赛马：配对 UTR 需满足 D1 >= D2 >= D3 >= D4
+  - 完整上阵需 8 名球员
 
-  ### UTR (Universal Tennis Rating)
-  - UTR is a numerical rating of tennis player skill level
-  - Typical UTR range: 1.0 - 16.0
-  - UTR is used to pair players of similar skill levels
-  - Doubles UTR may differ from singles UTR
-  - "Verified Doubles UTR" means the player's doubles rating is officially verified
+  ### UTR（Universal Tennis Rating）
+  - 数值评级，范围 0.0 – 16.0
+  - Verified Doubles UTR：官方认证的双打 UTR
+  - 双打 UTR 可与单打 UTR 不同
 
-  ### Hard Constraints (Must Satisfy)
-  - Minimum players: 8 players required to generate lineup
-  - UTR ordering: Combined UTR must decrease from D1 to D4
-  - Total UTR cap: Sum of all 8 players' individual UTR <= 40.5
-  - Female players: At least 2 female players must play
-  - Partner gap: Individual UTR difference between partners <= 3.5
-  - D4 verification: Both players in D4 must have 100% Verified Doubles UTR
-  - Player uniqueness: Each player can only appear in one pair
+  ### Hard Constraints（排阵约束，尚未实现）
+  - 最少 8 名球员
+  - UTR 排序：配对组合 UTR 从 D1 到 D4 递减
+  - 总 UTR 上限：8 人个人 UTR 之和 ≤ 40.5
+  - 至少 2 名女性球员上阵
+  - 搭档 UTR 差 ≤ 3.5
+  - D4 双方必须有 100% Verified Doubles UTR
+  - 每位球员只能出现在一个配对中
 
-  ### UTR Calculation Rules
-  - Pair combined UTR = Player1 UTR + Player2 UTR
-  - Total UTR = Sum of all 8 players' individual UTRs
-  - Example: 8 players with UTRs [4.8, 4.5, 4.3, 4.1, 4.0, 3.9, 3.8, 3.7] = 33.1 total
-
-  ### Lineup Generation Strategy
-  - Preset strategies: "balanced" (minimize UTR variance), "aggressive" (maximize D1-D3 UTR)
-  - Custom strategy: Natural language description interpreted by AI
-  - AI fallback: When AI fails, use heuristic algorithm
-  - Algorithm complexity: O(~10,000) for 8 players, feasible within 5s response time
+  ### UTR 计算规则
+  - 配对 UTR = Player1.utr + Player2.utr
+  - 总 UTR = 8 人个人 UTR 之和
 
   ## Data Model
 
   ### Player
-  - id: string (unique)
-  - name: string
+  - id: string（"player-" + nanoTime）
+  - name: string（1-50字符，队内唯一）
   - gender: "male" | "female"
-  - utr: number (0.0 - 16.0)
+  - utr: number（0.0 - 16.0）
   - verifiedDoublesUtr: number | null
-  - verified: boolean (has 100% Verified Doubles UTR)
+  - verified: boolean（是否有 Verified Doubles UTR）
 
   ### Team
-  - id: string (unique)
-  - name: string (max 50 chars)
-  - createdAt: ISO 8601 timestamp
-  - players: Player[] (min 8 for lineup generation)
-  - lineups: Lineup[] (historical record)
+  - id: string（"team-" + nanoTime）
+  - name: string（1-50字符，全局唯一）
+  - createdAt: ISO 8601 timestamp（Instant）
+  - players: Player[]
+  - lineups: Lineup[]（尚未实现）
 
-  ### Lineup
-  - id: string (unique)
+  ### Lineup（计划中，尚未实现）
+  - id: string
   - createdAt: ISO 8601 timestamp
-  - strategy: string (description of strategy used)
-  - pairs: Pair[4] (D1, D2, D3, D4 with positions and points)
+  - strategy: string
+  - pairs: Pair[4]（D1-D4）
   - totalUtr: number
   - valid: boolean
   - violationMessages: string[]
 
   ## Testing Strategy
 
-  ### Unit Testing - Backend
-  - Java: JUnit 5 + Mockito for all service methods
-  - Focus areas:
-    - ConstraintService: All 7 validation rules
-    - CombinationGenerator: Backtracking algorithm correctness
-    - Validation utilities: UTR calculations, edge cases
+  ### 后端测试框架
+  - JUnit 5 + Mockito（@ExtendWith(MockitoExtension.class)）
+  - Spring Boot Test（@SpringBootTest）用于需要完整 Spring 上下文的测试
+  - 注意：Windows 下运行需 JAVA_TOOL_OPTIONS=-Dfile.encoding=UTF-8
 
-  ### Unit Testing - Frontend (Vue)
-  - Framework: Vitest + Vue Test Utils
-  - Testing library: @vue/test-utils (latest for Vue 3)
-  - Focus areas:
+  ### 后端已完成测试（70 tests，全部通过）
 
-  #### Component Testing
-  - **PlayerForm.vue**: Test form submission, validation, error handling
-  - **LineupCard.vue**: Test proper data display, UTR formatting
-  - **StrategySelector.vue**: Test preset selection, custom text input
-  - **TeamList.vue**: Test team rendering, delete confirmation
-  - **TeamDetail.vue**: Test player list, add/delete player actions
-  - **LineupGenerator.vue**: Test lineup generation flow, loading states
-  - **OpponentAnalysis.vue**: Test opponent selection, analysis display
-  - **Sidebar.vue**: Test navigation, active state
+  #### TeamControllerTest（15 tests）@WebMvcTest + @MockBean
+  - CRUD 端点正常流程（200/204）
+  - 400/404 错误响应验证
+  - 批量导入（CSV/JSON）
+  - GET /api/teams/{id}/players
 
-  #### Composables Testing
-  - **useTeams**: Test fetch teams, add team, delete team
-  - **useLineups**: Test generate lineup, get history, delete lineup
-  - **usePlayers**: Test add player, update player, delete player
-  - **useApi**: Test API call formatting, error handling
+  #### JsonRepositoryTest（11 tests）直接实例化（非 @SpringBootTest）
+  - 读写文件、文件不存在时返回空数据
+  - 构造函数自动创建数据文件
+  - 多次写入数据保持正确
+  - 并发读安全（10线程）
+  - 并发写安全（5线程×10次）
+  - 读写混合并发（10线程）
+  - 大数据量（1000条）
+  - 原子写入（临时文件+rename，无残留.tmp）
 
-  #### Utilities Testing
-  - **formatUtr**: Test UTR decimal formatting
-  - **formatTennisScore**: Test tennis score display format
-  - **validatePlayerForm**: Test form validation rules
+  #### TeamServiceTest（13 tests）@ExtendWith(MockitoExtension.class)
+  - 创建/获取/更新/删除队伍
+  - 重名/空名/超长名验证
+  - 添加/更新/删除球员
+  - 队伍 ID 唯一性
 
-  ### Integration Testing
-  - REST API endpoints with test data
-  - JSON file read/write operations
-  - AI service integration (mocked for reliability)
-  - API layer: Test request/response handling
+  #### PlayerServiceTest（16 tests）@ExtendWith(MockitoExtension.class)
+  - 添加/更新/删除球员完整流程
+  - 姓名/性别/UTR 验证
+  - 队伍不存在、球员不存在异常
+  - 球员 ID 唯一性（nanoTime 保证）
 
-  ### E2E Testing
-  - Framework: Playwright or Cypress
-  - Core user flows (optional for MVP):
-    - Create team and add players
-    - Generate lineup with preset strategy
-    - Generate lineup against opponent
+  #### BatchImportServiceTest（15 tests）@ExtendWith(MockitoExtension.class)
+  - CSV 导入（正常、跳过表头、空文件）
+  - CSV 字段验证（缺字段、无效 UTR、UTR 越界、无效性别、空姓名）
+  - JSON 导入（带括号、不带括号、空、解析错误）
+  - 部分导入（有效行+无效行混合）
+  - Service 异常时继续导入其他行
 
-  ### Test Data
-  - Valid team with 8 players satisfying all constraints
-  - Invalid team with < 8 players
-  - Edge cases: All female, all male, UTR at boundaries
-  - Opponent lineup scenarios
+  ### 前端测试框架
+  - Vitest 4 + @vue/test-utils 2 + jsdom
+  - 配置：vitest.config.js（environment: 'jsdom'）
+  - 运行：npm test（单次）/ npm run test:watch / npm run test:coverage
+
+  ### 前端已完成测试（115 tests，全部通过）
+
+  #### useApi.test.js（11 tests）
+  - GET/POST/PUT/DELETE 方法
+  - FormData 不序列化（修复文件上传 bug）
+  - 错误处理（HTTP 错误、网络错误）
+
+  #### useTeams.test.js（14 tests）
+  - fetchTeams, createTeam, updateTeam, deleteTeam
+  - 加载状态、错误状态
+
+  #### usePlayers.test.js（15 tests）
+  - fetchPlayers, addPlayer, updatePlayer, deletePlayer
+  - 加载/错误状态管理
+
+  #### useBatchImport.test.js（13 tests）
+  - importFile（CSV/JSON）
+  - 导入结果展示（successCount, failureCount, errors）
+  - 错误处理
+
+  #### NavSidebar.test.js（6 tests）
+  - 渲染导航、active 状态、navigate 事件
+
+  #### TeamListPanel.test.js（10 tests）
+  - 队伍列表渲染
+  - 创建队伍 modal、批量导入 modal
+
+  #### TeamDetail.test.js（17 tests）
+  - 球员列表渲染
+  - 添加/编辑/删除球员操作
+  - 加载/错误状态
+
+  #### PlayerForm.test.js（23 tests）
+  - 初始渲染（空表单、预填数据）
+  - 提交按钮状态（合法/禁用条件）
+  - 字段验证（姓名空/超长、性别未选、UTR 越界/合法/边界值）
+  - 事件（cancel, submit 携带数据）
+  - watch initialData（数据更新、错误清除）
+
+  ### 测试注意事项（踩坑记录）
+  - jsdom 中 `<input type="number">` 初始 null 值被隐式转换为 0，
+    不可通过 trigger('blur') 测试"空值"验证，改用 setValue 设明确无效值
+  - Boolean 包装类（Boolean verified）Lombok 生成 getVerified() 而非 isVerified()
+  - @SpringBootTest 的 JsonRepositoryTest 需直接实例化 JsonRepository 以使用
+    @TempDir 隔离路径，否则多测试间共享文件导致污染
+  - Mockito strict mode：doNothing() 只能用于 void 方法；非 void 用 thenReturn()
+  - 严格模式会检测 UnnecessaryStubbing，未被调用的 stub 会导致测试失败
 
   ## Performance Requirements
-  - Response time: Lineup generation < 5 seconds (including AI call)
-  - Concurrency: Support 10+ simultaneous users
-  - JSON file operations: Thread-safe with ReadWriteLock
-
-  ## Security Considerations
-  - Input validation: All user inputs validated (UTR range, string length, enum values)
-  - API Key management: Configured via environment variable (ZHIPU_API_KEY)
-  - Sensitive operations: Confirmation required for deletions
-  - Regular backups: JSON data files should be backed up
+  - JSON 文件操作：ReadWriteLock 并发安全，原子写入（temp + rename）
+  - 排阵生成目标：< 5 秒（含 AI 调用，尚未实现）
+  - 并发支持：10+ 同时用户
 
 # Per-artifact rules
 rules:
@@ -173,11 +250,16 @@ rules:
     - Include clear success criteria
     - List potential risks and mitigation
     - Estimate implementation effort
+    - Reference completed features to avoid duplication
   tasks:
     - Break tasks into chunks of max 4 hours
     - Each task should have clear acceptance criteria
     - Test tasks should accompany implementation tasks
+    - 后端测试用 JUnit 5 + Mockito，参考已有测试文件风格
+    - 前端测试用 Vitest + @vue/test-utils，参考已有测试文件风格
+    - 新增 API 端点须同步更新 docs/api.md
   api:
     - Follow RESTful conventions
+    - 错误响应格式：{ code, message, details }，参见 GlobalExceptionHandler
+    - 新异常类型继承 IllegalArgumentException（400）或直接用 NotFoundException（404）
     - Include request/response examples
-    - Document error codes and handling
