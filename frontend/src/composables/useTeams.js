@@ -1,10 +1,12 @@
 import { ref } from 'vue'
 import { useApi } from './useApi'
 
+// Module-level shared state — all components see the same refs
+const teams = ref([])
+const team = ref(null)
+
 export function useTeams() {
   const { loading, error, get, post, put, del } = useApi()
-  const teams = ref([])
-  const team = ref(null)
 
   const fetchTeams = async () => {
     try {
@@ -18,6 +20,11 @@ export function useTeams() {
   const fetchTeamById = async (id) => {
     try {
       team.value = await get(`/api/teams/${id}`)
+      // 同步更新 teams 列表中对应队伍的球员数据
+      const index = teams.value.findIndex(t => t.id === id)
+      if (index !== -1) {
+        teams.value[index] = team.value
+      }
     } catch (err) {
       console.error('Failed to fetch team:', err)
       throw err

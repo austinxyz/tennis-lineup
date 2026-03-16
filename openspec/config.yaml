@@ -230,6 +230,14 @@ context: |
   - 事件（cancel, submit 携带数据）
   - watch initialData（数据更新、错误清除）
 
+  ### E2E 测试（Playwright）
+  - 框架：@playwright/test + Chromium
+  - 目录：`frontend/e2e/`（pages/、fixtures/、tests/）
+  - 运行：`npm run test:e2e`（需后端和前端 dev server 同时运行）
+  - Page Object Model（POM）：`TeamManagerPage.js`、`PlayerDetailPage.js`
+  - 已覆盖流程：队伍管理、球员管理、队伍切换、批量导入（共 8 tests）
+  - 注意：delete 端点返回 204 No Content，useApi.js 需跳过 response.json()
+
   ### 测试注意事项（踩坑记录）
   - jsdom 中 `<input type="number">` 初始 null 值被隐式转换为 0，
     不可通过 trigger('blur') 测试"空值"验证，改用 setValue 设明确无效值
@@ -257,6 +265,7 @@ rules:
     - Test tasks should accompany implementation tasks
     - 后端测试用 JUnit 5 + Mockito，参考已有测试文件风格
     - 前端测试用 Vitest + @vue/test-utils，参考已有测试文件风格
+    - 新增用户可见流程须添加对应 E2E 测试任务（Playwright，在 frontend/e2e/tests/ 下新建或扩展 spec 文件）
     - 新增 API 端点须同步更新 docs/api.md
   api:
     - Follow RESTful conventions

@@ -208,6 +208,7 @@ const savePlayer = async () => {
       await addPlayer(playerForm.value)
     }
     cancelPlayerEdit()
+    await fetchTeamById(teamId)
   } catch (err) {
     alert(`操作失败: ${err.message}`)
   }
@@ -224,9 +225,10 @@ const cancelPlayerEdit = () => {
   }
 }
 
-const confirmDeletePlayer = (player) => {
+const confirmDeletePlayer = async (player) => {
   if (confirm(`确定要删除球员 "${player.name}" 吗？`)) {
-    deletePlayer(player.id)
+    await deletePlayer(player.id)
+    await fetchTeamById(teamId)
   }
 }
 

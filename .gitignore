@@ -32,3 +32,5 @@ Thumbs.db
 # Environment
 .env
 *.env.local
+tennis-data.backup.json
+frontend/test-results/

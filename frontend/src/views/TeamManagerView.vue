@@ -5,9 +5,9 @@
 
     <!-- Right: team detail or empty state -->
     <div class="flex-1 overflow-y-auto bg-gray-50">
-      <router-view v-slot="{ Component }">
+      <router-view v-slot="{ Component, route }">
         <transition name="fade" mode="out-in">
-          <component :is="Component"/>
+          <component :is="Component" :key="route.params.id"/>
         </transition>
       </router-view>
     </div>

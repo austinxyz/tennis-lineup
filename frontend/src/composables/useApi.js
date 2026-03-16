@@ -23,6 +23,10 @@ export function useApi() {
         throw new Error(errorData.message || `HTTP error! status: ${response.status}`)
       }
 
+      if (response.status === 204 || response.status === 205) {
+        return null
+      }
+
       return await response.json()
     } catch (err) {
       error.value = err.message
