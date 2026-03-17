@@ -39,7 +39,7 @@
         <input
           type="number"
           v-model.number="formData.utr"
-          step="0.1"
+          step="0.01"
           min="0"
           max="16"
           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -57,6 +57,18 @@
           type="checkbox"
           v-model="formData.verified"
           class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">
+          UTR 主页链接
+        </label>
+        <input
+          type="text"
+          v-model="formData.profileUrl"
+          placeholder="https://app.utrsports.net/profiles/..."
+          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        <p class="mt-1 text-xs text-gray-500">可选，用于快速查看球员最新 UTR</p>
       </div>
     </div>
 
@@ -91,6 +103,7 @@ const props = defineProps({
       gender: '',
       utr: null,
       verified: false,
+      profileUrl: '',
     })
   }
 })

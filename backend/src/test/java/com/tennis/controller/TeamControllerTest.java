@@ -194,7 +194,7 @@ class TeamControllerTest {
         playerRequest.setUtr(1.5);
         playerRequest.setVerified(true);
 
-        when(teamService.addPlayer(eq("team-1"), eq("John Doe"), eq("male"), eq(1.5), eq(null), eq(true)))
+        when(teamService.addPlayer(eq("team-1"), eq("John Doe"), eq("male"), eq(1.5), eq(null), eq(true), eq(null)))
                 .thenReturn(testPlayer);
 
         // Act & Assert
@@ -216,7 +216,7 @@ class TeamControllerTest {
         playerRequest.setUtr(2.0);
         playerRequest.setVerified(false);
 
-        when(teamService.updatePlayer(eq("team-1"), eq("player-1"), eq("Jane Smith"), eq("female"), eq(2.0), eq(null), eq(false)))
+        when(teamService.updatePlayer(eq("team-1"), eq("player-1"), eq("Jane Smith"), eq("female"), eq(2.0), eq(null), eq(false), eq(null)))
                 .thenReturn(testPlayer);
 
         // Act & Assert
@@ -297,6 +297,51 @@ class TeamControllerTest {
         mockMvc.perform(multipart("/api/teams/import")
                 .file(file))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("Should add player with profileUrl")
+    void shouldAddPlayerWithProfileUrl() throws Exception {
+        // Arrange
+        String url = "https://app.utrsports.net/profiles/12345";
+        Player playerWithUrl = new Player();
+        playerWithUrl.setId("player-1");
+        playerWithUrl.setName("John Doe");
+        playerWithUrl.setGender("male");
+        playerWithUrl.setUtr(1.5);
+        playerWithUrl.setVerified(true);
+        playerWithUrl.setProfileUrl(url);
+
+        PlayerRequest playerRequest = new PlayerRequest();
+        playerRequest.setName("John Doe");
+        playerRequest.setGender("male");
+        playerRequest.setUtr(1.5);
+        playerRequest.setVerified(true);
+        playerRequest.setProfileUrl(url);
+
+        when(teamService.addPlayer(eq("team-1"), eq("John Doe"), eq("male"), eq(1.5), eq(null), eq(true), eq(url)))
+                .thenReturn(playerWithUrl);
+
+        // Act & Assert
+        mockMvc.perform(post("/api/teams/team-1/players")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(playerRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.profileUrl").value(url));
+    }
+
+    @Test
+    @DisplayName("Should include profileUrl in get players response")
+    void shouldIncludeProfileUrlInGetPlayersResponse() throws Exception {
+        // Arrange
+        String url = "https://app.utrsports.net/profiles/99999";
+        testPlayer.setProfileUrl(url);
+        when(teamService.getTeamById("team-1")).thenReturn(testTeam);
+
+        // Act & Assert
+        mockMvc.perform(get("/api/teams/team-1/players"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].profileUrl").value(url));
     }
 
     @Test

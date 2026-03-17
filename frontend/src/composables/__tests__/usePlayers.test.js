@@ -210,6 +210,59 @@ describe('usePlayers', () => {
     })
   })
 
+  describe('bulkUpdateUtrs()', () => {
+    it('returns empty result without making requests when no changes', async () => {
+      const fetchMock = vi.fn()
+      vi.stubGlobal('fetch', fetchMock)
+      const { bulkUpdateUtrs } = usePlayers(TEAM_ID)
+      const result = await bulkUpdateUtrs([])
+      expect(fetchMock).not.toHaveBeenCalled()
+      expect(result).toEqual({ succeeded: [], failed: [] })
+    })
+
+    it('updates all players on full success', async () => {
+      const initial = [{ id: 'p1', name: 'Alice', utr: 8.0 }, { id: 'p2', name: 'Bob', utr: 7.0 }]
+      const updated1 = { id: 'p1', name: 'Alice', utr: 8.50 }
+      const updated2 = { id: 'p2', name: 'Bob', utr: 7.25 }
+
+      const fetchMock = vi.fn()
+        .mockResolvedValueOnce({ ok: true, json: async () => initial })
+        .mockResolvedValueOnce({ ok: true, json: async () => updated1 })
+        .mockResolvedValueOnce({ ok: true, json: async () => updated2 })
+      vi.stubGlobal('fetch', fetchMock)
+
+      const { players, fetchPlayers, bulkUpdateUtrs } = usePlayers(TEAM_ID)
+      await fetchPlayers()
+      const result = await bulkUpdateUtrs([{ playerId: 'p1', utr: 8.50 }, { playerId: 'p2', utr: 7.25 }])
+
+      expect(result.succeeded).toEqual(['p1', 'p2'])
+      expect(result.failed).toEqual([])
+      expect(players.value[0].utr).toBe(8.50)
+      expect(players.value[1].utr).toBe(7.25)
+    })
+
+    it('returns failed list when some requests fail', async () => {
+      const initial = [{ id: 'p1', name: 'Alice', utr: 8.0 }, { id: 'p2', name: 'Bob', utr: 7.0 }]
+      const updated1 = { id: 'p1', name: 'Alice', utr: 8.50 }
+
+      const fetchMock = vi.fn()
+        .mockResolvedValueOnce({ ok: true, json: async () => initial })
+        .mockResolvedValueOnce({ ok: true, json: async () => updated1 })
+        .mockResolvedValueOnce({ ok: false, status: 500, json: async () => ({ message: '服务器错误' }) })
+      vi.stubGlobal('fetch', fetchMock)
+
+      const { players, fetchPlayers, bulkUpdateUtrs } = usePlayers(TEAM_ID)
+      await fetchPlayers()
+      const result = await bulkUpdateUtrs([{ playerId: 'p1', utr: 8.50 }, { playerId: 'p2', utr: 7.25 }])
+
+      expect(result.succeeded).toEqual(['p1'])
+      expect(result.failed).toHaveLength(1)
+      expect(result.failed[0].playerId).toBe('p2')
+      expect(players.value[0].utr).toBe(8.50)
+      expect(players.value[1].utr).toBe(7.0) // unchanged
+    })
+  })
+
   describe('loading state', () => {
     it('is true during fetch and false after', async () => {
       let loadingDuringRequest

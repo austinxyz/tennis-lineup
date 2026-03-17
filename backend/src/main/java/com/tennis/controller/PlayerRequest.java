@@ -6,6 +6,7 @@ public class PlayerRequest {
     private Double utr;
     private Double verifiedDoublesUtr;
     private Boolean verified;
+    private String profileUrl;
 
     // Getters and setters
     public String getName() { return name; }
@@ -18,4 +19,6 @@ public class PlayerRequest {
     public void setVerifiedDoublesUtr(Double verifiedDoublesUtr) { this.verifiedDoublesUtr = verifiedDoublesUtr; }
     public Boolean getVerified() { return verified; }
     public void setVerified(Boolean verified) { this.verified = verified; }
+    public String getProfileUrl() { return profileUrl; }
+    public void setProfileUrl(String profileUrl) { this.profileUrl = profileUrl; }
 }

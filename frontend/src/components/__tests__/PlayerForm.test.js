@@ -187,6 +187,42 @@ describe('PlayerForm', () => {
     })
   })
 
+  // ── profileUrl 字段 ──────────────────────────────────────────────────────────
+
+  describe('profileUrl 字段', () => {
+    it('渲染 UTR 主页链接输入框', () => {
+      const wrapper = mountForm()
+      expect(wrapper.text()).toContain('UTR 主页链接')
+      const inputs = wrapper.findAll('input[type="text"]')
+      // There are two text inputs: name and profileUrl
+      expect(inputs.length).toBeGreaterThanOrEqual(2)
+    })
+
+    it('传入 initialData 时预填 profileUrl', () => {
+      const url = 'https://app.utrsports.net/profiles/12345'
+      const wrapper = mountForm({ name: '张三', gender: 'male', utr: 8.5, verified: true, profileUrl: url })
+      const textInputs = wrapper.findAll('input[type="text"]')
+      const urlInput = textInputs.find(i => i.element.placeholder.includes('utrsports'))
+      expect(urlInput.element.value).toBe(url)
+    })
+
+    it('submit 事件包含 profileUrl 字段', async () => {
+      const url = 'https://app.utrsports.net/profiles/99999'
+      const wrapper = mountForm({ name: '张三', gender: 'male', utr: 8.5, verified: true, profileUrl: url })
+      const saveBtn = wrapper.findAll('button').find(b => b.text() === '保存')
+      await saveBtn.trigger('click')
+      const emitted = wrapper.emitted('submit')
+      expect(emitted).toBeTruthy()
+      expect(emitted[0][0].profileUrl).toBe(url)
+    })
+
+    it('UTR 输入框 step 属性为 0.01', () => {
+      const wrapper = mountForm()
+      const utrInput = wrapper.find('input[type="number"]')
+      expect(utrInput.attributes('step')).toBe('0.01')
+    })
+  })
+
   // ── watch initialData ────────────────────────────────────────────────────────
 
   describe('监听 initialData 变化', () => {

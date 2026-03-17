@@ -14,6 +14,7 @@ const mockFetchPlayers = vi.fn()
 const mockAddPlayer = vi.fn()
 const mockUpdatePlayer = vi.fn()
 const mockDeletePlayer = vi.fn()
+const mockBulkUpdateUtrs = vi.fn()
 
 // ── Module mocks ───────────────────────────────────────────────────────────────
 vi.mock('vue-router', () => ({
@@ -22,6 +23,7 @@ vi.mock('vue-router', () => ({
     path: '/teams/team1',
   })),
   useRouter: vi.fn(() => ({ push: vi.fn() })),
+  onBeforeRouteLeave: vi.fn(),
 }))
 
 vi.mock('../../composables/useTeams', () => ({
@@ -40,6 +42,7 @@ vi.mock('../../composables/usePlayers', () => ({
     addPlayer: mockAddPlayer,
     updatePlayer: mockUpdatePlayer,
     deletePlayer: mockDeletePlayer,
+    bulkUpdateUtrs: mockBulkUpdateUtrs,
   })),
 }))
 
@@ -59,8 +62,8 @@ const sampleTeam = {
 }
 
 const samplePlayers = [
-  { id: 'p1', name: 'Alice', gender: 'female', utr: 8.5, verified: true },
-  { id: 'p2', name: 'Bob', gender: 'male', utr: 7.0, verified: false },
+  { id: 'p1', name: 'Alice', gender: 'female', utr: 8.5, verified: true, profileUrl: 'https://app.utrsports.net/profiles/111' },
+  { id: 'p2', name: 'Bob', gender: 'male', utr: 7.0, verified: false, profileUrl: null },
 ]
 
 // ── Tests ──────────────────────────────────────────────────────────────────────
@@ -76,6 +79,7 @@ describe('TeamDetail', () => {
     mockAddPlayer.mockResolvedValue({ id: 'p3', name: 'New', gender: 'male', utr: 5.0, verified: false })
     mockUpdatePlayer.mockResolvedValue({ id: 'p1', name: 'Alice Updated', gender: 'female', utr: 9.0, verified: true })
     mockDeletePlayer.mockResolvedValue(undefined)
+    mockBulkUpdateUtrs.mockResolvedValue({ succeeded: [], failed: [] })
   })
 
   it('does not render content when team is null', () => {
@@ -108,8 +112,8 @@ describe('TeamDetail', () => {
     const wrapper = mountDetail()
     expect(wrapper.text()).toContain('Alice')
     expect(wrapper.text()).toContain('Bob')
-    expect(wrapper.text()).toContain('8.5')
-    expect(wrapper.text()).toContain('7')
+    expect(wrapper.text()).toContain('8.50')
+    expect(wrapper.text()).toContain('7.00')
   })
 
   it('shows loading spinner when playersLoading is true', () => {
@@ -175,7 +179,7 @@ describe('TeamDetail', () => {
     const wrapper = mountDetail()
 
     // Click edit button for first player
-    const editBtns = wrapper.findAll('button').filter(b => b.text().includes('编辑'))
+    const editBtns = wrapper.findAll('button').filter(b => b.text() === '编辑')
     await editBtns[0].trigger('click')
 
     // Modal should show with 编辑球员 title
@@ -192,7 +196,7 @@ describe('TeamDetail', () => {
     const wrapper = mountDetail()
 
     // Click edit for Alice
-    const editBtns = wrapper.findAll('button').filter(b => b.text().includes('编辑'))
+    const editBtns = wrapper.findAll('button').filter(b => b.text() === '编辑')
     await editBtns[0].trigger('click')
 
     // Change name
@@ -256,7 +260,7 @@ describe('TeamDetail', () => {
     const wrapper = mountDetail()
 
     // Open edit
-    const editBtns = wrapper.findAll('button').filter(b => b.text().includes('编辑'))
+    const editBtns = wrapper.findAll('button').filter(b => b.text() === '编辑')
     await editBtns[0].trigger('click')
 
     // Click cancel
@@ -267,6 +271,33 @@ describe('TeamDetail', () => {
     expect(wrapper.findAll('h3').some(h => h.text().includes('编辑球员'))).toBe(false)
   })
 
+  it('displays UTR with two decimal places', () => {
+    mockTeam.value = sampleTeam
+    mockPlayers.value = [{ id: 'p1', name: 'Alice', gender: 'female', utr: 8.5, verified: true, profileUrl: null }]
+    const wrapper = mountDetail()
+    expect(wrapper.text()).toContain('8.50')
+  })
+
+  it('shows UTR profile link when profileUrl is set', () => {
+    mockTeam.value = sampleTeam
+    mockPlayers.value = samplePlayers
+    const wrapper = mountDetail()
+    const links = wrapper.findAll('a')
+    const utrLink = links.find(a => a.text().includes('UTR主页'))
+    expect(utrLink).toBeTruthy()
+    expect(utrLink.attributes('href')).toBe('https://app.utrsports.net/profiles/111')
+    expect(utrLink.attributes('target')).toBe('_blank')
+  })
+
+  it('does not show UTR profile link when profileUrl is null', () => {
+    mockTeam.value = sampleTeam
+    mockPlayers.value = [{ id: 'p2', name: 'Bob', gender: 'male', utr: 7.0, verified: false, profileUrl: null }]
+    const wrapper = mountDetail()
+    const links = wrapper.findAll('a')
+    const utrLink = links.find(a => a.text().includes('UTR主页'))
+    expect(utrLink).toBeFalsy()
+  })
+
   it('calls fetchTeamById and fetchPlayers on mount', async () => {
     mockTeam.value = sampleTeam
     const wrapper = mountDetail()
@@ -274,5 +305,107 @@ describe('TeamDetail', () => {
       expect(mockFetchTeamById).toHaveBeenCalledWith('team1')
       expect(mockFetchPlayers).toHaveBeenCalled()
     })
+  })
+
+  // ── Bulk edit UTR ──────────────────────────────────────────────────────────────
+
+  it('shows 批量编辑 UTR button in normal mode', () => {
+    mockTeam.value = sampleTeam
+    mockPlayers.value = samplePlayers
+    const wrapper = mountDetail()
+    const btn = wrapper.findAll('button').find(b => b.text().includes('批量编辑 UTR'))
+    expect(btn).toBeTruthy()
+  })
+
+  it('enters bulk edit mode showing 保存 and 取消 buttons', async () => {
+    mockTeam.value = sampleTeam
+    mockPlayers.value = samplePlayers
+    const wrapper = mountDetail()
+    const bulkBtn = wrapper.findAll('button').find(b => b.text().includes('批量编辑 UTR'))
+    await bulkBtn.trigger('click')
+    expect(wrapper.findAll('button').some(b => b.text() === '保存')).toBe(true)
+    expect(wrapper.findAll('button').some(b => b.text() === '取消')).toBe(true)
+    expect(wrapper.findAll('button').some(b => b.text().includes('批量编辑 UTR'))).toBe(false)
+  })
+
+  it('shows number inputs for UTR in bulk edit mode', async () => {
+    mockTeam.value = sampleTeam
+    mockPlayers.value = samplePlayers
+    const wrapper = mountDetail()
+    const bulkBtn = wrapper.findAll('button').find(b => b.text().includes('批量编辑 UTR'))
+    await bulkBtn.trigger('click')
+    const utrInputs = wrapper.findAll('input[type="number"]').filter(i => i.attributes('step') === '0.01')
+    expect(utrInputs.length).toBe(samplePlayers.length)
+  })
+
+  it('cancels bulk edit and reverts to normal view', async () => {
+    mockTeam.value = sampleTeam
+    mockPlayers.value = samplePlayers
+    const wrapper = mountDetail()
+    const bulkBtn = wrapper.findAll('button').find(b => b.text().includes('批量编辑 UTR'))
+    await bulkBtn.trigger('click')
+    const cancelBtn = wrapper.findAll('button').find(b => b.text() === '取消')
+    await cancelBtn.trigger('click')
+    expect(wrapper.findAll('button').some(b => b.text().includes('批量编辑 UTR'))).toBe(true)
+    expect(wrapper.findAll('button').some(b => b.text() === '保存')).toBe(false)
+  })
+
+  it('calls bulkUpdateUtrs with changed players on save', async () => {
+    mockTeam.value = sampleTeam
+    mockPlayers.value = samplePlayers
+    mockBulkUpdateUtrs.mockResolvedValue({ succeeded: ['p1'], failed: [] })
+    const wrapper = mountDetail()
+
+    const bulkBtn = wrapper.findAll('button').find(b => b.text().includes('批量编辑 UTR'))
+    await bulkBtn.trigger('click')
+
+    // Change Alice's UTR
+    const utrInputs = wrapper.findAll('input[type="number"]').filter(i => i.attributes('step') === '0.01')
+    await utrInputs[0].setValue(9.0)
+
+    const saveBtn = wrapper.findAll('button').find(b => b.text() === '保存')
+    await saveBtn.trigger('click')
+
+    expect(mockBulkUpdateUtrs).toHaveBeenCalledWith(
+      expect.arrayContaining([expect.objectContaining({ playerId: 'p1', utr: 9 })])
+    )
+  })
+
+  it('does not call bulkUpdateUtrs when no UTR values changed', async () => {
+    mockTeam.value = sampleTeam
+    mockPlayers.value = samplePlayers
+    const wrapper = mountDetail()
+
+    const bulkBtn = wrapper.findAll('button').find(b => b.text().includes('批量编辑 UTR'))
+    await bulkBtn.trigger('click')
+
+    const saveBtn = wrapper.findAll('button').find(b => b.text() === '保存')
+    await saveBtn.trigger('click')
+
+    expect(mockBulkUpdateUtrs).not.toHaveBeenCalled()
+    expect(wrapper.findAll('button').some(b => b.text().includes('批量编辑 UTR'))).toBe(true)
+  })
+
+  it('shows error list when some bulk updates fail', async () => {
+    mockTeam.value = sampleTeam
+    mockPlayers.value = samplePlayers
+    mockBulkUpdateUtrs.mockResolvedValue({
+      succeeded: [],
+      failed: [{ playerId: 'p1', message: '服务器错误' }]
+    })
+    const wrapper = mountDetail()
+
+    const bulkBtn = wrapper.findAll('button').find(b => b.text().includes('批量编辑 UTR'))
+    await bulkBtn.trigger('click')
+
+    const utrInputs = wrapper.findAll('input[type="number"]').filter(i => i.attributes('step') === '0.01')
+    await utrInputs[0].setValue(9.0)
+
+    const saveBtn = wrapper.findAll('button').find(b => b.text() === '保存')
+    await saveBtn.trigger('click')
+
+    await wrapper.vm.$nextTick()
+    expect(wrapper.text()).toContain('以下球员更新失败')
+    expect(wrapper.text()).toContain('服务器错误')
   })
 })

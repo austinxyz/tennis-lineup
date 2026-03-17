@@ -118,7 +118,7 @@ public class TeamService {
         return "player-" + System.nanoTime();
     }
 
-    public Player addPlayer(String teamId, String name, String gender, Double utr, Double verifiedDoublesUtr, Boolean verified) {
+    public Player addPlayer(String teamId, String name, String gender, Double utr, Double verifiedDoublesUtr, Boolean verified, String profileUrl) {
         TeamData teamData = jsonRepository.readData();
 
         Team team = teamData.getTeams().stream()
@@ -152,6 +152,7 @@ public class TeamService {
         newPlayer.setUtr(utr);
         newPlayer.setVerifiedDoublesUtr(verifiedDoublesUtr);
         newPlayer.setVerified(verified);
+        newPlayer.setProfileUrl(profileUrl != null && profileUrl.isBlank() ? null : profileUrl);
 
         team.getPlayers().add(newPlayer);
         jsonRepository.writeData(teamData);
@@ -160,7 +161,7 @@ public class TeamService {
         return newPlayer;
     }
 
-    public Player updatePlayer(String teamId, String playerId, String name, String gender, Double utr, Double verifiedDoublesUtr, Boolean verified) {
+    public Player updatePlayer(String teamId, String playerId, String name, String gender, Double utr, Double verifiedDoublesUtr, Boolean verified, String profileUrl) {
         TeamData teamData = jsonRepository.readData();
 
         Team team = teamData.getTeams().stream()
@@ -173,32 +174,38 @@ public class TeamService {
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("球员不存在"));
 
+        // Use existing values for fields not provided (partial update support)
+        String effectiveName = (name != null) ? name : playerToUpdate.getName();
+        String effectiveGender = (gender != null) ? gender : playerToUpdate.getGender();
+        Double effectiveUtr = (utr != null) ? utr : playerToUpdate.getUtr();
+
         // Check for duplicate player name (excluding current player)
         if (team.getPlayers().stream()
                 .filter(p -> !p.getId().equals(playerId))
-                .anyMatch(p -> p.getName().equals(name))) {
+                .anyMatch(p -> p.getName().equals(effectiveName))) {
             throw new IllegalArgumentException("球员姓名已存在");
         }
 
         // Validate player data
-        if (name == null || name.trim().isEmpty()) {
+        if (effectiveName == null || effectiveName.trim().isEmpty()) {
             throw new IllegalArgumentException("球员姓名不能为空");
         }
-        if (name.length() > 50) {
+        if (effectiveName.length() > 50) {
             throw new IllegalArgumentException("球员姓名不能超过50个字符");
         }
-        if (gender != null && (!gender.equals("male") && !gender.equals("female"))) {
+        if (!effectiveGender.equals("male") && !effectiveGender.equals("female")) {
             throw new IllegalArgumentException("性别必须是 male 或 female");
         }
-        if (utr != null && (utr < 0 || utr > 16)) {
+        if (effectiveUtr < 0 || effectiveUtr > 16) {
             throw new IllegalArgumentException("UTR 必须在 0-16 之间");
         }
 
-        playerToUpdate.setName(name.trim());
-        if (gender != null) playerToUpdate.setGender(gender);
-        if (utr != null) playerToUpdate.setUtr(utr);
+        playerToUpdate.setName(effectiveName.trim());
+        playerToUpdate.setGender(effectiveGender);
+        playerToUpdate.setUtr(effectiveUtr);
         if (verifiedDoublesUtr != null) playerToUpdate.setVerifiedDoublesUtr(verifiedDoublesUtr);
         if (verified != null) playerToUpdate.setVerified(verified);
+        if (profileUrl != null) playerToUpdate.setProfileUrl(profileUrl.isBlank() ? null : profileUrl);
 
         jsonRepository.writeData(teamData);
 

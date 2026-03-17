@@ -22,7 +22,7 @@ public class PlayerService {
         this.jsonRepository = jsonRepository;
     }
 
-    public Player addPlayer(String teamId, String name, String gender, Double utr, Double verifiedDoublesUtr, Boolean verified) {
+    public Player addPlayer(String teamId, String name, String gender, Double utr, Double verifiedDoublesUtr, Boolean verified, String profileUrl) {
         TeamData teamData = jsonRepository.readData();
         Team team = teamData.getTeams().stream()
                 .filter(t -> t.getId().equals(teamId))
@@ -39,6 +39,7 @@ public class PlayerService {
         newPlayer.setUtr(utr);
         newPlayer.setVerifiedDoublesUtr(verifiedDoublesUtr);
         newPlayer.setVerified(verified != null ? verified : false);
+        newPlayer.setProfileUrl(profileUrl != null && profileUrl.isBlank() ? null : profileUrl);
 
         team.getPlayers().add(newPlayer);
         jsonRepository.writeData(teamData);
@@ -47,7 +48,7 @@ public class PlayerService {
         return newPlayer;
     }
 
-    public Player updatePlayer(String teamId, String playerId, String name, String gender, Double utr, Double verifiedDoublesUtr, Boolean verified) {
+    public Player updatePlayer(String teamId, String playerId, String name, String gender, Double utr, Double verifiedDoublesUtr, Boolean verified, String profileUrl) {
         TeamData teamData = jsonRepository.readData();
         Team team = teamData.getTeams().stream()
                 .filter(t -> t.getId().equals(teamId))
@@ -59,14 +60,20 @@ public class PlayerService {
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("球员不存在"));
 
-        // Validate player data
-        validatePlayerData(name, gender, utr);
+        // Use existing values for fields not provided (partial update support)
+        String effectiveName = (name != null) ? name : playerToUpdate.getName();
+        String effectiveGender = (gender != null) ? gender : playerToUpdate.getGender();
+        Double effectiveUtr = (utr != null) ? utr : playerToUpdate.getUtr();
 
-        playerToUpdate.setName(name.trim());
-        playerToUpdate.setGender(gender.toLowerCase());
-        playerToUpdate.setUtr(utr);
-        playerToUpdate.setVerifiedDoublesUtr(verifiedDoublesUtr);
-        playerToUpdate.setVerified(verified != null ? verified : false);
+        // Validate player data
+        validatePlayerData(effectiveName, effectiveGender, effectiveUtr);
+
+        playerToUpdate.setName(effectiveName.trim());
+        playerToUpdate.setGender(effectiveGender.toLowerCase());
+        playerToUpdate.setUtr(effectiveUtr);
+        if (verifiedDoublesUtr != null) playerToUpdate.setVerifiedDoublesUtr(verifiedDoublesUtr);
+        if (verified != null) playerToUpdate.setVerified(verified);
+        if (profileUrl != null) playerToUpdate.setProfileUrl(profileUrl.isBlank() ? null : profileUrl);
 
         jsonRepository.writeData(teamData);
 

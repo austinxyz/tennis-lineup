@@ -17,11 +17,41 @@
     <div v-else>
       <div class="flex justify-between items-center mb-4">
         <h3 class="text-xl font-semibold">球员列表 ({{ players.length }})</h3>
-        <button
-          @click="showAddPlayerModal = true"
-          class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors">
-          添加球员
-        </button>
+        <div class="flex space-x-2">
+          <template v-if="!bulkEditMode">
+            <button
+              @click="enterBulkEdit"
+              class="bg-yellow-500 text-white px-4 py-2 rounded-md hover:bg-yellow-600 transition-colors">
+              批量编辑 UTR
+            </button>
+            <button
+              @click="showAddPlayerModal = true"
+              class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors">
+              添加球员
+            </button>
+          </template>
+          <template v-else>
+            <button
+              @click="saveBulkEdit"
+              :disabled="playersLoading"
+              class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50">
+              保存
+            </button>
+            <button
+              @click="cancelBulkEdit"
+              class="bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400 transition-colors">
+              取消
+            </button>
+          </template>
+        </div>
+      </div>
+
+      <!-- Bulk edit error messages -->
+      <div v-if="bulkEditErrors.length > 0" class="mb-4 bg-red-50 border border-red-200 rounded-md p-3">
+        <p class="text-sm font-medium text-red-800 mb-1">以下球员更新失败：</p>
+        <ul class="text-sm text-red-700 list-disc list-inside">
+          <li v-for="err in bulkEditErrors" :key="err.playerId">{{ err.playerId }}: {{ err.message }}</li>
+        </ul>
       </div>
 
       <!-- Players Table -->
@@ -63,7 +93,28 @@
                 </span>
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                {{ player.utr }}
+                <template v-if="bulkEditMode">
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="16"
+                    :data-player-id="player.id"
+                    v-model.number="bulkUtrValues[player.id]"
+                    :class="['w-24 px-2 py-1 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500',
+                             bulkUtrValues[player.id] !== player.utr ? 'border-yellow-400 bg-yellow-50' : 'border-gray-300',
+                             bulkEditFailedIds.has(player.id) ? 'border-red-500' : '']" />
+                </template>
+                <template v-else>
+                  {{ Number(player.utr).toFixed(2) }}
+                  <a v-if="player.profileUrl"
+                     :href="player.profileUrl"
+                     target="_blank"
+                     rel="noopener noreferrer"
+                     class="ml-2 text-blue-500 hover:text-blue-700 text-xs underline">
+                    UTR主页
+                  </a>
+                </template>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
@@ -128,7 +179,7 @@
                 type="number"
                 id="playerUtr"
                 v-model.number="playerForm.utr"
-                step="0.1"
+                step="0.01"
                 min="0"
                 max="16"
                 class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -143,6 +194,17 @@
                 id="playerVerified"
                 v-model="playerForm.verified"
                 class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+            </div>
+            <div class="mb-4">
+              <label for="playerProfileUrl" class="block text-sm font-medium text-gray-700 mb-2">
+                UTR 主页链接
+              </label>
+              <input
+                type="text"
+                id="playerProfileUrl"
+                v-model="playerForm.profileUrl"
+                placeholder="https://app.utrsports.net/profiles/..."
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
             <div class="flex justify-end space-x-3">
               <button
@@ -167,7 +229,7 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, onBeforeRouteLeave } from 'vue-router'
 import { useTeams } from '../composables/useTeams'
 import { usePlayers } from '../composables/usePlayers'
 
@@ -175,7 +237,14 @@ const route = useRoute()
 const teamId = route.params.id
 
 const { team, loading: teamsLoading, fetchTeamById } = useTeams()
-const { players, loading: playersLoading, fetchPlayers, addPlayer, updatePlayer, deletePlayer } = usePlayers(teamId)
+const { players, loading: playersLoading, fetchPlayers, addPlayer, updatePlayer, deletePlayer, bulkUpdateUtrs } = usePlayers(teamId)
+
+// Bulk edit state
+const bulkEditMode = ref(false)
+const bulkUtrValues = ref({})
+const bulkUtrOriginal = ref({})
+const bulkEditErrors = ref([])
+const bulkEditFailedIds = ref(new Set())
 
 const showAddPlayerModal = ref(false)
 const editingPlayer = ref(null)
@@ -184,6 +253,7 @@ const playerForm = ref({
   gender: 'male',
   utr: 1.0,
   verified: false,
+  profileUrl: '',
 })
 
 const formatDate = (dateString) => {
@@ -222,6 +292,43 @@ const cancelPlayerEdit = () => {
     gender: 'male',
     utr: 1.0,
     verified: false,
+    profileUrl: '',
+  }
+}
+
+const enterBulkEdit = () => {
+  const values = {}
+  players.value.forEach(p => { values[p.id] = p.utr })
+  bulkUtrValues.value = values
+  bulkUtrOriginal.value = { ...values }
+  bulkEditErrors.value = []
+  bulkEditFailedIds.value = new Set()
+  bulkEditMode.value = true
+}
+
+const cancelBulkEdit = () => {
+  bulkUtrValues.value = { ...bulkUtrOriginal.value }
+  bulkEditMode.value = false
+  bulkEditErrors.value = []
+  bulkEditFailedIds.value = new Set()
+}
+
+const saveBulkEdit = async () => {
+  const changes = players.value
+    .filter(p => bulkUtrValues.value[p.id] !== p.utr)
+    .map(p => ({ playerId: p.id, utr: bulkUtrValues.value[p.id] }))
+
+  if (!changes.length) {
+    bulkEditMode.value = false
+    return
+  }
+
+  const { failed } = await bulkUpdateUtrs(changes)
+  bulkEditErrors.value = failed
+  bulkEditFailedIds.value = new Set(failed.map(f => f.playerId))
+
+  if (!failed.length) {
+    bulkEditMode.value = false
   }
 }
 
@@ -234,6 +341,15 @@ const confirmDeletePlayer = async (player) => {
 
 onMounted(() => {
   loadTeam()
+})
+
+onBeforeRouteLeave(() => {
+  if (bulkEditMode.value) {
+    const hasChanges = players.value.some(p => bulkUtrValues.value[p.id] !== p.utr)
+    if (hasChanges) {
+      return confirm('有未保存的 UTR 修改，确定离开吗？')
+    }
+  }
 })
 
 onUnmounted(() => {

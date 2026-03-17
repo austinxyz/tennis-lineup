@@ -35,7 +35,7 @@ class BatchImportServiceTest {
 
         TeamData teamData = new TeamData();
         when(jsonRepository.readData()).thenReturn(teamData);
-        when(playerService.addPlayer(any(), any(), any(), any(), any(), any())).thenReturn(new Player());
+        when(playerService.addPlayer(any(), any(), any(), any(), any(), any(), any())).thenReturn(new Player());
 
         // Act
         BatchImportService.ImportResult result = batchImportService.importFromCSV(csvContent);
@@ -44,7 +44,7 @@ class BatchImportServiceTest {
         assertEquals(2, result.getSuccessCount());
         assertEquals(0, result.getFailureCount());
         assertTrue(result.getErrors().isEmpty());
-        verify(playerService, times(2)).addPlayer(any(), any(), any(), any(), any(), any());
+        verify(playerService, times(2)).addPlayer(any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -55,14 +55,14 @@ class BatchImportServiceTest {
 
         TeamData teamData = new TeamData();
         when(jsonRepository.readData()).thenReturn(teamData);
-        when(playerService.addPlayer(any(), any(), any(), any(), any(), any())).thenReturn(new Player());
+        when(playerService.addPlayer(any(), any(), any(), any(), any(), any(), any())).thenReturn(new Player());
 
         // Act
         BatchImportService.ImportResult result = batchImportService.importFromCSV(csvContent);
 
         // Assert
         assertEquals(1, result.getSuccessCount());
-        verify(playerService, times(1)).addPlayer(any(), any(), any(), any(), any(), any());
+        verify(playerService, times(1)).addPlayer(any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -186,7 +186,7 @@ class BatchImportServiceTest {
 
         TeamData teamData = new TeamData();
         when(jsonRepository.readData()).thenReturn(teamData);
-        when(playerService.addPlayer(any(), any(), any(), any(), any(), any())).thenReturn(new Player());
+        when(playerService.addPlayer(any(), any(), any(), any(), any(), any(), any())).thenReturn(new Player());
 
         // Act
         BatchImportService.ImportResult result = batchImportService.importFromJSON(jsonContent);
@@ -195,7 +195,7 @@ class BatchImportServiceTest {
         assertEquals(2, result.getSuccessCount());
         assertEquals(0, result.getFailureCount());
         assertTrue(result.getErrors().isEmpty());
-        verify(playerService, times(2)).addPlayer(any(), any(), any(), any(), any(), any());
+        verify(playerService, times(2)).addPlayer(any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -206,14 +206,14 @@ class BatchImportServiceTest {
 
         TeamData teamData = new TeamData();
         when(jsonRepository.readData()).thenReturn(teamData);
-        when(playerService.addPlayer(any(), any(), any(), any(), any(), any())).thenReturn(new Player());
+        when(playerService.addPlayer(any(), any(), any(), any(), any(), any(), any())).thenReturn(new Player());
 
         // Act
         BatchImportService.ImportResult result = batchImportService.importFromJSON(jsonContent);
 
         // Assert
         assertEquals(1, result.getSuccessCount());
-        verify(playerService, times(1)).addPlayer(any(), any(), any(), any(), any(), any());
+        verify(playerService, times(1)).addPlayer(any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -262,7 +262,7 @@ class BatchImportServiceTest {
 
         TeamData teamData = new TeamData();
         when(jsonRepository.readData()).thenReturn(teamData);
-        when(playerService.addPlayer(any(), any(), any(), any(), any(), any())).thenReturn(new Player());
+        when(playerService.addPlayer(any(), any(), any(), any(), any(), any(), any())).thenReturn(new Player());
 
         // Act
         BatchImportService.ImportResult result = batchImportService.importFromCSV(csvContent);
@@ -271,7 +271,7 @@ class BatchImportServiceTest {
         assertEquals(2, result.getSuccessCount());
         assertEquals(2, result.getFailureCount());
         assertEquals(2, result.getErrors().size());
-        verify(playerService, times(2)).addPlayer(any(), any(), any(), any(), any(), any());
+        verify(playerService, times(2)).addPlayer(any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -284,9 +284,9 @@ class BatchImportServiceTest {
 
         TeamData teamData = new TeamData();
         when(jsonRepository.readData()).thenReturn(teamData);
-        when(playerService.addPlayer("team-1", "John Doe", "male", 1.5, null, true)).thenReturn(new Player());
+        when(playerService.addPlayer("team-1", "John Doe", "male", 1.5, null, true, null)).thenReturn(new Player());
         doThrow(new RuntimeException("Team not found"))
-            .when(playerService).addPlayer("team-1", "Jane Smith", "female", 2.0, null, false);
+            .when(playerService).addPlayer("team-1", "Jane Smith", "female", 2.0, null, false, null);
 
         // Act
         BatchImportService.ImportResult result = batchImportService.importFromCSV(csvContent);
@@ -307,7 +307,7 @@ class BatchImportServiceTest {
 
         TeamData teamData = new TeamData();
         when(jsonRepository.readData()).thenReturn(teamData);
-        when(playerService.addPlayer(any(), any(), any(), any(), any(), any())).thenReturn(new Player());
+        when(playerService.addPlayer(any(), any(), any(), any(), any(), any(), any())).thenReturn(new Player());
 
         // Act
         BatchImportService.ImportResult result = batchImportService.importFromJSON(jsonContent);

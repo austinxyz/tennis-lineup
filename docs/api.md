@@ -141,9 +141,10 @@ GET /api/teams/{id}/players
     "id": "player-1234567890",
     "name": "张三",
     "gender": "male",
-    "utr": 8.5,
+    "utr": 8.50,
     "verifiedDoublesUtr": 7.0,
-    "verified": true
+    "verified": true,
+    "profileUrl": "https://app.utrsports.net/profiles/12345"
   }
 ]
 ```
@@ -165,9 +166,10 @@ Content-Type: application/json
 {
   "name": "张三",
   "gender": "male",
-  "utr": 8.5,
+  "utr": 8.50,
   "verifiedDoublesUtr": 7.0,
-  "verified": true
+  "verified": true,
+  "profileUrl": "https://app.utrsports.net/profiles/12345"
 }
 ```
 
@@ -177,9 +179,10 @@ Content-Type: application/json
 |------|------|------|------|
 | `name` | string | 是 | 球员姓名，1-50 字符，队内唯一 |
 | `gender` | string | 是 | `"male"` 或 `"female"` |
-| `utr` | number | 是 | UTR 评分，范围 0.0 ~ 16.0 |
+| `utr` | number | 是 | UTR 评分，精确到两位小数，范围 0.00 ~ 16.00 |
 | `verifiedDoublesUtr` | number | 否 | 官方认证双打 UTR |
 | `verified` | boolean | 否 | 是否已认证，默认 `false` |
+| `profileUrl` | string | 否 | UTR 官网个人主页链接，为空时存储为 `null` |
 
 **响应 200**：创建成功的球员对象
 

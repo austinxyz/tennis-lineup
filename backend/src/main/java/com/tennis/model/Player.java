@@ -30,4 +30,7 @@ public class Player {
 
     @JsonProperty("verified")
     private Boolean verified; // has 100% Verified Doubles UTR
+
+    @JsonProperty("profileUrl")
+    private String profileUrl; // UTR profile page URL, optional
 }
