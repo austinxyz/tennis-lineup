@@ -19,7 +19,12 @@
       >
         <span class="w-8 text-xs font-bold text-green-600">{{ pair.position }}</span>
         <div class="flex-1 text-sm text-gray-800">
-          {{ pair.player1Name }} / {{ pair.player2Name }}
+          <template v-if="showPlayerUtr">
+            {{ pair.player1Name }} ({{ pair.player1Utr ?? '—' }}) / {{ pair.player2Name }} ({{ pair.player2Utr ?? '—' }})
+          </template>
+          <template v-else>
+            {{ pair.player1Name }} / {{ pair.player2Name }}
+          </template>
         </div>
         <span class="text-xs text-gray-500">{{ pair.combinedUtr.toFixed(2) }}</span>
       </div>
@@ -40,6 +45,10 @@ const props = defineProps({
   lineup: {
     type: Object,
     required: true,
+  },
+  showPlayerUtr: {
+    type: Boolean,
+    default: true,
   },
 })
 

@@ -53,7 +53,7 @@
 
       <!-- Right column: results -->
       <div class="w-full lg:w-3/5">
-        <LineupResultTabs :lineups="lineups" />
+        <LineupResultGrid :lineups="lineups" />
       </div>
     </div>
   </div>
@@ -66,14 +66,14 @@ import { useLineup } from '../composables/useLineup'
 import { usePlayers } from '../composables/usePlayers'
 import StrategySelector from '../components/StrategySelector.vue'
 import PlayerConstraintSelector from '../components/PlayerConstraintSelector.vue'
-import LineupResultTabs from '../components/LineupResultTabs.vue'
+import LineupResultGrid from '../components/LineupResultGrid.vue'
 
 const { teams, fetchTeams } = useTeams()
 const { lineups, loading, generateLineup } = useLineup()
 
 const selectedTeamId = ref('')
 const strategy = ref({ strategyType: 'preset', preset: 'balanced', naturalLanguage: null })
-const constraints = ref({ includePlayers: [], excludePlayers: [] })
+const constraints = ref({ pinPlayers: {}, excludePlayers: [] })
 const errorMessage = ref('')
 const teamPlayers = ref([])
 
@@ -89,7 +89,7 @@ function onConstraintsChange(newConstraints) {
 
 async function onTeamChange() {
   teamPlayers.value = []
-  constraints.value = { includePlayers: [], excludePlayers: [] }
+  constraints.value = { pinPlayers: {}, excludePlayers: [] }
   if (!selectedTeamId.value) return
   try {
     const { players, fetchPlayers } = usePlayers(selectedTeamId.value)
@@ -108,7 +108,7 @@ async function generate() {
       strategyType: strategy.value.strategyType,
       preset: strategy.value.preset,
       naturalLanguage: strategy.value.naturalLanguage,
-      includePlayers: constraints.value.includePlayers,
+      pinPlayers: constraints.value.pinPlayers,
       excludePlayers: constraints.value.excludePlayers,
     })
   } catch (err) {

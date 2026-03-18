@@ -1,7 +1,9 @@
 package com.tennis.controller;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class GenerateLineupRequest {
     private String teamId;
@@ -10,6 +12,7 @@ public class GenerateLineupRequest {
     private String naturalLanguage; // (when strategyType="custom")
     private List<String> includePlayers = new ArrayList<>(); // player IDs that must appear
     private List<String> excludePlayers = new ArrayList<>(); // player IDs to exclude
+    private Map<String, String> pinPlayers = new HashMap<>(); // playerId → "D1"|"D2"|"D3"|"D4"
 
     public String getTeamId() { return teamId; }
     public void setTeamId(String teamId) { this.teamId = teamId; }
@@ -23,4 +26,6 @@ public class GenerateLineupRequest {
     public void setIncludePlayers(List<String> includePlayers) { this.includePlayers = includePlayers != null ? includePlayers : new ArrayList<>(); }
     public List<String> getExcludePlayers() { return excludePlayers; }
     public void setExcludePlayers(List<String> excludePlayers) { this.excludePlayers = excludePlayers != null ? excludePlayers : new ArrayList<>(); }
+    public Map<String, String> getPinPlayers() { return pinPlayers; }
+    public void setPinPlayers(Map<String, String> pinPlayers) { this.pinPlayers = pinPlayers != null ? pinPlayers : new HashMap<>(); }
 }

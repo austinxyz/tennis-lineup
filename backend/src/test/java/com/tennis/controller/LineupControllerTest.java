@@ -54,17 +54,17 @@ class LineupControllerTest {
         testLineup.setTotalUtr(30.0);
         testLineup.setViolationMessages(new ArrayList<>());
 
-        Pair d1 = new Pair("D1", "p1", "Alice", "p2", "Bob", 15.5);
-        Pair d2 = new Pair("D2", "p3", "Carol", "p4", "Dave", 13.5);
-        Pair d3 = new Pair("D3", "p5", "Eve", "p6", "Frank", 11.5);
-        Pair d4 = new Pair("D4", "p7", "Grace", "p8", "Hank", 9.5);
+        Pair d1 = new Pair("D1", "p1", "Alice", "p2", "Bob", 15.5, null, null);
+        Pair d2 = new Pair("D2", "p3", "Carol", "p4", "Dave", 13.5, null, null);
+        Pair d3 = new Pair("D3", "p5", "Eve", "p6", "Frank", 11.5, null, null);
+        Pair d4 = new Pair("D4", "p7", "Grace", "p8", "Hank", 9.5, null, null);
         testLineup.setPairs(Arrays.asList(d1, d2, d3, d4));
     }
 
     @Test
     @DisplayName("POST /api/lineups/generate returns 200 with array of lineups")
     void testGenerateLineupSuccess() throws Exception {
-        when(lineupService.generateMultipleAndSave(any(), any(), any(), any(), any(), any()))
+        when(lineupService.generateMultipleAndSave(any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(List.of(testLineup));
 
         mockMvc.perform(post("/api/lineups/generate")
@@ -92,7 +92,7 @@ class LineupControllerTest {
         second.setViolationMessages(new ArrayList<>());
         second.setPairs(testLineup.getPairs());
 
-        when(lineupService.generateMultipleAndSave(any(), any(), any(), any(), any(), any()))
+        when(lineupService.generateMultipleAndSave(any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(List.of(testLineup, second));
 
         mockMvc.perform(post("/api/lineups/generate")
@@ -107,7 +107,7 @@ class LineupControllerTest {
     @Test
     @DisplayName("POST /api/lineups/generate returns 400 when fewer than 8 players")
     void testGenerateLineupInsufficientPlayers() throws Exception {
-        when(lineupService.generateMultipleAndSave(any(), any(), any(), any(), any(), any()))
+        when(lineupService.generateMultipleAndSave(any(), any(), any(), any(), any(), any(), any()))
                 .thenThrow(new IllegalArgumentException("队伍球员不足8人，无法生成排阵"));
 
         mockMvc.perform(post("/api/lineups/generate")
@@ -121,7 +121,7 @@ class LineupControllerTest {
     @Test
     @DisplayName("POST /api/lineups/generate returns 400 for constraint violation")
     void testGenerateLineupConstraintViolation() throws Exception {
-        when(lineupService.generateMultipleAndSave(any(), any(), any(), any(), any(), any()))
+        when(lineupService.generateMultipleAndSave(any(), any(), any(), any(), any(), any(), any()))
                 .thenThrow(new IllegalArgumentException("排除球员后可用球员不足8人"));
 
         mockMvc.perform(post("/api/lineups/generate")
@@ -135,7 +135,7 @@ class LineupControllerTest {
     @Test
     @DisplayName("POST /api/lineups/generate returns 404 when team not found")
     void testGenerateLineupTeamNotFound() throws Exception {
-        when(lineupService.generateMultipleAndSave(any(), any(), any(), any(), any(), any()))
+        when(lineupService.generateMultipleAndSave(any(), any(), any(), any(), any(), any(), any()))
                 .thenThrow(new NotFoundException("队伍不存在"));
 
         mockMvc.perform(post("/api/lineups/generate")
@@ -143,6 +143,22 @@ class LineupControllerTest {
                 .content(objectMapper.writeValueAsString(
                         Map.of("teamId", "unknown", "strategyType", "preset", "preset", "balanced"))))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("POST /api/lineups/generate passes pinPlayers to service")
+    void testGenerateLineupWithPinPlayers() throws Exception {
+        when(lineupService.generateMultipleAndSave(any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(List.of(testLineup));
+
+        String body = "{\"teamId\":\"team-1\",\"strategyType\":\"preset\",\"preset\":\"balanced\","
+                + "\"pinPlayers\":{\"p1\":\"D1\"}}";
+
+        mockMvc.perform(post("/api/lineups/generate")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value("lineup-001"));
     }
 
     @Test

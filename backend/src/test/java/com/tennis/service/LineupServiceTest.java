@@ -14,14 +14,17 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import com.tennis.model.Pair;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -68,13 +71,33 @@ class LineupServiceTest {
     }
 
     private Lineup buildLineup(String id) {
+        return buildLineupWithTotalUtr(30.0, id);
+    }
+
+    private Lineup buildLineupWithTotalUtr(double totalUtr) {
+        return buildLineupWithTotalUtr(totalUtr, null);
+    }
+
+    private Lineup buildLineupWithTotalUtr(double totalUtr, String id) {
         Lineup l = new Lineup();
         l.setId(id);
         l.setCreatedAt(Instant.now());
         l.setStrategy("balanced");
         l.setValid(true);
-        l.setTotalUtr(30.0);
-        l.setPairs(new ArrayList<>());
+        l.setTotalUtr(totalUtr);
+        // Add 4 pairs so sorting can work (combinedUtr = totalUtr/4 each)
+        double perPair = totalUtr / 4.0;
+        List<Pair> pairs = new ArrayList<>();
+        String[] positions = {"D1", "D2", "D3", "D4"};
+        for (String pos : positions) {
+            Pair p = new Pair();
+            p.setPosition(pos);
+            p.setCombinedUtr(perPair);
+            p.setPlayer1Id("p1");
+            p.setPlayer2Id("p2");
+            pairs.add(p);
+        }
+        l.setPairs(pairs);
         l.setViolationMessages(new ArrayList<>());
         return l;
     }
@@ -84,7 +107,7 @@ class LineupServiceTest {
     void testGenerateMultipleSuccess() {
         when(jsonRepository.readData()).thenReturn(teamData);
         Lineup candidate = buildLineup(null);
-        when(generationService.generateCandidates(any(), any(), any())).thenReturn(List.of(candidate));
+        when(generationService.generateCandidates(any(), any(), any(), any())).thenReturn(List.of(candidate));
         when(aiService.selectBestLineup(any(), any())).thenReturn(-1);
 
         List<Lineup> results = lineupService.generateMultipleAndSave(
@@ -104,7 +127,7 @@ class LineupServiceTest {
         when(jsonRepository.readData()).thenReturn(teamData);
         List<Lineup> manyCandidates = new ArrayList<>();
         for (int i = 0; i < 10; i++) manyCandidates.add(buildLineup(null));
-        when(generationService.generateCandidates(any(), any(), any())).thenReturn(manyCandidates);
+        when(generationService.generateCandidates(any(), any(), any(), any())).thenReturn(manyCandidates);
         when(aiService.selectBestLineup(any(), any())).thenReturn(-1);
 
         List<Lineup> results = lineupService.generateMultipleAndSave(
@@ -120,7 +143,7 @@ class LineupServiceTest {
         when(jsonRepository.readData()).thenReturn(teamData);
         Lineup c1 = buildLineup(null);
         Lineup c2 = buildLineup(null);
-        when(generationService.generateCandidates(any(), any(), any())).thenReturn(List.of(c1, c2));
+        when(generationService.generateCandidates(any(), any(), any(), any())).thenReturn(List.of(c1, c2));
         when(aiService.selectBestLineup(any(), any())).thenReturn(-1);
 
         List<Lineup> results = lineupService.generateMultipleAndSave(
@@ -153,10 +176,45 @@ class LineupServiceTest {
     @DisplayName("generateMultipleAndSave throws when no valid lineup exists")
     void testGenerateThrowsWhenNoValidLineup() {
         when(jsonRepository.readData()).thenReturn(teamData);
-        when(generationService.generateCandidates(any(), any(), any())).thenReturn(new ArrayList<>());
+        when(generationService.generateCandidates(any(), any(), any(), any())).thenReturn(new ArrayList<>());
 
         assertThrows(IllegalArgumentException.class, () ->
                 lineupService.generateMultipleAndSave("team-1", "preset", "balanced", null, List.of(), List.of()));
+    }
+
+    @Test
+    @DisplayName("balanced strategy: lineup closest to 40.5 total UTR ranked first")
+    void testBalancedPrimaryRankByUtRProximity() {
+        when(jsonRepository.readData()).thenReturn(teamData);
+
+        // c1 has totalUtr=39.0 (distance 1.5), c2 has totalUtr=38.0 (distance 2.5)
+        // c1 should rank first (closer to cap)
+        Lineup c1 = buildLineupWithTotalUtr(39.0);
+        Lineup c2 = buildLineupWithTotalUtr(38.0);
+        when(generationService.generateCandidates(any(), any(), any(), any())).thenReturn(List.of(c2, c1));
+        when(aiService.selectBestLineup(any(), any())).thenReturn(-1);
+
+        List<Lineup> results = lineupService.generateMultipleAndSave(
+                "team-1", "preset", "balanced", null, List.of(), List.of());
+
+        assertEquals(2, results.size());
+        assertEquals(39.0, results.get(0).getTotalUtr(), 0.001);
+        assertEquals(38.0, results.get(1).getTotalUtr(), 0.001);
+    }
+
+    @Test
+    @DisplayName("pinPlayers passed through to generation service")
+    void testPinPlayersPassedToGenerationService() {
+        when(jsonRepository.readData()).thenReturn(teamData);
+        Lineup candidate = buildLineup(null);
+        when(generationService.generateCandidates(any(), any(), any(), any())).thenReturn(List.of(candidate));
+        when(aiService.selectBestLineup(any(), any())).thenReturn(-1);
+
+        lineupService.generateMultipleAndSave("team-1", "preset", "balanced", null,
+                List.of(), List.of(), Map.of("p1", "D1"));
+
+        verify(generationService).generateCandidates(any(), any(), any(),
+                argThat(pins -> pins.containsKey("p1") && "D1".equals(pins.get("p1"))));
     }
 
     @Test

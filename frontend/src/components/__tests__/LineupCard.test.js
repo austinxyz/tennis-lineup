@@ -11,10 +11,10 @@ function buildLineup(overrides = {}) {
     valid: true,
     violationMessages: [],
     pairs: [
-      { position: 'D1', player1Name: '张三', player2Name: '李四', combinedUtr: 15.5 },
-      { position: 'D2', player1Name: '王五', player2Name: '赵六', combinedUtr: 8.0 },
-      { position: 'D3', player1Name: '孙七', player2Name: '周八', combinedUtr: 4.5 },
-      { position: 'D4', player1Name: '吴九', player2Name: '郑十', combinedUtr: 2.5 },
+      { position: 'D1', player1Name: '张三', player1Utr: 8.0, player2Name: '李四', player2Utr: 7.5, combinedUtr: 15.5 },
+      { position: 'D2', player1Name: '王五', player1Utr: 4.5, player2Name: '赵六', player2Utr: 3.5, combinedUtr: 8.0 },
+      { position: 'D3', player1Name: '孙七', player1Utr: 2.5, player2Name: '周八', player2Utr: 2.0, combinedUtr: 4.5 },
+      { position: 'D4', player1Name: '吴九', player1Utr: 1.5, player2Name: '郑十', player2Utr: 1.0, combinedUtr: 2.5 },
     ],
     ...overrides,
   }
@@ -61,6 +61,23 @@ describe('LineupCard', () => {
     it('aiUsed=false 时显示降级提示', () => {
       const wrapper = mount(LineupCard, { props: { lineup: buildLineup({ aiUsed: false }) } })
       expect(wrapper.text()).toContain('AI 不可用')
+    })
+  })
+
+  describe('per-player UTR 显示', () => {
+    it('默认显示球员 UTR（showPlayerUtr=true）', () => {
+      const wrapper = mount(LineupCard, { props: { lineup: buildLineup() } })
+      expect(wrapper.text()).toContain('8')   // player1Utr
+      expect(wrapper.text()).toContain('7.5') // player2Utr
+    })
+
+    it('showPlayerUtr=false 时不显示括号中的 UTR', () => {
+      const wrapper = mount(LineupCard, { props: { lineup: buildLineup(), showPlayerUtr: false } })
+      // player names still shown
+      expect(wrapper.text()).toContain('张三')
+      expect(wrapper.text()).toContain('李四')
+      // UTR values in parens not shown - the text should just be "张三 / 李四"
+      expect(wrapper.text()).not.toContain('(8')
     })
   })
 

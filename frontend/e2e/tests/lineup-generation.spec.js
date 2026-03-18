@@ -56,18 +56,30 @@ test.describe('排阵生成', () => {
     await expect(page.getByRole('button', { name: '生成排阵' })).toBeEnabled()
   })
 
-  test('使用均衡策略生成排阵成功，显示方案 1 tab', async ({ page }) => {
+  test('使用均衡策略生成排阵成功，所有方案直接显示', async ({ page }) => {
     await lineupPage.selectTeam(TEAM_NAME)
     await lineupPage.selectPresetStrategy('balanced')
     await lineupPage.clickGenerate()
     await lineupPage.waitForResults()
-    await expect(page.getByRole('button', { name: '方案 1' })).toBeVisible()
-    // The first tab is active and shows the lineup card with D1-D4
-    await lineupPage.waitForLineupCard()
+    // All plan cards visible simultaneously — no tab navigation needed
+    await expect(page.locator('text=方案 1')).toBeVisible()
     await expect(page.locator('text=D1')).toBeVisible()
     await expect(page.locator('text=D2')).toBeVisible()
     await expect(page.locator('text=D3')).toBeVisible()
     await expect(page.locator('text=D4')).toBeVisible()
+  })
+
+  test('方案 2 也直接可见，无需切换 tab', async ({ page }) => {
+    await lineupPage.selectTeam(TEAM_NAME)
+    await lineupPage.clickGenerate()
+    await lineupPage.waitForResults()
+    // Both plan 1 and plan 2 should be visible at the same time
+    const plan2 = page.locator('text=方案 2')
+    if (await plan2.isVisible()) {
+      await expect(plan2).toBeVisible()
+      // Plan 1 still visible simultaneously
+      await expect(page.locator('text=方案 1')).toBeVisible()
+    }
   })
 
   test('使用集中火力策略生成排阵成功', async ({ page }) => {
@@ -86,19 +98,29 @@ test.describe('排阵生成', () => {
     await expect(page.locator('text=总 UTR')).toBeVisible()
   })
 
-  test('可以切换到方案 2 tab', async ({ page }) => {
+  test('排阵卡片显示每位球员的 UTR', async ({ page }) => {
     await lineupPage.selectTeam(TEAM_NAME)
     await lineupPage.clickGenerate()
     await lineupPage.waitForResults()
+    await lineupPage.waitForLineupCard()
+    // Per-player UTR is shown inline (e.g. "张三 (6.00)")
+    // At least one player UTR should be visible as a decimal number
+    const utrPattern = page.locator('text=/\\(\\d+\\.\\d+\\)/')
+    await expect(utrPattern.first()).toBeVisible()
+  })
 
-    // Check if tab 2 exists before clicking
-    const tab2 = page.getByRole('button', { name: '方案 2' })
-    if (await tab2.isVisible()) {
-      await lineupPage.selectTab(2)
-      await expect(tab2).toHaveClass(/bg-green-600/)
-    } else {
-      // Only 1 candidate generated — pass the test
-      test.info().annotations.push({ type: 'info', description: '只有 1 个候选方案，跳过 tab 切换' })
+  test('位置约束：指定球员打 D1', async ({ page }) => {
+    await lineupPage.selectTeam(TEAM_NAME)
+    // Wait for players to load then pin 张三 to D1
+    await page.waitForSelector('text=张三', { timeout: 5000 }).catch(() => {})
+    const playerVisible = await page.locator('text=张三').isVisible()
+    if (playerVisible) {
+      await lineupPage.pinPlayerToPosition('张三', 'D1')
+      await lineupPage.clickGenerate()
+      await lineupPage.waitForResults()
+      // 张三 should appear in the D1 row of the first lineup card
+      const d1Row = page.locator('text=D1').first().locator('..')
+      await expect(d1Row).toContainText('张三')
     }
   })
 })

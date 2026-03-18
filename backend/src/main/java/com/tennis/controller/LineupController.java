@@ -26,7 +26,8 @@ public class LineupController {
                 request.getPreset(),
                 request.getNaturalLanguage(),
                 request.getIncludePlayers(),
-                request.getExcludePlayers()
+                request.getExcludePlayers(),
+                request.getPinPlayers()
         );
         return ResponseEntity.ok(lineups);
     }

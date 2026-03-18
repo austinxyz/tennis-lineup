@@ -26,4 +26,10 @@ public class Pair {
 
     @JsonProperty("combinedUtr")
     private Double combinedUtr;
+
+    @JsonProperty("player1Utr")
+    private Double player1Utr;
+
+    @JsonProperty("player2Utr")
+    private Double player2Utr;
 }

@@ -7,9 +7,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -34,6 +36,8 @@ public class LineupGenerationService {
         return candidates;
     }
 
+    private static final Set<String> VALID_POSITIONS = new HashSet<>(Arrays.asList("D1", "D2", "D3", "D4"));
+
     /**
      * Generate valid lineups with include/exclude player constraints.
      * @param players  full team roster
@@ -41,6 +45,18 @@ public class LineupGenerationService {
      * @param exclude  player IDs that MUST NOT appear in any lineup (may be empty)
      */
     public List<Lineup> generateCandidates(List<Player> players, Set<String> include, Set<String> exclude) {
+        return generateCandidates(players, include, exclude, Map.of());
+    }
+
+    /**
+     * Generate valid lineups with include/exclude/pin player constraints.
+     * @param players    full team roster
+     * @param include    player IDs that MUST appear in every lineup (may be empty)
+     * @param exclude    player IDs that MUST NOT appear in any lineup (may be empty)
+     * @param pinPlayers map of playerId → position ("D1"-"D4") that player MUST play
+     */
+    public List<Lineup> generateCandidates(List<Player> players, Set<String> include, Set<String> exclude,
+                                            Map<String, String> pinPlayers) {
         // Validate constraints
         Set<String> overlap = new HashSet<>(include);
         overlap.retainAll(exclude);
@@ -49,6 +65,16 @@ public class LineupGenerationService {
         }
         if (include.size() > 8) {
             throw new IllegalArgumentException("必须上场球员超过8人");
+        }
+
+        // Validate pin positions
+        for (Map.Entry<String, String> pin : pinPlayers.entrySet()) {
+            if (!VALID_POSITIONS.contains(pin.getValue())) {
+                throw new IllegalArgumentException("位置必须为 D1/D2/D3/D4");
+            }
+            if (exclude.contains(pin.getKey())) {
+                throw new IllegalArgumentException("同一球员不能同时被固定位置和排除");
+            }
         }
 
         // Build eligible roster (exclude removed players)
@@ -73,6 +99,23 @@ public class LineupGenerationService {
                         return usedIds.containsAll(include);
                     })
                     .collect(Collectors.toList());
+        }
+
+        // Post-filter: keep only lineups where pinned players appear in the specified position
+        if (!pinPlayers.isEmpty()) {
+            candidates = candidates.stream()
+                    .filter(lineup -> pinPlayers.entrySet().stream().allMatch(pin -> {
+                        String playerId = pin.getKey();
+                        String position = pin.getValue();
+                        return lineup.getPairs().stream()
+                                .filter(pair -> position.equals(pair.getPosition()))
+                                .anyMatch(pair -> playerId.equals(pair.getPlayer1Id())
+                                        || playerId.equals(pair.getPlayer2Id()));
+                    }))
+                    .collect(Collectors.toList());
+            if (candidates.isEmpty()) {
+                throw new IllegalArgumentException("无法生成满足位置约束的排阵");
+            }
         }
 
         return candidates;
@@ -141,8 +184,10 @@ public class LineupGenerationService {
             pair.setPosition(positions[i]);
             pair.setPlayer1Id(p1.getId());
             pair.setPlayer1Name(p1.getName());
+            pair.setPlayer1Utr(p1.getUtr());
             pair.setPlayer2Id(p2.getId());
             pair.setPlayer2Name(p2.getName());
+            pair.setPlayer2Utr(p2.getUtr());
             pair.setCombinedUtr(combined);
             pairs.add(pair);
         }

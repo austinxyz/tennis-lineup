@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -229,6 +230,40 @@ class LineupGenerationServiceTest {
             assertTrue(ids.contains("p1"), "p1 must appear in every lineup");
             assertTrue(ids.contains("p2"), "p2 must appear in every lineup");
         }
+    }
+
+    @Test
+    @DisplayName("pinPlayers: player appears in specified position in every candidate")
+    void testPinPlayerToPosition() {
+        List<Player> players = new ArrayList<>(build8PlayerRoster());
+        players.add(player("p9", "male", 3.5, true));
+        players.add(player("p10", "female", 3.0, true));
+
+        List<Lineup> candidates = service.generateCandidates(
+                players, Set.of(), Set.of(), Map.of("p1", "D1"));
+        assertFalse(candidates.isEmpty());
+        for (Lineup lineup : candidates) {
+            boolean p1InD1 = lineup.getPairs().stream()
+                    .filter(p -> "D1".equals(p.getPosition()))
+                    .anyMatch(p -> "p1".equals(p.getPlayer1Id()) || "p1".equals(p.getPlayer2Id()));
+            assertTrue(p1InD1, "p1 must be in D1 in every lineup");
+        }
+    }
+
+    @Test
+    @DisplayName("pinPlayers: invalid position throws IllegalArgumentException")
+    void testPinPlayerInvalidPositionThrows() {
+        List<Player> players = build8PlayerRoster();
+        assertThrows(IllegalArgumentException.class, () ->
+                service.generateCandidates(players, Set.of(), Set.of(), Map.of("p1", "D5")));
+    }
+
+    @Test
+    @DisplayName("pinPlayers: player in both pin and exclude throws IllegalArgumentException")
+    void testPinAndExcludeConflictThrows() {
+        List<Player> players = build8PlayerRoster();
+        assertThrows(IllegalArgumentException.class, () ->
+                service.generateCandidates(players, Set.of(), Set.of("p1"), Map.of("p1", "D1")));
     }
 
     @Test

@@ -70,7 +70,7 @@ describe('useLineup', () => {
       )
     })
 
-    it('sends includePlayers and excludePlayers in request body', async () => {
+    it('sends pinPlayers and excludePlayers in request body', async () => {
       const mockFetch = makeFetchOk([{ id: 'lineup-3', pairs: [] }])
       vi.stubGlobal('fetch', mockFetch)
       const { generateLineup } = useLineup()
@@ -78,11 +78,11 @@ describe('useLineup', () => {
         teamId: 'team-1',
         strategyType: 'preset',
         preset: 'balanced',
-        includePlayers: ['p1', 'p2'],
+        pinPlayers: { p1: 'D1', p2: 'D2' },
         excludePlayers: ['p8'],
       })
       const body = JSON.parse(mockFetch.mock.calls[0][1].body)
-      expect(body.includePlayers).toEqual(['p1', 'p2'])
+      expect(body.pinPlayers).toEqual({ p1: 'D1', p2: 'D2' })
       expect(body.excludePlayers).toEqual(['p8'])
     })
   })

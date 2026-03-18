@@ -13,8 +13,10 @@ import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -38,6 +40,14 @@ public class LineupService {
     public List<Lineup> generateMultipleAndSave(String teamId, String strategyType, String preset,
                                                 String naturalLanguage,
                                                 List<String> includePlayers, List<String> excludePlayers) {
+        return generateMultipleAndSave(teamId, strategyType, preset, naturalLanguage,
+                includePlayers, excludePlayers, Map.of());
+    }
+
+    public List<Lineup> generateMultipleAndSave(String teamId, String strategyType, String preset,
+                                                String naturalLanguage,
+                                                List<String> includePlayers, List<String> excludePlayers,
+                                                Map<String, String> pinPlayers) {
         TeamData teamData = jsonRepository.readData();
         Team team = teamData.getTeams().stream()
                 .filter(t -> t.getId().equals(teamId))
@@ -51,8 +61,9 @@ public class LineupService {
 
         Set<String> include = new HashSet<>(includePlayers != null ? includePlayers : List.of());
         Set<String> exclude = new HashSet<>(excludePlayers != null ? excludePlayers : List.of());
+        Map<String, String> pins = pinPlayers != null ? pinPlayers : Map.of();
 
-        List<Lineup> candidates = generationService.generateCandidates(players, include, exclude);
+        List<Lineup> candidates = generationService.generateCandidates(players, include, exclude, pins);
         if (candidates.isEmpty()) {
             throw new IllegalArgumentException("无法生成满足约束的排阵");
         }
@@ -105,14 +116,29 @@ public class LineupService {
         return top6;
     }
 
+    private static final double UTR_CAP = 40.5;
+    private static final double TARGET_PER_LINE = UTR_CAP / 4; // 10.125
+
     private List<Lineup> sortByHeuristic(List<Lineup> candidates, String strategy) {
         List<Lineup> sorted = new ArrayList<>(candidates);
         if ("aggressive".equals(strategy)) {
-            sorted.sort(Comparator.comparingDouble(this::topThreeUtr).reversed());
+            // Primary: closest to UTR cap; secondary: max top-three
+            sorted.sort(Comparator
+                    .comparingDouble(this::utrCapDistance)
+                    .thenComparingDouble((Lineup l) -> topThreeUtr(l)).reversed()
+                    .thenComparingDouble(this::utrCapDistance));
         } else {
-            sorted.sort(Comparator.comparingDouble(this::combinedUtrVariance));
+            // Primary: closest to UTR cap; secondary: min deviation from 10.125 per line
+            sorted.sort(Comparator
+                    .comparingDouble(this::utrCapDistance)
+                    .thenComparingDouble(this::balancedDeviation));
         }
         return sorted;
+    }
+
+    /** Distance from 40.5 cap — lower is better (closer to cap without exceeding). */
+    private double utrCapDistance(Lineup lineup) {
+        return UTR_CAP - lineup.getTotalUtr();
     }
 
     private double topThreeUtr(Lineup lineup) {
@@ -122,12 +148,11 @@ public class LineupService {
                 .sum();
     }
 
-    private double combinedUtrVariance(Lineup lineup) {
-        List<Double> utrs = lineup.getPairs().stream()
-                .map(com.tennis.model.Pair::getCombinedUtr)
-                .toList();
-        double mean = utrs.stream().mapToDouble(Double::doubleValue).average().orElse(0);
-        return utrs.stream().mapToDouble(u -> (u - mean) * (u - mean)).average().orElse(0);
+    /** Sum of |pair.combinedUtr - 10.125| across all 4 pairs — lower is more balanced. */
+    private double balancedDeviation(Lineup lineup) {
+        return lineup.getPairs().stream()
+                .mapToDouble(p -> Math.abs(p.getCombinedUtr() - TARGET_PER_LINE))
+                .sum();
     }
 
     public List<Lineup> getLineupsByTeam(String teamId) {

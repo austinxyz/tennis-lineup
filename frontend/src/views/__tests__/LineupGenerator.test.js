@@ -41,7 +41,7 @@ vi.mock('../../composables/usePlayers', () => ({
 const stubs = {
   StrategySelector: true,
   PlayerConstraintSelector: true,
-  LineupResultTabs: true,
+  LineupResultGrid: true,
 }
 
 beforeEach(() => {
@@ -79,9 +79,9 @@ describe('LineupGenerator', () => {
       expect(wrapper.findComponent({ name: 'PlayerConstraintSelector' }).exists()).toBe(true)
     })
 
-    it('右栏包含 LineupResultTabs', () => {
+    it('右栏包含 LineupResultGrid', () => {
       const wrapper = mount(LineupGenerator, { global: { stubs } })
-      expect(wrapper.findComponent({ name: 'LineupResultTabs' }).exists()).toBe(true)
+      expect(wrapper.findComponent({ name: 'LineupResultGrid' }).exists()).toBe(true)
     })
 
     it('左栏 lg:w-2/5 右栏 lg:w-3/5', () => {
@@ -106,10 +106,10 @@ describe('LineupGenerator', () => {
       expect(btn.exists()).toBe(true)
     })
 
-    it('LineupResultTabs 接收空 lineups 数组', () => {
+    it('LineupResultGrid 接收空 lineups 数组', () => {
       const wrapper = mount(LineupGenerator, { global: { stubs } })
-      const tabs = wrapper.findComponent({ name: 'LineupResultTabs' })
-      expect(tabs.props('lineups')).toEqual([])
+      const grid = wrapper.findComponent({ name: 'LineupResultGrid' })
+      expect(grid.props('lineups')).toEqual([])
     })
   })
 
@@ -130,7 +130,7 @@ describe('LineupGenerator', () => {
       await wrapper.find('button').trigger('click')
       expect(mockGenerateLineup).toHaveBeenCalledWith(expect.objectContaining({
         teamId: 'team-1',
-        includePlayers: [],
+        pinPlayers: {},
         excludePlayers: [],
       }))
     })
