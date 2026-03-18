@@ -6,7 +6,7 @@ export function useLineup() {
   const lineups = ref([])
   const lineupHistory = ref([])
 
-  const generateLineup = async ({ teamId, strategyType, preset, naturalLanguage, pinPlayers = {}, excludePlayers = [] }) => {
+  const generateLineup = async ({ teamId, strategyType, preset, naturalLanguage, pinPlayers = {}, includePlayers = [], excludePlayers = [] }) => {
     try {
       lineups.value = await post('/api/lineups/generate', {
         teamId,
@@ -14,6 +14,7 @@ export function useLineup() {
         preset,
         naturalLanguage,
         pinPlayers,
+        includePlayers,
         excludePlayers,
       })
       return lineups.value

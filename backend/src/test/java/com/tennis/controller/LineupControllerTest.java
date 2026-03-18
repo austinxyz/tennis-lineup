@@ -54,10 +54,10 @@ class LineupControllerTest {
         testLineup.setTotalUtr(30.0);
         testLineup.setViolationMessages(new ArrayList<>());
 
-        Pair d1 = new Pair("D1", "p1", "Alice", "p2", "Bob", 15.5, null, null);
-        Pair d2 = new Pair("D2", "p3", "Carol", "p4", "Dave", 13.5, null, null);
-        Pair d3 = new Pair("D3", "p5", "Eve", "p6", "Frank", 11.5, null, null);
-        Pair d4 = new Pair("D4", "p7", "Grace", "p8", "Hank", 9.5, null, null);
+        Pair d1 = new Pair("D1", "p1", "Alice", "p2", "Bob", 15.5, null, null, null, null);
+        Pair d2 = new Pair("D2", "p3", "Carol", "p4", "Dave", 13.5, null, null, null, null);
+        Pair d3 = new Pair("D3", "p5", "Eve", "p6", "Frank", 11.5, null, null, null, null);
+        Pair d4 = new Pair("D4", "p7", "Grace", "p8", "Hank", 9.5, null, null, null, null);
         testLineup.setPairs(Arrays.asList(d1, d2, d3, d4));
     }
 
@@ -211,5 +211,38 @@ class LineupControllerTest {
 
         mockMvc.perform(delete("/api/lineups/nonexistent"))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("POST /api/lineups/generate passes includePlayers to service")
+    void testGenerateLineupWithIncludePlayers() throws Exception {
+        when(lineupService.generateMultipleAndSave(any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(List.of(testLineup));
+
+        String body = "{\"teamId\":\"team-1\",\"strategyType\":\"preset\",\"preset\":\"balanced\","
+                + "\"includePlayers\":[\"p1\",\"p2\"]}";
+
+        mockMvc.perform(post("/api/lineups/generate")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value("lineup-001"));
+    }
+
+    @Test
+    @DisplayName("Response pair includes player1Gender and player2Gender when set")
+    void testResponseIncludesGenderFields() throws Exception {
+        // Set gender on test pairs
+        testLineup.getPairs().get(0).setPlayer1Gender("male");
+        testLineup.getPairs().get(0).setPlayer2Gender("female");
+        when(lineupService.generateMultipleAndSave(any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(List.of(testLineup));
+
+        mockMvc.perform(post("/api/lineups/generate")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"teamId\":\"team-1\",\"strategyType\":\"preset\",\"preset\":\"balanced\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].pairs[0].player1Gender").value("male"))
+                .andExpect(jsonPath("$[0].pairs[0].player2Gender").value("female"));
     }
 }

@@ -20,7 +20,9 @@
         <span class="w-8 text-xs font-bold text-green-600">{{ pair.position }}</span>
         <div class="flex-1 text-sm text-gray-800">
           <template v-if="showPlayerUtr">
-            {{ pair.player1Name }} ({{ pair.player1Utr ?? '—' }}) / {{ pair.player2Name }} ({{ pair.player2Utr ?? '—' }})
+            <span :class="pair.player1Gender === 'female' ? 'text-pink-500' : 'text-blue-500'" class="text-xs font-semibold mr-0.5">{{ pair.player1Gender === 'female' ? '女' : '男' }}</span>{{ pair.player1Name }} ({{ pair.player1Utr ?? '—' }})
+            /
+            <span :class="pair.player2Gender === 'female' ? 'text-pink-500' : 'text-blue-500'" class="text-xs font-semibold mr-0.5">{{ pair.player2Gender === 'female' ? '女' : '男' }}</span>{{ pair.player2Name }} ({{ pair.player2Utr ?? '—' }})
           </template>
           <template v-else>
             {{ pair.player1Name }} / {{ pair.player2Name }}

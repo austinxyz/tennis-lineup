@@ -73,7 +73,7 @@ const { lineups, loading, generateLineup } = useLineup()
 
 const selectedTeamId = ref('')
 const strategy = ref({ strategyType: 'preset', preset: 'balanced', naturalLanguage: null })
-const constraints = ref({ pinPlayers: {}, excludePlayers: [] })
+const constraints = ref({ pinPlayers: {}, includePlayers: [], excludePlayers: [] })
 const errorMessage = ref('')
 const teamPlayers = ref([])
 
@@ -89,7 +89,7 @@ function onConstraintsChange(newConstraints) {
 
 async function onTeamChange() {
   teamPlayers.value = []
-  constraints.value = { pinPlayers: {}, excludePlayers: [] }
+  constraints.value = { pinPlayers: {}, includePlayers: [], excludePlayers: [] }
   if (!selectedTeamId.value) return
   try {
     const { players, fetchPlayers } = usePlayers(selectedTeamId.value)
@@ -109,6 +109,7 @@ async function generate() {
       preset: strategy.value.preset,
       naturalLanguage: strategy.value.naturalLanguage,
       pinPlayers: constraints.value.pinPlayers,
+      includePlayers: constraints.value.includePlayers,
       excludePlayers: constraints.value.excludePlayers,
     })
   } catch (err) {

@@ -11,10 +11,10 @@ function buildLineup(overrides = {}) {
     valid: true,
     violationMessages: [],
     pairs: [
-      { position: 'D1', player1Name: '张三', player1Utr: 8.0, player2Name: '李四', player2Utr: 7.5, combinedUtr: 15.5 },
-      { position: 'D2', player1Name: '王五', player1Utr: 4.5, player2Name: '赵六', player2Utr: 3.5, combinedUtr: 8.0 },
-      { position: 'D3', player1Name: '孙七', player1Utr: 2.5, player2Name: '周八', player2Utr: 2.0, combinedUtr: 4.5 },
-      { position: 'D4', player1Name: '吴九', player1Utr: 1.5, player2Name: '郑十', player2Utr: 1.0, combinedUtr: 2.5 },
+      { position: 'D1', player1Name: '张三', player1Utr: 8.0, player1Gender: 'male', player2Name: '李四', player2Utr: 7.5, player2Gender: 'female', combinedUtr: 15.5 },
+      { position: 'D2', player1Name: '王五', player1Utr: 4.5, player1Gender: 'male', player2Name: '赵六', player2Utr: 3.5, player2Gender: 'male', combinedUtr: 8.0 },
+      { position: 'D3', player1Name: '孙七', player1Utr: 2.5, player1Gender: 'female', player2Name: '周八', player2Utr: 2.0, player2Gender: 'male', combinedUtr: 4.5 },
+      { position: 'D4', player1Name: '吴九', player1Utr: 1.5, player1Gender: 'male', player2Name: '郑十', player2Utr: 1.0, player2Gender: 'male', combinedUtr: 2.5 },
     ],
     ...overrides,
   }
@@ -78,6 +78,28 @@ describe('LineupCard', () => {
       expect(wrapper.text()).toContain('李四')
       // UTR values in parens not shown - the text should just be "张三 / 李四"
       expect(wrapper.text()).not.toContain('(8')
+    })
+  })
+
+  describe('性别显示', () => {
+    it('male 球员显示 男 文字', () => {
+      const wrapper = mount(LineupCard, { props: { lineup: buildLineup() } })
+      expect(wrapper.text()).toContain('男')
+    })
+
+    it('female 球员显示 女 文字', () => {
+      const wrapper = mount(LineupCard, { props: { lineup: buildLineup() } })
+      expect(wrapper.text()).toContain('女')
+    })
+
+    it('性别显示与 UTR 共存', () => {
+      const wrapper = mount(LineupCard, { props: { lineup: buildLineup() } })
+      const text = wrapper.text()
+      // D1 pair: male 张三 (8) / female 李四 (7.5)
+      expect(text).toContain('男')
+      expect(text).toContain('女')
+      expect(text).toContain('8')
+      expect(text).toContain('7.5')
     })
   })
 

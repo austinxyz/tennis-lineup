@@ -131,6 +131,7 @@ describe('LineupGenerator', () => {
       expect(mockGenerateLineup).toHaveBeenCalledWith(expect.objectContaining({
         teamId: 'team-1',
         pinPlayers: {},
+        includePlayers: [],
         excludePlayers: [],
       }))
     })

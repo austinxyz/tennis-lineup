@@ -39,7 +39,6 @@
         class="px-3 py-1 bg-gray-200 text-gray-600 rounded text-xs font-medium hover:bg-gray-300"
         @click="reset"
       >重置</button>
-      <span v-if="swapError" class="text-xs text-red-600">{{ swapError }}</span>
     </div>
   </div>
 </template>
@@ -61,7 +60,6 @@ const currentLineup = ref(JSON.parse(JSON.stringify(props.lineup)))
 const originalLineup = JSON.parse(JSON.stringify(props.lineup))
 
 const selected = ref([]) // [{position, slot, playerId, playerName}]
-const swapError = ref('')
 
 function isSelected(position, slot) {
   return selected.value.some(s => s.position === position && s.slot === slot)
@@ -79,7 +77,6 @@ function selectPlayer(position, slot, playerId, playerName) {
     selected.value = []
   }
   selected.value.push({ position, slot, playerId, playerName })
-  swapError.value = ''
 }
 
 const canSwap = computed(() => {
@@ -113,17 +110,11 @@ function doSwap() {
   pairA.combinedUtr = (pairA.player1Utr ?? 0) + (pairA.player2Utr ?? 0)
   pairB.combinedUtr = (pairB.player1Utr ?? 0) + (pairB.player2Utr ?? 0)
 
-  // Validate UTR ordering D1 >= D2 >= D3 >= D4
-  const order = ['D1', 'D2', 'D3', 'D4']
-  const utrs = order.map(pos => pairs.find(p => p.position === pos)?.combinedUtr ?? 0)
-  for (let i = 0; i < utrs.length - 1; i++) {
-    if (utrs[i] < utrs[i + 1]) {
-      swapError.value = `互换后不满足UTR排序约束 (D1 ≥ D2 ≥ D3 ≥ D4)`
-      return
-    }
-  }
+  // Auto-sort all 4 pairs by combinedUtr descending and reassign positions D1–D4
+  const positions = ['D1', 'D2', 'D3', 'D4']
+  pairs.sort((x, y) => y.combinedUtr - x.combinedUtr)
+  pairs.forEach((p, i) => { p.position = positions[i] })
 
-  swapError.value = ''
   currentLineup.value = { ...currentLineup.value, pairs }
   selected.value = []
   emit('update:lineup', currentLineup.value)
@@ -132,7 +123,6 @@ function doSwap() {
 function reset() {
   currentLineup.value = JSON.parse(JSON.stringify(originalLineup))
   selected.value = []
-  swapError.value = ''
   emit('update:lineup', currentLineup.value)
 }
 </script>

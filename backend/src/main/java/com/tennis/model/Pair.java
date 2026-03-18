@@ -32,4 +32,10 @@ public class Pair {
 
     @JsonProperty("player2Utr")
     private Double player2Utr;
+
+    @JsonProperty("player1Gender")
+    private String player1Gender; // "male" | "female"
+
+    @JsonProperty("player2Gender")
+    private String player2Gender; // "male" | "female"
 }

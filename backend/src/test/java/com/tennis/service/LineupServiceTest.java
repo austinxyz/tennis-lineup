@@ -254,4 +254,20 @@ class LineupServiceTest {
 
         assertThrows(NotFoundException.class, () -> lineupService.deleteLineup("nonexistent"));
     }
+
+    @Test
+    @DisplayName("includePlayers passed through to generation service")
+    void testIncludePlayersPassedToGenerationService() {
+        when(jsonRepository.readData()).thenReturn(teamData);
+        Lineup candidate = buildLineup(null);
+        when(generationService.generateCandidates(any(), any(), any(), any())).thenReturn(List.of(candidate));
+        when(aiService.selectBestLineup(any(), any())).thenReturn(-1);
+
+        lineupService.generateMultipleAndSave("team-1", "preset", "balanced", null,
+                List.of("p1", "p2"), List.of());
+
+        verify(generationService).generateCandidates(any(),
+                argThat(inc -> inc.contains("p1") && inc.contains("p2")),
+                any(), any());
+    }
 }

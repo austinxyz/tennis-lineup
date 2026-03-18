@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import PlayerConstraintSelector from '../PlayerConstraintSelector.vue'
@@ -26,13 +26,12 @@ describe('PlayerConstraintSelector', () => {
     it('女性球员排在男性球员前面', () => {
       const wrapper = mount(PlayerConstraintSelector, { props: { players: samplePlayers } })
       const rows = wrapper.findAll('.space-y-1 > div')
-      expect(rows[0].text()).toContain('赵梅') // female
+      expect(rows[0].text()).toContain('赵梅') // female first
     })
 
     it('同性别内 UTR 高的排在前面', () => {
       const wrapper = mount(PlayerConstraintSelector, { props: { players: samplePlayers } })
       const rows = wrapper.findAll('.space-y-1 > div')
-      // Male players: 张三 UTR 6.0 before 李四 UTR 5.5
       const names = rows.map(r => r.text())
       const zhangIdx = names.findIndex(t => t.includes('张三'))
       const liIdx = names.findIndex(t => t.includes('李四'))
@@ -40,81 +39,109 @@ describe('PlayerConstraintSelector', () => {
     })
   })
 
-  describe('认证徽章', () => {
-    it('verified=true 时显示"认证"徽章', () => {
+  describe('性别徽章', () => {
+    it('female 球员显示 F 徽章', () => {
       const wrapper = mount(PlayerConstraintSelector, { props: { players: samplePlayers } })
       const text = wrapper.text()
-      // p1 (张三 verified) and p3 (赵梅 verified) should show badge
-      expect(text.match(/认证/g)?.length).toBeGreaterThanOrEqual(2)
+      expect(text).toContain('F')
+    })
+
+    it('male 球员显示 M 徽章', () => {
+      const wrapper = mount(PlayerConstraintSelector, { props: { players: samplePlayers } })
+      const text = wrapper.text()
+      expect(text).toContain('M')
+    })
+  })
+
+  describe('认证徽章', () => {
+    it('verified=true 时显示\"认证\"徽章', () => {
+      const wrapper = mount(PlayerConstraintSelector, { props: { players: samplePlayers } })
+      const badges = wrapper.findAll('.bg-green-100')
+      expect(badges.length).toBeGreaterThanOrEqual(2) // p1 和 p3 都 verified
     })
 
     it('verified=false 时不显示认证徽章（李四）', () => {
-      const wrapper = mount(PlayerConstraintSelector, { props: { players: [{ id: 'p2', name: '李四', utr: 5.5, gender: 'male', verified: false }] } })
+      const wrapper = mount(PlayerConstraintSelector, {
+        props: { players: [{ id: 'p2', name: '李四', utr: 5.5, gender: 'male', verified: false }] }
+      })
       expect(wrapper.find('.bg-green-100').exists()).toBe(false)
     })
   })
 
-  describe('6 态状态切换', () => {
-    it('初始按钮标签为"中立"', () => {
+  describe('下拉选择器', () => {
+    it('每个球员有一个 select 下拉', () => {
       const wrapper = mount(PlayerConstraintSelector, { props: { players: samplePlayers } })
-      expect(wrapper.findAll('button')[0].text()).toBe('中立')
+      const selects = wrapper.findAll('select')
+      expect(selects.length).toBe(samplePlayers.length)
     })
 
-    it('点击一次变为 D1', async () => {
+    it('下拉选项包含 7 个值', () => {
       const wrapper = mount(PlayerConstraintSelector, { props: { players: samplePlayers } })
-      await wrapper.findAll('button')[0].trigger('click')
-      expect(wrapper.findAll('button')[0].text()).toBe('D1')
+      const options = wrapper.findAll('select')[0].findAll('option')
+      expect(options.length).toBe(7)
+      const values = options.map(o => o.element.value)
+      expect(values).toContain('neutral')
+      expect(values).toContain('exclude')
+      expect(values).toContain('include')
+      expect(values).toContain('D1')
+      expect(values).toContain('D2')
+      expect(values).toContain('D3')
+      expect(values).toContain('D4')
     })
 
-    it('点击两次变为 D2', async () => {
+    it('默认值为 中立 (neutral)', () => {
       const wrapper = mount(PlayerConstraintSelector, { props: { players: samplePlayers } })
-      const btn = wrapper.findAll('button')[0]
-      await btn.trigger('click')
-      await btn.trigger('click')
-      expect(btn.text()).toBe('D2')
-    })
-
-    it('点击五次变为排除', async () => {
-      const wrapper = mount(PlayerConstraintSelector, { props: { players: samplePlayers } })
-      const btn = wrapper.findAll('button')[0]
-      for (let i = 0; i < 5; i++) await btn.trigger('click')
-      expect(btn.text()).toBe('排除')
-    })
-
-    it('点击六次回到中立', async () => {
-      const wrapper = mount(PlayerConstraintSelector, { props: { players: samplePlayers } })
-      const btn = wrapper.findAll('button')[0]
-      for (let i = 0; i < 6; i++) await btn.trigger('click')
-      expect(btn.text()).toBe('中立')
+      const select = wrapper.findAll('select')[0]
+      expect(select.element.value).toBe('neutral')
     })
   })
 
   describe('emit update:constraints', () => {
-    it('固定到 D1 时 emit pinPlayers', async () => {
+    it('选 D1 时 emit pinPlayers 和 includePlayers', async () => {
       const wrapper = mount(PlayerConstraintSelector, { props: { players: samplePlayers } })
-      // First button is for the first sorted player (赵梅 female) — click once → D1
-      await wrapper.findAll('button')[0].trigger('click')
+      // First select is for sorted first player (赵梅, female)
+      const select = wrapper.findAll('select')[0]
+      await select.setValue('D1')
       const emitted = wrapper.emitted('update:constraints')
       expect(emitted).toBeTruthy()
       const last = emitted[emitted.length - 1][0]
       expect(Object.values(last.pinPlayers)).toContain('D1')
+      expect(last.includePlayers).toContain('p3') // 赵梅 is p3
     })
 
-    it('排除时 emit excludePlayers', async () => {
+    it('选 一定上 时 emit includePlayers，不包含在 pinPlayers', async () => {
       const wrapper = mount(PlayerConstraintSelector, { props: { players: samplePlayers } })
-      const btn = wrapper.findAll('button')[0]
-      for (let i = 0; i < 5; i++) await btn.trigger('click')
+      const select = wrapper.findAll('select')[0]
+      await select.setValue('include')
       const emitted = wrapper.emitted('update:constraints')
       const last = emitted[emitted.length - 1][0]
-      expect(last.excludePlayers.length).toBe(1)
+      expect(last.includePlayers).toContain('p3')
+      expect(Object.keys(last.pinPlayers)).not.toContain('p3')
+    })
+
+    it('选 不上 时 emit excludePlayers', async () => {
+      const wrapper = mount(PlayerConstraintSelector, { props: { players: samplePlayers } })
+      const select = wrapper.findAll('select')[0]
+      await select.setValue('exclude')
+      const emitted = wrapper.emitted('update:constraints')
+      const last = emitted[emitted.length - 1][0]
+      expect(last.excludePlayers).toContain('p3')
       expect(last.pinPlayers).toEqual({})
     })
 
-    it('摘要行更新固定位置计数', async () => {
+    it('摘要行更新固定位置、一定上场、排除计数', async () => {
       const wrapper = mount(PlayerConstraintSelector, { props: { players: samplePlayers } })
-      await wrapper.findAll('button')[0].trigger('click') // → D1
+      const selects = wrapper.findAll('select')
+      await selects[0].setValue('D1')
+      await selects[1].setValue('include')
+      await selects[2].setValue('exclude')
       await nextTick()
-      expect(wrapper.text()).toContain('1 人')
+      expect(wrapper.text()).toContain('1 人') // pin count
+      // at least the counts are visible
+      const text = wrapper.text()
+      expect(text).toContain('固定位置')
+      expect(text).toContain('一定上场')
+      expect(text).toContain('排除')
     })
   })
 })

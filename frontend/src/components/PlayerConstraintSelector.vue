@@ -7,9 +7,9 @@
 
     <template v-else>
       <!-- Summary row -->
-      <div class="text-xs text-gray-500 mb-2 space-x-2">
+      <div class="text-xs text-gray-500 mb-2 flex flex-wrap gap-x-3">
         <span>固定位置: <span class="font-semibold text-blue-600">{{ pinCount }} 人</span></span>
-        <span>/</span>
+        <span>一定上场: <span class="font-semibold text-green-600">{{ includeOnlyCount }} 人</span></span>
         <span>排除: <span class="font-semibold text-red-500">{{ excludeCount }} 人</span></span>
       </div>
 
@@ -21,22 +21,33 @@
           class="flex items-center justify-between px-3 py-2 rounded-lg border text-sm"
           :class="rowClass(player.id)"
         >
-          <span :class="{ 'line-through text-gray-400': states[player.id] === 'exclude' }">
-            {{ player.name }}
-            <span class="text-xs text-gray-400 ml-1">UTR {{ player.utr }}</span>
+          <span class="flex items-center gap-1.5 flex-1 min-w-0" :class="{ 'line-through text-gray-400': states[player.id] === 'exclude' }">
+            <!-- Gender badge -->
+            <span
+              class="text-xs font-bold px-1 rounded shrink-0"
+              :class="player.gender === 'female' ? 'bg-pink-100 text-pink-600' : 'bg-blue-100 text-blue-600'"
+            >{{ player.gender === 'female' ? 'F' : 'M' }}</span>
+            <span class="truncate">{{ player.name }}</span>
+            <span class="text-xs text-gray-400 shrink-0">{{ player.utr }}</span>
             <span
               v-if="player.verified"
-              class="ml-1 px-1 py-0.5 bg-green-100 text-green-700 text-xs rounded"
+              class="shrink-0 px-1 py-0.5 bg-green-100 text-green-700 text-xs rounded"
             >认证</span>
           </span>
-          <button
-            type="button"
-            class="ml-2 px-2 py-0.5 rounded text-xs font-medium transition-colors min-w-[52px] text-center"
-            :class="btnClass(player.id)"
-            @click="toggle(player.id)"
+          <select
+            class="ml-2 text-xs rounded border px-1 py-0.5 cursor-pointer shrink-0"
+            :class="selectClass(player.id)"
+            :value="states[player.id] || 'neutral'"
+            @change="onChange(player.id, $event.target.value)"
           >
-            {{ btnLabel(player.id) }}
-          </button>
+            <option value="neutral">中立</option>
+            <option value="exclude">不上</option>
+            <option value="include">一定上</option>
+            <option value="D1">D1</option>
+            <option value="D2">D2</option>
+            <option value="D3">D3</option>
+            <option value="D4">D4</option>
+          </select>
         </div>
       </div>
     </template>
@@ -45,8 +56,6 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
-
-const CYCLE = ['neutral', 'D1', 'D2', 'D3', 'D4', 'exclude']
 
 const props = defineProps({
   players: {
@@ -57,77 +66,74 @@ const props = defineProps({
 
 const emit = defineEmits(['update:constraints'])
 
-// state per player: 'neutral' | 'D1' | 'D2' | 'D3' | 'D4' | 'exclude'
+// state per player: 'neutral' | 'exclude' | 'include' | 'D1' | 'D2' | 'D3' | 'D4'
 const states = ref({})
 
 // Reset states when players list changes
 watch(
   () => props.players,
-  () => {
-    states.value = {}
-  }
+  () => { states.value = {} }
 )
 
 // Sorted: females first, then UTR descending, ties broken by name
 const sortedPlayers = computed(() => {
   if (!props.players) return []
   return [...props.players].sort((a, b) => {
-    if (a.gender !== b.gender) {
-      return a.gender === 'female' ? -1 : 1
-    }
+    if (a.gender !== b.gender) return a.gender === 'female' ? -1 : 1
     if (b.utr !== a.utr) return b.utr - a.utr
     return a.name.localeCompare(b.name)
   })
 })
 
-function toggle(playerId) {
-  const current = states.value[playerId] || 'neutral'
-  const idx = CYCLE.indexOf(current)
-  states.value[playerId] = CYCLE[(idx + 1) % CYCLE.length]
-
-  emit('update:constraints', {
-    pinPlayers: pinPlayersMap.value,
-    excludePlayers: excludePlayers.value,
-  })
+function onChange(playerId, value) {
+  states.value[playerId] = value
+  emitConstraints()
 }
 
-const pinPlayersMap = computed(() => {
-  const result = {}
+function emitConstraints() {
+  const pinPlayers = {}
+  const includePlayers = []
+  const excludePlayers = []
+
   Object.entries(states.value).forEach(([id, s]) => {
     if (s === 'D1' || s === 'D2' || s === 'D3' || s === 'D4') {
-      result[id] = s
+      pinPlayers[id] = s
+      includePlayers.push(id) // pinned players are implicitly included
+    } else if (s === 'include') {
+      includePlayers.push(id)
+    } else if (s === 'exclude') {
+      excludePlayers.push(id)
     }
   })
-  return result
-})
 
-const excludePlayers = computed(() =>
-  Object.entries(states.value)
-    .filter(([, s]) => s === 'exclude')
-    .map(([id]) => id)
+  emit('update:constraints', { pinPlayers, includePlayers, excludePlayers })
+}
+
+const pinCount = computed(() =>
+  Object.values(states.value).filter(s => s === 'D1' || s === 'D2' || s === 'D3' || s === 'D4').length
 )
 
-const pinCount = computed(() => Object.keys(pinPlayersMap.value).length)
-const excludeCount = computed(() => excludePlayers.value.length)
+const includeOnlyCount = computed(() =>
+  Object.values(states.value).filter(s => s === 'include').length
+)
+
+const excludeCount = computed(() =>
+  Object.values(states.value).filter(s => s === 'exclude').length
+)
 
 function rowClass(playerId) {
   const s = states.value[playerId] || 'neutral'
   if (s === 'D1' || s === 'D2' || s === 'D3' || s === 'D4') return 'border-blue-300 bg-blue-50'
+  if (s === 'include') return 'border-green-300 bg-green-50'
   if (s === 'exclude') return 'border-red-200 bg-red-50'
   return 'border-gray-200 bg-white'
 }
 
-function btnClass(playerId) {
+function selectClass(playerId) {
   const s = states.value[playerId] || 'neutral'
-  if (s === 'D1' || s === 'D2' || s === 'D3' || s === 'D4') return 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-  if (s === 'exclude') return 'bg-red-100 text-red-600 hover:bg-red-200'
-  return 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-}
-
-function btnLabel(playerId) {
-  const s = states.value[playerId] || 'neutral'
-  if (s === 'neutral') return '中立'
-  if (s === 'exclude') return '排除'
-  return s
+  if (s === 'D1' || s === 'D2' || s === 'D3' || s === 'D4') return 'border-blue-300 text-blue-700 bg-blue-50'
+  if (s === 'include') return 'border-green-300 text-green-700 bg-green-50'
+  if (s === 'exclude') return 'border-red-300 text-red-600 bg-red-50'
+  return 'border-gray-300 text-gray-500 bg-white'
 }
 </script>

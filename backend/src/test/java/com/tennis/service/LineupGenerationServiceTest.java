@@ -291,4 +291,67 @@ class LineupGenerationServiceTest {
                 service.generateCandidates(players, Set.of(),
                         Set.of("p1", "p2", "p3"))); // only 5 remaining < 8
     }
+
+    @Test
+    @DisplayName("roster > 8: generated lineups use players from high-UTR subsets (≤40.5 cap)")
+    void testSubsetEnumerationSelectsHighUtrCombination() {
+        // 10 players; top 8 by UTR sum = 37.0 (all under cap)
+        List<Player> players = new ArrayList<>(build8PlayerRoster());
+        players.add(player("p9", "male", 2.0, true));
+        players.add(player("p10", "female", 1.5, true));
+
+        List<Lineup> candidates = service.generateCandidates(players, Set.of(), Set.of(), Map.of());
+        assertFalse(candidates.isEmpty());
+        // All lineups should have totalUtr ≤ 40.5
+        for (Lineup l : candidates) {
+            assertTrue(l.getTotalUtr() <= 40.5, "totalUtr must not exceed cap");
+        }
+        // The highest totalUtr lineup should use the top-UTR players (p1-p8, not p9 or p10)
+        double maxUtr = candidates.stream().mapToDouble(Lineup::getTotalUtr).max().orElse(0);
+        assertTrue(maxUtr >= 35.0, "Should generate a lineup with high totalUtr from top players");
+    }
+
+    @Test
+    @DisplayName("two players pinned to same position must form a pair at that position")
+    void testTwoPlayersToSamePositionMustBePaired() {
+        List<Player> players = new ArrayList<>(build8PlayerRoster());
+        players.add(player("p9", "male", 3.5, true));
+        players.add(player("p10", "female", 3.0, true));
+
+        // Pin p7 and p8 both to D4 — they must be paired together at D4
+        Map<String, String> pins = Map.of("p7", "D4", "p8", "D4");
+        List<Lineup> candidates = service.generateCandidates(players, Set.of(), Set.of(), pins);
+        assertFalse(candidates.isEmpty(), "Should produce candidates with p7+p8 at D4");
+        for (Lineup lineup : candidates) {
+            boolean p7p8AtD4 = lineup.getPairs().stream()
+                    .filter(p -> "D4".equals(p.getPosition()))
+                    .anyMatch(p ->
+                            (("p7".equals(p.getPlayer1Id()) && "p8".equals(p.getPlayer2Id())) ||
+                             ("p8".equals(p.getPlayer1Id()) && "p7".equals(p.getPlayer2Id()))));
+            assertTrue(p7p8AtD4, "p7 and p8 must be paired together at D4");
+        }
+    }
+
+    @Test
+    @DisplayName("more than 2 players pinned to same position throws IllegalArgumentException")
+    void testMoreThanTwoPlayersSamePositionThrows() {
+        List<Player> players = build8PlayerRoster();
+        Map<String, String> pins = Map.of("p1", "D1", "p2", "D1", "p3", "D1");
+        assertThrows(IllegalArgumentException.class, () ->
+                service.generateCandidates(players, Set.of(), Set.of(), pins));
+    }
+
+    @Test
+    @DisplayName("gender fields are populated in generated lineup pairs")
+    void testGenderFieldsPopulated() {
+        List<Lineup> candidates = service.generateCandidates(build8PlayerRoster());
+        assertFalse(candidates.isEmpty());
+        Lineup lineup = candidates.get(0);
+        for (var pair : lineup.getPairs()) {
+            assertNotNull(pair.getPlayer1Gender(), "player1Gender must not be null");
+            assertNotNull(pair.getPlayer2Gender(), "player2Gender must not be null");
+            assertTrue(pair.getPlayer1Gender().equals("male") || pair.getPlayer1Gender().equals("female"));
+            assertTrue(pair.getPlayer2Gender().equals("male") || pair.getPlayer2Gender().equals("female"));
+        }
+    }
 }
