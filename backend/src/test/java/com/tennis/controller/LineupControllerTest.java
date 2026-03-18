@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -64,7 +65,7 @@ class LineupControllerTest {
     @Test
     @DisplayName("POST /api/lineups/generate returns 200 with array of lineups")
     void testGenerateLineupSuccess() throws Exception {
-        when(lineupService.generateMultipleAndSave(any(), any(), any(), any(), any(), any(), any()))
+        when(lineupService.generateMultiple(any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(List.of(testLineup));
 
         mockMvc.perform(post("/api/lineups/generate")
@@ -92,7 +93,7 @@ class LineupControllerTest {
         second.setViolationMessages(new ArrayList<>());
         second.setPairs(testLineup.getPairs());
 
-        when(lineupService.generateMultipleAndSave(any(), any(), any(), any(), any(), any(), any()))
+        when(lineupService.generateMultiple(any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(List.of(testLineup, second));
 
         mockMvc.perform(post("/api/lineups/generate")
@@ -107,7 +108,7 @@ class LineupControllerTest {
     @Test
     @DisplayName("POST /api/lineups/generate returns 400 when fewer than 8 players")
     void testGenerateLineupInsufficientPlayers() throws Exception {
-        when(lineupService.generateMultipleAndSave(any(), any(), any(), any(), any(), any(), any()))
+        when(lineupService.generateMultiple(any(), any(), any(), any(), any(), any(), any()))
                 .thenThrow(new IllegalArgumentException("队伍球员不足8人，无法生成排阵"));
 
         mockMvc.perform(post("/api/lineups/generate")
@@ -121,7 +122,7 @@ class LineupControllerTest {
     @Test
     @DisplayName("POST /api/lineups/generate returns 400 for constraint violation")
     void testGenerateLineupConstraintViolation() throws Exception {
-        when(lineupService.generateMultipleAndSave(any(), any(), any(), any(), any(), any(), any()))
+        when(lineupService.generateMultiple(any(), any(), any(), any(), any(), any(), any()))
                 .thenThrow(new IllegalArgumentException("排除球员后可用球员不足8人"));
 
         mockMvc.perform(post("/api/lineups/generate")
@@ -135,7 +136,7 @@ class LineupControllerTest {
     @Test
     @DisplayName("POST /api/lineups/generate returns 404 when team not found")
     void testGenerateLineupTeamNotFound() throws Exception {
-        when(lineupService.generateMultipleAndSave(any(), any(), any(), any(), any(), any(), any()))
+        when(lineupService.generateMultiple(any(), any(), any(), any(), any(), any(), any()))
                 .thenThrow(new NotFoundException("队伍不存在"));
 
         mockMvc.perform(post("/api/lineups/generate")
@@ -148,7 +149,7 @@ class LineupControllerTest {
     @Test
     @DisplayName("POST /api/lineups/generate passes pinPlayers to service")
     void testGenerateLineupWithPinPlayers() throws Exception {
-        when(lineupService.generateMultipleAndSave(any(), any(), any(), any(), any(), any(), any()))
+        when(lineupService.generateMultiple(any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(List.of(testLineup));
 
         String body = "{\"teamId\":\"team-1\",\"strategyType\":\"preset\",\"preset\":\"balanced\","
@@ -159,6 +160,62 @@ class LineupControllerTest {
                 .content(body))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value("lineup-001"));
+    }
+
+    @Test
+    @DisplayName("POST /api/lineups/generate passes includePlayers to service")
+    void testGenerateLineupWithIncludePlayers() throws Exception {
+        when(lineupService.generateMultiple(any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(List.of(testLineup));
+
+        String body = "{\"teamId\":\"team-1\",\"strategyType\":\"preset\",\"preset\":\"balanced\","
+                + "\"includePlayers\":[\"p1\",\"p2\"]}";
+
+        mockMvc.perform(post("/api/lineups/generate")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value("lineup-001"));
+    }
+
+    @Test
+    @DisplayName("Response pair includes player1Gender and player2Gender when set")
+    void testResponseIncludesGenderFields() throws Exception {
+        testLineup.getPairs().get(0).setPlayer1Gender("male");
+        testLineup.getPairs().get(0).setPlayer2Gender("female");
+        when(lineupService.generateMultiple(any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(List.of(testLineup));
+
+        mockMvc.perform(post("/api/lineups/generate")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"teamId\":\"team-1\",\"strategyType\":\"preset\",\"preset\":\"balanced\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].pairs[0].player1Gender").value("male"))
+                .andExpect(jsonPath("$[0].pairs[0].player2Gender").value("female"));
+    }
+
+    @Test
+    @DisplayName("POST /api/teams/{teamId}/lineups saves lineup and returns 200")
+    void testSaveLineupSuccess() throws Exception {
+        when(lineupService.saveLineup(eq("team-1"), any())).thenReturn(testLineup);
+
+        mockMvc.perform(post("/api/teams/team-1/lineups")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(testLineup)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value("lineup-001"));
+    }
+
+    @Test
+    @DisplayName("POST /api/teams/{teamId}/lineups returns 404 for unknown team")
+    void testSaveLineupTeamNotFound() throws Exception {
+        when(lineupService.saveLineup(eq("unknown"), any()))
+                .thenThrow(new NotFoundException("队伍不存在"));
+
+        mockMvc.perform(post("/api/teams/unknown/lineups")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(testLineup)))
+                .andExpect(status().isNotFound());
     }
 
     @Test
@@ -211,38 +268,5 @@ class LineupControllerTest {
 
         mockMvc.perform(delete("/api/lineups/nonexistent"))
                 .andExpect(status().isNotFound());
-    }
-
-    @Test
-    @DisplayName("POST /api/lineups/generate passes includePlayers to service")
-    void testGenerateLineupWithIncludePlayers() throws Exception {
-        when(lineupService.generateMultipleAndSave(any(), any(), any(), any(), any(), any(), any()))
-                .thenReturn(List.of(testLineup));
-
-        String body = "{\"teamId\":\"team-1\",\"strategyType\":\"preset\",\"preset\":\"balanced\","
-                + "\"includePlayers\":[\"p1\",\"p2\"]}";
-
-        mockMvc.perform(post("/api/lineups/generate")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(body))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].id").value("lineup-001"));
-    }
-
-    @Test
-    @DisplayName("Response pair includes player1Gender and player2Gender when set")
-    void testResponseIncludesGenderFields() throws Exception {
-        // Set gender on test pairs
-        testLineup.getPairs().get(0).setPlayer1Gender("male");
-        testLineup.getPairs().get(0).setPlayer2Gender("female");
-        when(lineupService.generateMultipleAndSave(any(), any(), any(), any(), any(), any(), any()))
-                .thenReturn(List.of(testLineup));
-
-        mockMvc.perform(post("/api/lineups/generate")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"teamId\":\"team-1\",\"strategyType\":\"preset\",\"preset\":\"balanced\"}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].pairs[0].player1Gender").value("male"))
-                .andExpect(jsonPath("$[0].pairs[0].player2Gender").value("female"));
     }
 }

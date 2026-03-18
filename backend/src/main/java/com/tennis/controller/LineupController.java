@@ -20,7 +20,7 @@ public class LineupController {
 
     @PostMapping("/api/lineups/generate")
     public ResponseEntity<List<Lineup>> generateLineup(@RequestBody GenerateLineupRequest request) {
-        List<Lineup> lineups = lineupService.generateMultipleAndSave(
+        List<Lineup> lineups = lineupService.generateMultiple(
                 request.getTeamId(),
                 request.getStrategyType(),
                 request.getPreset(),
@@ -30,6 +30,13 @@ public class LineupController {
                 request.getPinPlayers()
         );
         return ResponseEntity.ok(lineups);
+    }
+
+    @PostMapping("/api/teams/{teamId}/lineups")
+    public ResponseEntity<Lineup> saveLineup(@PathVariable String teamId,
+                                             @RequestBody Lineup lineup) {
+        Lineup saved = lineupService.saveLineup(teamId, lineup);
+        return ResponseEntity.ok(saved);
     }
 
     @GetMapping("/api/teams/{id}/lineups")

@@ -101,6 +101,23 @@ describe('LineupCard', () => {
       expect(text).toContain('8')
       expect(text).toContain('7.5')
     })
+
+    it('player1Gender 为 null 时不显示性别文字', () => {
+      const pairsWithNullGender = [
+        { position: 'D1', player1Name: '张三', player1Utr: 8.0, player1Gender: null, player2Name: '李四', player2Utr: 7.5, player2Gender: null, combinedUtr: 15.5 },
+        { position: 'D2', player1Name: '王五', player1Utr: 4.5, player1Gender: 'male', player2Name: '赵六', player2Utr: 3.5, player2Gender: 'male', combinedUtr: 8.0 },
+        { position: 'D3', player1Name: '孙七', player1Utr: 2.5, player1Gender: null, player2Name: '周八', player2Utr: 2.0, player2Gender: 'male', combinedUtr: 4.5 },
+        { position: 'D4', player1Name: '吴九', player1Utr: 1.5, player1Gender: 'male', player2Name: '郑十', player2Utr: 1.0, player2Gender: 'male', combinedUtr: 2.5 },
+      ]
+      const wrapper = mount(LineupCard, { props: { lineup: buildLineup({ pairs: pairsWithNullGender }) } })
+      // 张三 and 李四 have null gender — should not show 男 or 女 for them
+      // 王五/赵六 are male — will show 男, so we can't assert "no 男 at all"
+      // But we can assert the component does NOT default null to "男"
+      // The number of gender spans should equal the number of non-null genders
+      const spans = wrapper.findAll('span.text-xs.font-semibold')
+      // D1: both null (0 spans), D2: male+male (2), D3: null+male (1), D4: male+male (2) = 5 total
+      expect(spans.length).toBe(5)
+    })
   })
 
   describe('位置排序', () => {

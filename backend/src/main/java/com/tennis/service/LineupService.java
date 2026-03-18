@@ -2,6 +2,7 @@ package com.tennis.service;
 
 import com.tennis.exception.NotFoundException;
 import com.tennis.model.Lineup;
+import com.tennis.model.Pair;
 import com.tennis.model.Player;
 import com.tennis.model.Team;
 import com.tennis.model.TeamData;
@@ -13,7 +14,6 @@ import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -37,17 +37,17 @@ public class LineupService {
         this.aiService = aiService;
     }
 
-    public List<Lineup> generateMultipleAndSave(String teamId, String strategyType, String preset,
-                                                String naturalLanguage,
-                                                List<String> includePlayers, List<String> excludePlayers) {
-        return generateMultipleAndSave(teamId, strategyType, preset, naturalLanguage,
+    public List<Lineup> generateMultiple(String teamId, String strategyType, String preset,
+                                         String naturalLanguage,
+                                         List<String> includePlayers, List<String> excludePlayers) {
+        return generateMultiple(teamId, strategyType, preset, naturalLanguage,
                 includePlayers, excludePlayers, Map.of());
     }
 
-    public List<Lineup> generateMultipleAndSave(String teamId, String strategyType, String preset,
-                                                String naturalLanguage,
-                                                List<String> includePlayers, List<String> excludePlayers,
-                                                Map<String, String> pinPlayers) {
+    public List<Lineup> generateMultiple(String teamId, String strategyType, String preset,
+                                         String naturalLanguage,
+                                         List<String> includePlayers, List<String> excludePlayers,
+                                         Map<String, String> pinPlayers) {
         TeamData teamData = jsonRepository.readData();
         Team team = teamData.getTeams().stream()
                 .filter(t -> t.getId().equals(teamId))
@@ -96,7 +96,7 @@ public class LineupService {
         // Take up to 6 candidates
         List<Lineup> top6 = sorted.stream().limit(6).collect(Collectors.toList());
 
-        // Assign metadata to all returned lineups
+        // Assign metadata (id + createdAt needed for display and potential manual save)
         for (int i = 0; i < top6.size(); i++) {
             Lineup l = top6.get(i);
             l.setId(generateLineupId());
@@ -105,15 +105,35 @@ public class LineupService {
             l.setAiUsed(i == 0 && aiUsed);
         }
 
-        // Persist only the first (best) lineup
+        log.info("Generated {} candidates for team {}", top6.size(), teamId);
+        return top6;
+    }
+
+    /**
+     * Manually save a lineup chosen by the user to persistent storage.
+     */
+    public Lineup saveLineup(String teamId, Lineup lineup) {
+        TeamData teamData = jsonRepository.readData();
+        Team team = teamData.getTeams().stream()
+                .filter(t -> t.getId().equals(teamId))
+                .findFirst()
+                .orElseThrow(() -> new NotFoundException("队伍不存在"));
+
+        if (lineup.getId() == null || lineup.getId().isBlank()) {
+            lineup.setId(generateLineupId());
+        }
+        if (lineup.getCreatedAt() == null) {
+            lineup.setCreatedAt(Instant.now());
+        }
+
         if (team.getLineups() == null) {
             team.setLineups(new ArrayList<>());
         }
-        team.getLineups().add(top6.get(0));
+        team.getLineups().add(lineup);
         jsonRepository.writeData(teamData);
 
-        log.info("Generated {} candidates, saved best lineup {} for team {}", top6.size(), top6.get(0).getId(), teamId);
-        return top6;
+        log.info("Saved lineup {} for team {}", lineup.getId(), teamId);
+        return lineup;
     }
 
     private static final double UTR_CAP = 40.5;
@@ -164,6 +184,27 @@ public class LineupService {
 
         List<Lineup> lineups = team.getLineups();
         if (lineups == null) return new ArrayList<>();
+
+        // Enrich historical pairs that lack UTR/gender fields (old format compatibility)
+        Map<String, Player> playerMap = team.getPlayers() != null
+                ? team.getPlayers().stream().collect(Collectors.toMap(Player::getId, p -> p))
+                : Map.of();
+
+        for (Lineup lineup : lineups) {
+            for (Pair pair : lineup.getPairs()) {
+                Player p1 = playerMap.get(pair.getPlayer1Id());
+                Player p2 = playerMap.get(pair.getPlayer2Id());
+                if (p1 != null) {
+                    if (pair.getPlayer1Utr() == null) pair.setPlayer1Utr(p1.getUtr());
+                    if (pair.getPlayer1Gender() == null) pair.setPlayer1Gender(p1.getGender());
+                }
+                if (p2 != null) {
+                    if (pair.getPlayer2Utr() == null) pair.setPlayer2Utr(p2.getUtr());
+                    if (pair.getPlayer2Gender() == null) pair.setPlayer2Gender(p2.getGender());
+                }
+            }
+        }
+
         return lineups.stream()
                 .sorted(Comparator.comparing(Lineup::getCreatedAt).reversed())
                 .toList();

@@ -53,7 +53,7 @@
 
       <!-- Right column: results -->
       <div class="w-full lg:w-3/5">
-        <LineupResultGrid :lineups="lineups" />
+        <LineupResultGrid :lineups="lineups" :team-id="selectedTeamId" />
       </div>
     </div>
   </div>

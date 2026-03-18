@@ -97,42 +97,39 @@ public class LineupGenerationService {
             throw new IllegalArgumentException("排除球员后可用球员不足8人");
         }
 
-        // All candidates across all valid 8-player subsets
-        List<Lineup> allCandidates = new ArrayList<>();
+        // Collect raw valid lineups via backtracking
+        List<Lineup> rawCandidates = new ArrayList<>();
 
         if (roster.size() == 8) {
             // Only one possible subset
-            backtrack(roster, new ArrayList<>(), new boolean[roster.size()], allCandidates);
+            backtrack(roster, new ArrayList<>(), new boolean[roster.size()], rawCandidates);
         } else {
-            // Enumerate subsets ordered to maximize totalUtr ≤ 40.5, prefer 2 females
+            // Enumerate subsets sorted by UTR proximity to 40.5 cap (highest valid UTR first)
             List<List<Player>> subsets = enumerateSubsets(roster, 8, effectiveInclude);
-            for (List<Player> subset : subsets) {
-                // Stop early once we have enough candidates
-                if (allCandidates.size() >= 100) break;
-                backtrack(subset, new ArrayList<>(), new boolean[subset.size()], allCandidates);
+
+            // First batch: top-20 subsets
+            int firstEnd = Math.min(20, subsets.size());
+            for (int i = 0; i < firstEnd; i++) {
+                List<Player> subset = subsets.get(i);
+                backtrack(subset, new ArrayList<>(), new boolean[subset.size()], rawCandidates);
+            }
+
+            // If filtered result < 6 and more subsets available, extend to top-40
+            if (subsets.size() > firstEnd
+                    && filterCandidates(rawCandidates, effectiveInclude, pinPlayers, playersByPin).size() < 6) {
+                int secondEnd = Math.min(40, subsets.size());
+                for (int i = firstEnd; i < secondEnd; i++) {
+                    List<Player> subset = subsets.get(i);
+                    backtrack(subset, new ArrayList<>(), new boolean[subset.size()], rawCandidates);
+                }
             }
         }
 
-        // Post-filter: keep only lineups where all effective include players appear
-        if (!effectiveInclude.isEmpty()) {
-            allCandidates = allCandidates.stream()
-                    .filter(lineup -> {
-                        Set<String> usedIds = lineup.getPairs().stream()
-                                .flatMap(p -> java.util.stream.Stream.of(p.getPlayer1Id(), p.getPlayer2Id()))
-                                .collect(Collectors.toSet());
-                        return usedIds.containsAll(effectiveInclude);
-                    })
-                    .collect(Collectors.toList());
-        }
+        // Final filter: include players + pin constraints
+        List<Lineup> allCandidates = filterCandidates(rawCandidates, effectiveInclude, pinPlayers, playersByPin);
 
-        // Post-filter: pair-level pin — players pinned to same position must be paired together
-        if (!pinPlayers.isEmpty()) {
-            allCandidates = allCandidates.stream()
-                    .filter(lineup -> satisfiesPinConstraints(lineup, pinPlayers, playersByPin))
-                    .collect(Collectors.toList());
-            if (allCandidates.isEmpty()) {
-                throw new IllegalArgumentException("无法生成满足位置约束的排阵");
-            }
+        if (allCandidates.isEmpty() && !pinPlayers.isEmpty()) {
+            throw new IllegalArgumentException("无法生成满足位置约束的排阵");
         }
 
         return allCandidates;
@@ -173,6 +170,34 @@ public class LineupGenerationService {
     }
 
     /**
+     * Apply include-player and pin-constraint post-filters to a raw candidate list.
+     */
+    private List<Lineup> filterCandidates(List<Lineup> candidates, Set<String> effectiveInclude,
+                                           Map<String, String> pinPlayers,
+                                           Map<String, List<String>> playersByPin) {
+        List<Lineup> result = new ArrayList<>(candidates);
+
+        if (!effectiveInclude.isEmpty()) {
+            result = result.stream()
+                    .filter(lineup -> {
+                        Set<String> usedIds = lineup.getPairs().stream()
+                                .flatMap(p -> java.util.stream.Stream.of(p.getPlayer1Id(), p.getPlayer2Id()))
+                                .collect(Collectors.toSet());
+                        return usedIds.containsAll(effectiveInclude);
+                    })
+                    .collect(Collectors.toList());
+        }
+
+        if (!pinPlayers.isEmpty()) {
+            result = result.stream()
+                    .filter(lineup -> satisfiesPinConstraints(lineup, pinPlayers, playersByPin))
+                    .collect(Collectors.toList());
+        }
+
+        return result;
+    }
+
+    /**
      * Enumerate all C(n, 8) subsets of `roster`, ordered by:
      * 1. Subsets with totalUtr ≤ 40.5 first (cap satisfied)
      * 2. Among valid subsets: those with exactly 2 females first
@@ -199,27 +224,14 @@ public class LineupGenerationService {
         List<List<Player>> subsets = new ArrayList<>();
         generateCombinations(optional, remaining, 0, new ArrayList<>(), required, subsets);
 
-        // Sort: cap-valid first, then prefer 2 females, then highest totalUtr
+        // Sort: cap-valid (≤ 40.5) first, then highest totalUtr first within each group
         subsets.sort((a, b) -> {
             double utrA = totalUtr(a);
             double utrB = totalUtr(b);
             boolean validA = utrA <= UTR_CAP;
             boolean validB = utrB <= UTR_CAP;
-
-            // Cap-valid subsets come first
             if (validA != validB) return validA ? -1 : 1;
-
-            if (validA) {
-                // Both valid: prefer exactly 2 females, then higher UTR
-                int femA = femaleCount(a);
-                int femB = femaleCount(b);
-                boolean prefA = femA == 2;
-                boolean prefB = femB == 2;
-                if (prefA != prefB) return prefA ? -1 : 1;
-                // Same female preference group: higher UTR first
-                return Double.compare(utrB, utrA);
-            }
-            // Both invalid (over cap): sort by UTR desc (closest to cap)
+            // Both in same validity group: higher totalUtr first (closest to cap)
             return Double.compare(utrB, utrA);
         });
 
@@ -244,10 +256,6 @@ public class LineupGenerationService {
 
     private double totalUtr(List<Player> subset) {
         return subset.stream().mapToDouble(Player::getUtr).sum();
-    }
-
-    private int femaleCount(List<Player> subset) {
-        return (int) subset.stream().filter(p -> "female".equals(p.getGender())).count();
     }
 
     private void backtrack(List<Player> roster, List<int[]> currentPairs,

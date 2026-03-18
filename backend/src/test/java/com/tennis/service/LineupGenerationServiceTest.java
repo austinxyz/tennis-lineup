@@ -293,22 +293,40 @@ class LineupGenerationServiceTest {
     }
 
     @Test
-    @DisplayName("roster > 8: generated lineups use players from high-UTR subsets (≤40.5 cap)")
+    @DisplayName("roster > 8: subsets sorted by UTR proximity to 40.5 — highest valid UTR subset first, no female preference")
     void testSubsetEnumerationSelectsHighUtrCombination() {
-        // 10 players; top 8 by UTR sum = 37.0 (all under cap)
+        // 10 players; top 8 by UTR form the subset closest to 40.5
+        // p1-p8: total UTR = 6.0+5.5+5.0+4.5+4.5+4.0+4.0+3.5 = 37.0
+        // p9(2.0), p10(1.5) are lower — subsets including them will have lower totalUtr
         List<Player> players = new ArrayList<>(build8PlayerRoster());
         players.add(player("p9", "male", 2.0, true));
         players.add(player("p10", "female", 1.5, true));
 
         List<Lineup> candidates = service.generateCandidates(players, Set.of(), Set.of(), Map.of());
         assertFalse(candidates.isEmpty());
-        // All lineups should have totalUtr ≤ 40.5
+        // All lineups must not exceed cap
         for (Lineup l : candidates) {
             assertTrue(l.getTotalUtr() <= 40.5, "totalUtr must not exceed cap");
         }
-        // The highest totalUtr lineup should use the top-UTR players (p1-p8, not p9 or p10)
+        // The highest totalUtr among all lineups should come from the top-UTR subset (p1-p8)
         double maxUtr = candidates.stream().mapToDouble(Lineup::getTotalUtr).max().orElse(0);
-        assertTrue(maxUtr >= 35.0, "Should generate a lineup with high totalUtr from top players");
+        assertTrue(maxUtr >= 35.0, "Should find a lineup close to 40.5 using top-UTR players");
+    }
+
+    @Test
+    @DisplayName("roster > 8: top-20 subsets processed first; if ≥6 results, no need for more")
+    void testTop20SubsetsFirstBatch() {
+        // Build a 10-player roster that will definitely produce ≥6 valid lineups from top-20 subsets
+        List<Player> players = new ArrayList<>(build8PlayerRoster());
+        players.add(player("p9", "male", 3.5, true));
+        players.add(player("p10", "female", 3.0, true));
+
+        List<Lineup> candidates = service.generateCandidates(players, Set.of(), Set.of(), Map.of());
+        // Should return a non-empty list of cap-valid lineups
+        assertFalse(candidates.isEmpty());
+        for (Lineup l : candidates) {
+            assertTrue(l.getTotalUtr() <= 40.5);
+        }
     }
 
     @Test

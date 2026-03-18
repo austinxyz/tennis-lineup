@@ -1,6 +1,19 @@
-import { describe, it, expect } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { mount, flushPromises } from '@vue/test-utils'
 import LineupResultGrid from '../LineupResultGrid.vue'
+
+const mockSaveLineup = vi.fn()
+
+vi.mock('../../composables/useLineup', () => ({
+  useLineup: () => ({
+    lineups: { value: [] },
+    loading: { value: false },
+    generateLineup: vi.fn(),
+    saveLineup: mockSaveLineup,
+    fetchLineupHistory: vi.fn(),
+    deleteLineup: vi.fn(),
+  }),
+}))
 
 const makePair = (pos) => ({
   position: pos,
@@ -20,6 +33,15 @@ const makeLineup = (id) => ({
 })
 
 const stubs = { LineupCard: true, LineupSwapPanel: true }
+
+beforeEach(() => {
+  mockSaveLineup.mockReset()
+  vi.spyOn(console, 'error').mockImplementation(() => {})
+})
+
+afterEach(() => {
+  vi.restoreAllMocks()
+})
 
 describe('LineupResultGrid', () => {
   describe('空状态', () => {
@@ -65,6 +87,44 @@ describe('LineupResultGrid', () => {
       for (let i = 1; i <= 6; i++) {
         expect(wrapper.text()).toContain(`方案 ${i}`)
       }
+    })
+  })
+
+  describe('保留排阵', () => {
+    it('每个排阵卡片显示"保留此排阵"按钮', () => {
+      const lineups = [makeLineup('l1'), makeLineup('l2')]
+      const wrapper = mount(LineupResultGrid, { props: { lineups, teamId: 'team-1' }, global: { stubs } })
+      const saveButtons = wrapper.findAll('button').filter(b => b.text().includes('保留此排阵'))
+      expect(saveButtons).toHaveLength(2)
+    })
+
+    it('点击"保留此排阵"后按钮变为"已保留 ✓"并消失', async () => {
+      mockSaveLineup.mockResolvedValue({ id: 'lineup-saved' })
+      const lineups = [makeLineup('l1')]
+      const wrapper = mount(LineupResultGrid, { props: { lineups, teamId: 'team-1' }, global: { stubs } })
+
+      const saveBtn = wrapper.findAll('button').find(b => b.text().includes('保留此排阵'))
+      await saveBtn.trigger('click')
+      await flushPromises()
+
+      expect(wrapper.text()).toContain('已保留 ✓')
+      const remainingSaveBtns = wrapper.findAll('button').filter(b => b.text().includes('保留此排阵'))
+      expect(remainingSaveBtns).toHaveLength(0)
+    })
+
+    it('保留失败时显示错误信息且按钮仍可用', async () => {
+      mockSaveLineup.mockRejectedValue(new Error('保存失败'))
+      const lineups = [makeLineup('l1')]
+      const wrapper = mount(LineupResultGrid, { props: { lineups, teamId: 'team-1' }, global: { stubs } })
+
+      const saveBtn = wrapper.findAll('button').find(b => b.text().includes('保留此排阵'))
+      await saveBtn.trigger('click')
+      await flushPromises()
+
+      expect(wrapper.text()).toContain('保存失败')
+      // Button still present
+      const remainingSaveBtns = wrapper.findAll('button').filter(b => b.text().includes('保留此排阵'))
+      expect(remainingSaveBtns).toHaveLength(1)
     })
   })
 })

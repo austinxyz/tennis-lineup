@@ -34,6 +34,15 @@ export function useLineup() {
     }
   }
 
+  const saveLineup = async (teamId, lineup) => {
+    try {
+      return await post(`/api/teams/${teamId}/lineups`, lineup)
+    } catch (err) {
+      console.error('Failed to save lineup:', err)
+      throw err
+    }
+  }
+
   const deleteLineup = async (lineupId) => {
     try {
       await del(`/api/lineups/${lineupId}`)
@@ -50,6 +59,7 @@ export function useLineup() {
     lineups,
     lineupHistory,
     generateLineup,
+    saveLineup,
     fetchLineupHistory,
     deleteLineup,
   }

@@ -89,6 +89,32 @@ describe('useLineup', () => {
     })
   })
 
+  describe('saveLineup()', () => {
+    it('calls POST /api/teams/{teamId}/lineups with lineup body', async () => {
+      const savedLineup = { id: 'lineup-saved', strategy: 'balanced' }
+      const mockFetch = makeFetchOk(savedLineup)
+      vi.stubGlobal('fetch', mockFetch)
+      const { saveLineup } = useLineup()
+      const lineup = { id: 'lineup-1', strategy: 'balanced', pairs: [] }
+      const result = await saveLineup('team-1', lineup)
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/teams/team-1/lineups'),
+        expect.objectContaining({
+          method: 'POST',
+          body: expect.stringContaining('"id":"lineup-1"'),
+        })
+      )
+      expect(result).toEqual(savedLineup)
+    })
+
+    it('throws and logs error on failure', async () => {
+      vi.stubGlobal('fetch', makeFetchError(404, '队伍不存在'))
+      const { saveLineup } = useLineup()
+      await expect(saveLineup('unknown', {})).rejects.toThrow()
+      expect(console.error).toHaveBeenCalled()
+    })
+  })
+
   describe('fetchLineupHistory()', () => {
     it('sets lineupHistory.value with fetched data', async () => {
       const history = [

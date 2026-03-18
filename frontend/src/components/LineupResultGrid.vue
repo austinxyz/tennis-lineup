@@ -33,6 +33,19 @@
         >
           <LineupCard :lineup="lineup" :show-player-utr="true" />
         </div>
+        <!-- Save button -->
+        <div class="mt-2 flex items-center gap-2">
+          <button
+            v-if="!savedStates[index]"
+            class="px-3 py-1.5 text-xs rounded-lg border border-blue-300 text-blue-600 hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            :disabled="savingStates[index]"
+            @click="handleSave(index, lineup)"
+          >
+            {{ savingStates[index] ? '保留中...' : '保留此排阵' }}
+          </button>
+          <span v-else class="text-xs text-green-600 font-medium">已保留 ✓</span>
+          <span v-if="saveErrors[index]" class="text-xs text-red-500">{{ saveErrors[index] }}</span>
+        </div>
         <!-- Swap panel (collapsible) -->
         <details class="mt-1">
           <summary class="text-xs text-gray-400 cursor-pointer select-none hover:text-gray-600 py-1">
@@ -46,15 +59,46 @@
 </template>
 
 <script setup>
+import { ref, watch } from 'vue'
 import LineupCard from './LineupCard.vue'
 import LineupSwapPanel from './LineupSwapPanel.vue'
+import { useLineup } from '../composables/useLineup'
 
-defineProps({
+const props = defineProps({
   lineups: {
     type: Array,
     default: () => [],
   },
+  teamId: {
+    type: String,
+    default: '',
+  },
 })
 
 defineEmits(['update:lineup'])
+
+const { saveLineup } = useLineup()
+
+const savedStates = ref([])
+const savingStates = ref([])
+const saveErrors = ref([])
+
+watch(() => props.lineups, (newLineups) => {
+  savedStates.value = new Array(newLineups.length).fill(false)
+  savingStates.value = new Array(newLineups.length).fill(false)
+  saveErrors.value = new Array(newLineups.length).fill('')
+}, { immediate: true })
+
+const handleSave = async (index, lineup) => {
+  savingStates.value[index] = true
+  saveErrors.value[index] = ''
+  try {
+    await saveLineup(props.teamId, lineup)
+    savedStates.value[index] = true
+  } catch (err) {
+    saveErrors.value[index] = err.message || '保留失败，请重试'
+  } finally {
+    savingStates.value[index] = false
+  }
+}
 </script>
