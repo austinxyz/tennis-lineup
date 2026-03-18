@@ -54,6 +54,18 @@
             <version>1.10.0</version>
         </dependency>
 
+        <!-- Zhipu AI SDK (optional - loaded via reflection at runtime if available) -->
+        <!-- To enable AI: add jar to local Maven repo or set ZHIPU_API_KEY env var -->
+        <!-- mvn install:install-file -Dfile=oapi-java-sdk-4.0.0.jar -DgroupId=cn.bigmodel.openapi -DartifactId=oapi-java-sdk -Dversion=4.0.0 -Dpackaging=jar -->
+        <!--
+        <dependency>
+            <groupId>cn.bigmodel.openapi</groupId>
+            <artifactId>oapi-java-sdk</artifactId>
+            <version>4.0.0</version>
+            <optional>true</optional>
+        </dependency>
+        -->
+
         <!-- Spring Boot Test -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

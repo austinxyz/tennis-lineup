@@ -29,5 +29,5 @@ public class Team {
     private List<Player> players = new ArrayList<>();
 
     @JsonProperty("lineups")
-    private List<Object> lineups = new ArrayList<>();
+    private List<Lineup> lineups = new ArrayList<>();
 }

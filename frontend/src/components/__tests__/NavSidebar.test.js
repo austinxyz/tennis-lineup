@@ -76,4 +76,23 @@ describe('NavSidebar', () => {
     expect(wrapper.emitted('navigate')).toBeTruthy()
     expect(wrapper.emitted('navigate').length).toBe(1)
   })
+
+  it('renders 排阵生成 nav link', () => {
+    const wrapper = mountSidebar('/')
+    expect(wrapper.text()).toContain('排阵生成')
+  })
+
+  it('排阵生成 link points to /lineup', () => {
+    const wrapper = mountSidebar('/')
+    const link = wrapper.find('a[href="/lineup"]')
+    expect(link.exists()).toBe(true)
+    expect(link.text()).toContain('排阵生成')
+  })
+
+  it('applies active class on /lineup route for 排阵生成 link', () => {
+    const wrapper = mountSidebar('/lineup')
+    const link = wrapper.find('a[href="/lineup"]')
+    expect(link.classes()).toContain('bg-green-50')
+    expect(link.classes()).toContain('text-green-700')
+  })
 })

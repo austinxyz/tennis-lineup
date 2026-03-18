@@ -22,6 +22,11 @@ const routes = [
             props: true
           }
         ]
+      },
+      {
+        path: 'lineup',
+        name: 'LineupGenerator',
+        component: () => import('../views/LineupGenerator.vue')
       }
     ]
   }

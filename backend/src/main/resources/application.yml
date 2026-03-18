@@ -12,3 +12,7 @@ spring:
 
 storage:
   data-file: ./data/tennis-data.json
+
+zhipu:
+  api:
+    key: ${ZHIPU_API_KEY:}

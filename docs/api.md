@@ -251,3 +251,96 @@ Content-Type: multipart/form-data
 ```
 
 **响应 400**：文件为空或格式不支持
+
+---
+
+## 排阵生成
+
+### 生成排阵
+
+```
+POST /api/lineups/generate
+```
+
+**请求体**
+
+```json
+{
+  "teamId": "team-001",
+  "strategyType": "preset",
+  "preset": "balanced",
+  "naturalLanguage": null
+}
+```
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `teamId` | string | ✓ | 队伍 ID |
+| `strategyType` | string | ✓ | `"preset"` 或 `"custom"` |
+| `preset` | string | 条件必填 | `"balanced"`（均衡）或 `"aggressive"`（集中火力），当 `strategyType="preset"` 时必填 |
+| `naturalLanguage` | string | 条件必填 | 自然语言策略描述，当 `strategyType="custom"` 时使用 |
+
+**响应 200**
+
+```json
+{
+  "id": "lineup-1710000000000",
+  "createdAt": "2026-03-17T10:00:00Z",
+  "strategy": "balanced",
+  "aiUsed": false,
+  "pairs": [
+    {
+      "position": "D1",
+      "player1Id": "player-001",
+      "player1Name": "张三",
+      "player2Id": "player-002",
+      "player2Name": "李四",
+      "combinedUtr": 15.5
+    },
+    {
+      "position": "D2",
+      "player1Id": "player-003",
+      "player1Name": "王五",
+      "player2Id": "player-004",
+      "player2Name": "赵六",
+      "combinedUtr": 13.0
+    },
+    { "position": "D3", "...": "..." },
+    { "position": "D4", "...": "..." }
+  ],
+  "totalUtr": 36.0,
+  "valid": true,
+  "violationMessages": []
+}
+```
+
+- `aiUsed: false` 表示 AI 不可用时使用启发式降级策略
+
+**响应 400**：球员不足 8 人或无法生成满足约束的排阵
+
+**响应 404**：队伍不存在
+
+---
+
+### 获取排阵历史
+
+```
+GET /api/teams/{id}/lineups
+```
+
+**响应 200**：排阵数组，按 `createdAt` 倒序（最新在前）
+
+**响应 404**：队伍不存在
+
+---
+
+### 删除排阵
+
+```
+DELETE /api/lineups/{id}
+```
+
+**响应 204**：删除成功（无响应体）
+
+**响应 404**：排阵不存在
+
