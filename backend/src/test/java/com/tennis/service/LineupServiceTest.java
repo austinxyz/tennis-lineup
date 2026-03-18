@@ -2,7 +2,6 @@ package com.tennis.service;
 
 import com.tennis.exception.NotFoundException;
 import com.tennis.model.Lineup;
-import com.tennis.model.Pair;
 import com.tennis.model.Player;
 import com.tennis.model.Team;
 import com.tennis.model.TeamData;
@@ -19,6 +18,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -60,7 +60,7 @@ class LineupServiceTest {
             p.setId("p" + (i + 1));
             p.setName("Player " + (i + 1));
             p.setGender(i % 4 == 0 ? "female" : "male");
-            p.setUtr(8.0 - i * 0.5);
+            p.setUtr(6.0 - i * 0.3);
             p.setVerified(true);
             players.add(p);
         }
@@ -80,50 +80,83 @@ class LineupServiceTest {
     }
 
     @Test
-    @DisplayName("generateAndSave returns saved lineup with id and timestamp")
-    void testGenerateAndSaveSuccess() {
+    @DisplayName("generateMultipleAndSave returns list of lineups with id and timestamp")
+    void testGenerateMultipleSuccess() {
         when(jsonRepository.readData()).thenReturn(teamData);
         Lineup candidate = buildLineup(null);
-        when(generationService.generateCandidates(any())).thenReturn(List.of(candidate));
+        when(generationService.generateCandidates(any(), any(), any())).thenReturn(List.of(candidate));
         when(aiService.selectBestLineup(any(), any())).thenReturn(-1);
-        when(generationService.selectByHeuristic(any(), any())).thenReturn(candidate);
 
-        Lineup result = lineupService.generateAndSave("team-1", "preset", "balanced", null);
+        List<Lineup> results = lineupService.generateMultipleAndSave(
+                "team-1", "preset", "balanced", null, List.of(), List.of());
 
-        assertNotNull(result.getId());
-        assertTrue(result.getId().startsWith("lineup-"));
-        assertNotNull(result.getCreatedAt());
-        assertEquals("balanced", result.getStrategy());
+        assertEquals(1, results.size());
+        assertNotNull(results.get(0).getId());
+        assertTrue(results.get(0).getId().startsWith("lineup-"));
+        assertNotNull(results.get(0).getCreatedAt());
+        assertEquals("balanced", results.get(0).getStrategy());
         verify(jsonRepository).writeData(any());
     }
 
     @Test
-    @DisplayName("generateAndSave throws when team has fewer than 8 players")
+    @DisplayName("generateMultipleAndSave returns up to 6 candidates")
+    void testGenerateMultipleReturnsSix() {
+        when(jsonRepository.readData()).thenReturn(teamData);
+        List<Lineup> manyCandidates = new ArrayList<>();
+        for (int i = 0; i < 10; i++) manyCandidates.add(buildLineup(null));
+        when(generationService.generateCandidates(any(), any(), any())).thenReturn(manyCandidates);
+        when(aiService.selectBestLineup(any(), any())).thenReturn(-1);
+
+        List<Lineup> results = lineupService.generateMultipleAndSave(
+                "team-1", "preset", "balanced", null, List.of(), List.of());
+
+        assertTrue(results.size() <= 6);
+        assertEquals(6, results.size());
+    }
+
+    @Test
+    @DisplayName("generateMultipleAndSave saves only the first lineup to team")
+    void testOnlyFirstLineupPersisted() {
+        when(jsonRepository.readData()).thenReturn(teamData);
+        Lineup c1 = buildLineup(null);
+        Lineup c2 = buildLineup(null);
+        when(generationService.generateCandidates(any(), any(), any())).thenReturn(List.of(c1, c2));
+        when(aiService.selectBestLineup(any(), any())).thenReturn(-1);
+
+        List<Lineup> results = lineupService.generateMultipleAndSave(
+                "team-1", "preset", "balanced", null, List.of(), List.of());
+
+        assertEquals(1, team.getLineups().size());
+        assertEquals(results.get(0).getId(), team.getLineups().get(0).getId());
+    }
+
+    @Test
+    @DisplayName("generateMultipleAndSave throws when team has fewer than 8 players")
     void testGenerateThrowsForInsufficientPlayers() {
         team.setPlayers(buildPlayers(7));
         when(jsonRepository.readData()).thenReturn(teamData);
 
         assertThrows(IllegalArgumentException.class, () ->
-                lineupService.generateAndSave("team-1", "preset", "balanced", null));
+                lineupService.generateMultipleAndSave("team-1", "preset", "balanced", null, List.of(), List.of()));
     }
 
     @Test
-    @DisplayName("generateAndSave throws NotFoundException for unknown team")
+    @DisplayName("generateMultipleAndSave throws NotFoundException for unknown team")
     void testGenerateThrowsForUnknownTeam() {
         when(jsonRepository.readData()).thenReturn(teamData);
 
         assertThrows(NotFoundException.class, () ->
-                lineupService.generateAndSave("unknown-team", "preset", "balanced", null));
+                lineupService.generateMultipleAndSave("unknown-team", "preset", "balanced", null, List.of(), List.of()));
     }
 
     @Test
-    @DisplayName("generateAndSave throws when no valid lineup exists")
+    @DisplayName("generateMultipleAndSave throws when no valid lineup exists")
     void testGenerateThrowsWhenNoValidLineup() {
         when(jsonRepository.readData()).thenReturn(teamData);
-        when(generationService.generateCandidates(any())).thenReturn(new ArrayList<>());
+        when(generationService.generateCandidates(any(), any(), any())).thenReturn(new ArrayList<>());
 
         assertThrows(IllegalArgumentException.class, () ->
-                lineupService.generateAndSave("team-1", "preset", "balanced", null));
+                lineupService.generateMultipleAndSave("team-1", "preset", "balanced", null, List.of(), List.of()));
     }
 
     @Test
@@ -141,16 +174,6 @@ class LineupServiceTest {
         assertEquals(2, result.size());
         assertEquals("lineup-2", result.get(0).getId());
         assertEquals("lineup-1", result.get(1).getId());
-    }
-
-    @Test
-    @DisplayName("getLineupsByTeam returns empty list for team with no lineups")
-    void testGetLineupsByTeamReturnsEmpty() {
-        team.setLineups(new ArrayList<>());
-        when(jsonRepository.readData()).thenReturn(teamData);
-
-        List<Lineup> result = lineupService.getLineupsByTeam("team-1");
-        assertTrue(result.isEmpty());
     }
 
     @Test

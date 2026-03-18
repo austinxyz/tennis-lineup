@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -191,5 +192,68 @@ class LineupGenerationServiceTest {
                     .mapToDouble(Double::doubleValue).sum();
             assertEquals(sum, lineup.getTotalUtr(), 0.001);
         }
+    }
+
+    @Test
+    @DisplayName("excludePlayers removes excluded players from all candidates")
+    void testExcludePlayersFilter() {
+        List<Player> players = new ArrayList<>(build8PlayerRoster());
+        // Add 2 extra players so we have 10, then exclude 2 specific ones
+        players.add(player("p9", "male", 3.0, true));
+        players.add(player("p10", "female", 2.8, true));
+
+        List<Lineup> candidates = service.generateCandidates(players, Set.of(), Set.of("p9", "p10"));
+        assertFalse(candidates.isEmpty());
+        for (Lineup lineup : candidates) {
+            boolean hasExcluded = lineup.getPairs().stream().anyMatch(p ->
+                    p.getPlayer1Id().equals("p9") || p.getPlayer2Id().equals("p9") ||
+                    p.getPlayer1Id().equals("p10") || p.getPlayer2Id().equals("p10"));
+            assertFalse(hasExcluded, "Excluded players must not appear in any lineup");
+        }
+    }
+
+    @Test
+    @DisplayName("includePlayers forces those players into every candidate")
+    void testIncludePlayersFilter() {
+        List<Player> players = new ArrayList<>(build8PlayerRoster());
+        // Add 2 extra players so selection isn't forced
+        players.add(player("p9", "male", 3.5, true));
+        players.add(player("p10", "female", 3.0, true));
+
+        List<Lineup> candidates = service.generateCandidates(players, Set.of("p1", "p2"), Set.of());
+        assertFalse(candidates.isEmpty());
+        for (Lineup lineup : candidates) {
+            java.util.Set<String> ids = lineup.getPairs().stream()
+                    .flatMap(p -> java.util.stream.Stream.of(p.getPlayer1Id(), p.getPlayer2Id()))
+                    .collect(java.util.stream.Collectors.toSet());
+            assertTrue(ids.contains("p1"), "p1 must appear in every lineup");
+            assertTrue(ids.contains("p2"), "p2 must appear in every lineup");
+        }
+    }
+
+    @Test
+    @DisplayName("include and exclude overlap throws IllegalArgumentException")
+    void testIncludeExcludeOverlapThrows() {
+        List<Player> players = build8PlayerRoster();
+        assertThrows(IllegalArgumentException.class, () ->
+                service.generateCandidates(players, Set.of("p1"), Set.of("p1")));
+    }
+
+    @Test
+    @DisplayName("more than 8 includePlayers throws IllegalArgumentException")
+    void testTooManyIncludePlayersThrows() {
+        List<Player> players = build8PlayerRoster();
+        assertThrows(IllegalArgumentException.class, () ->
+                service.generateCandidates(players,
+                        Set.of("p1","p2","p3","p4","p5","p6","p7","p8","p9"), Set.of()));
+    }
+
+    @Test
+    @DisplayName("excluding too many players throws IllegalArgumentException")
+    void testTooManyExcludePlayersThrows() {
+        List<Player> players = build8PlayerRoster();
+        assertThrows(IllegalArgumentException.class, () ->
+                service.generateCandidates(players, Set.of(),
+                        Set.of("p1", "p2", "p3"))); // only 5 remaining < 8
     }
 }

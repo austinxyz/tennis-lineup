@@ -8,7 +8,10 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 public class LineupGenerationService {
@@ -28,6 +31,50 @@ public class LineupGenerationService {
         List<Lineup> candidates = new ArrayList<>();
         List<Player> roster = new ArrayList<>(players);
         backtrack(roster, new ArrayList<>(), new boolean[roster.size()], candidates);
+        return candidates;
+    }
+
+    /**
+     * Generate valid lineups with include/exclude player constraints.
+     * @param players  full team roster
+     * @param include  player IDs that MUST appear in every lineup (may be empty)
+     * @param exclude  player IDs that MUST NOT appear in any lineup (may be empty)
+     */
+    public List<Lineup> generateCandidates(List<Player> players, Set<String> include, Set<String> exclude) {
+        // Validate constraints
+        Set<String> overlap = new HashSet<>(include);
+        overlap.retainAll(exclude);
+        if (!overlap.isEmpty()) {
+            throw new IllegalArgumentException("同一球员不能同时被包含和排除");
+        }
+        if (include.size() > 8) {
+            throw new IllegalArgumentException("必须上场球员超过8人");
+        }
+
+        // Build eligible roster (exclude removed players)
+        List<Player> roster = players.stream()
+                .filter(p -> !exclude.contains(p.getId()))
+                .collect(Collectors.toList());
+
+        if (roster.size() < 8) {
+            throw new IllegalArgumentException("排除球员后可用球员不足8人");
+        }
+
+        List<Lineup> candidates = new ArrayList<>();
+        backtrack(roster, new ArrayList<>(), new boolean[roster.size()], candidates);
+
+        // Post-filter: keep only lineups where all include players appear
+        if (!include.isEmpty()) {
+            candidates = candidates.stream()
+                    .filter(lineup -> {
+                        Set<String> usedIds = lineup.getPairs().stream()
+                                .flatMap(p -> java.util.stream.Stream.of(p.getPlayer1Id(), p.getPlayer2Id()))
+                                .collect(Collectors.toSet());
+                        return usedIds.containsAll(include);
+                    })
+                    .collect(Collectors.toList());
+        }
+
         return candidates;
     }
 

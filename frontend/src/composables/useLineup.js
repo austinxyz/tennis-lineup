@@ -3,18 +3,20 @@ import { useApi } from './useApi'
 
 export function useLineup() {
   const { loading, error, post, get, del } = useApi()
-  const lineup = ref(null)
+  const lineups = ref([])
   const lineupHistory = ref([])
 
-  const generateLineup = async ({ teamId, strategyType, preset, naturalLanguage }) => {
+  const generateLineup = async ({ teamId, strategyType, preset, naturalLanguage, includePlayers = [], excludePlayers = [] }) => {
     try {
-      lineup.value = await post('/api/lineups/generate', {
+      lineups.value = await post('/api/lineups/generate', {
         teamId,
         strategyType,
         preset,
         naturalLanguage,
+        includePlayers,
+        excludePlayers,
       })
-      return lineup.value
+      return lineups.value
     } catch (err) {
       console.error('Failed to generate lineup:', err)
       throw err
@@ -44,7 +46,7 @@ export function useLineup() {
   return {
     loading,
     error,
-    lineup,
+    lineups,
     lineupHistory,
     generateLineup,
     fetchLineupHistory,

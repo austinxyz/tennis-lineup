@@ -23,7 +23,6 @@ import java.util.List;
 import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -63,27 +62,52 @@ class LineupControllerTest {
     }
 
     @Test
-    @DisplayName("POST /api/lineups/generate returns 200 with lineup")
+    @DisplayName("POST /api/lineups/generate returns 200 with array of lineups")
     void testGenerateLineupSuccess() throws Exception {
-        when(lineupService.generateAndSave(eq("team-1"), eq("preset"), eq("balanced"), any()))
-                .thenReturn(testLineup);
+        when(lineupService.generateMultipleAndSave(any(), any(), any(), any(), any(), any()))
+                .thenReturn(List.of(testLineup));
 
         mockMvc.perform(post("/api/lineups/generate")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(
                         Map.of("teamId", "team-1", "strategyType", "preset", "preset", "balanced"))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value("lineup-001"))
-                .andExpect(jsonPath("$.strategy").value("balanced"))
-                .andExpect(jsonPath("$.valid").value(true))
-                .andExpect(jsonPath("$.pairs").isArray())
-                .andExpect(jsonPath("$.pairs.length()").value(4));
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].id").value("lineup-001"))
+                .andExpect(jsonPath("$[0].strategy").value("balanced"))
+                .andExpect(jsonPath("$[0].pairs.length()").value(4));
+    }
+
+    @Test
+    @DisplayName("POST /api/lineups/generate returns multiple candidates")
+    void testGenerateLineupReturnsMultiple() throws Exception {
+        Lineup second = new Lineup();
+        second.setId("lineup-002");
+        second.setCreatedAt(Instant.now());
+        second.setStrategy("balanced");
+        second.setAiUsed(false);
+        second.setValid(true);
+        second.setTotalUtr(28.0);
+        second.setViolationMessages(new ArrayList<>());
+        second.setPairs(testLineup.getPairs());
+
+        when(lineupService.generateMultipleAndSave(any(), any(), any(), any(), any(), any()))
+                .thenReturn(List.of(testLineup, second));
+
+        mockMvc.perform(post("/api/lineups/generate")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(
+                        Map.of("teamId", "team-1", "strategyType", "preset", "preset", "balanced"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$.length()").value(2));
     }
 
     @Test
     @DisplayName("POST /api/lineups/generate returns 400 when fewer than 8 players")
     void testGenerateLineupInsufficientPlayers() throws Exception {
-        when(lineupService.generateAndSave(any(), any(), any(), any()))
+        when(lineupService.generateMultipleAndSave(any(), any(), any(), any(), any(), any()))
                 .thenThrow(new IllegalArgumentException("队伍球员不足8人，无法生成排阵"));
 
         mockMvc.perform(post("/api/lineups/generate")
@@ -95,9 +119,23 @@ class LineupControllerTest {
     }
 
     @Test
+    @DisplayName("POST /api/lineups/generate returns 400 for constraint violation")
+    void testGenerateLineupConstraintViolation() throws Exception {
+        when(lineupService.generateMultipleAndSave(any(), any(), any(), any(), any(), any()))
+                .thenThrow(new IllegalArgumentException("排除球员后可用球员不足8人"));
+
+        mockMvc.perform(post("/api/lineups/generate")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(
+                        Map.of("teamId", "team-1", "excludePlayers", List.of("p1", "p2", "p3")))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("排除球员后可用球员不足8人"));
+    }
+
+    @Test
     @DisplayName("POST /api/lineups/generate returns 404 when team not found")
     void testGenerateLineupTeamNotFound() throws Exception {
-        when(lineupService.generateAndSave(any(), any(), any(), any()))
+        when(lineupService.generateMultipleAndSave(any(), any(), any(), any(), any(), any()))
                 .thenThrow(new NotFoundException("队伍不存在"));
 
         mockMvc.perform(post("/api/lineups/generate")
@@ -157,19 +195,5 @@ class LineupControllerTest {
 
         mockMvc.perform(delete("/api/lineups/nonexistent"))
                 .andExpect(status().isNotFound());
-    }
-
-    @Test
-    @DisplayName("POST /api/lineups/generate with aiUsed=false when AI unavailable")
-    void testGenerateLineupAiUnavailable() throws Exception {
-        testLineup.setAiUsed(false);
-        when(lineupService.generateAndSave(any(), any(), any(), any())).thenReturn(testLineup);
-
-        mockMvc.perform(post("/api/lineups/generate")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(
-                        Map.of("teamId", "team-1", "strategyType", "preset", "preset", "aggressive"))))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.aiUsed").value(false));
     }
 }

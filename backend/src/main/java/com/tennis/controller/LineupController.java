@@ -19,14 +19,16 @@ public class LineupController {
     }
 
     @PostMapping("/api/lineups/generate")
-    public ResponseEntity<Lineup> generateLineup(@RequestBody GenerateLineupRequest request) {
-        Lineup lineup = lineupService.generateAndSave(
+    public ResponseEntity<List<Lineup>> generateLineup(@RequestBody GenerateLineupRequest request) {
+        List<Lineup> lineups = lineupService.generateMultipleAndSave(
                 request.getTeamId(),
                 request.getStrategyType(),
                 request.getPreset(),
-                request.getNaturalLanguage()
+                request.getNaturalLanguage(),
+                request.getIncludePlayers(),
+                request.getExcludePlayers()
         );
-        return ResponseEntity.ok(lineup);
+        return ResponseEntity.ok(lineups);
     }
 
     @GetMapping("/api/teams/{id}/lineups")

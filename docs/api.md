@@ -275,14 +275,21 @@ POST /api/lineups/generate
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
 | `teamId` | string | ✓ | 队伍 ID |
 | `strategyType` | string | ✓ | `"preset"` 或 `"custom"` |
 | `preset` | string | 条件必填 | `"balanced"`（均衡）或 `"aggressive"`（集中火力），当 `strategyType="preset"` 时必填 |
 | `naturalLanguage` | string | 条件必填 | 自然语言策略描述，当 `strategyType="custom"` 时使用 |
+| `includePlayers` | string[] | 否 | 必须上场的球员 ID 列表（不超过 8 人），这些球员会出现在每个返回的排阵中 |
+| `excludePlayers` | string[] | 否 | 排除在外的球员 ID 列表，这些球员不会出现在任何排阵中 |
 
-**响应 200**
+> **BREAKING**: 响应体由单个 Lineup 对象改为 Lineup 数组（1–6 个），按策略最优排序，第一个为最佳方案并持久化到队伍历史。
+
+**响应 200** — 返回 1–6 个排阵方案，按策略最优排列
 
 ```json
+[
 {
   "id": "lineup-1710000000000",
   "createdAt": "2026-03-17T10:00:00Z",

@@ -27,16 +27,16 @@ afterEach(() => {
 
 describe('useLineup', () => {
   describe('generateLineup()', () => {
-    it('sets lineup.value on success', async () => {
-      const mockLineup = { id: 'lineup-1', strategy: 'balanced', valid: true, pairs: [] }
-      vi.stubGlobal('fetch', makeFetchOk(mockLineup))
-      const { lineup, generateLineup } = useLineup()
+    it('sets lineups.value on success (array response)', async () => {
+      const mockLineups = [{ id: 'lineup-1', strategy: 'balanced', valid: true, pairs: [] }]
+      vi.stubGlobal('fetch', makeFetchOk(mockLineups))
+      const { lineups, generateLineup } = useLineup()
       await generateLineup({ teamId: 'team-1', strategyType: 'preset', preset: 'balanced' })
-      expect(lineup.value).toEqual(mockLineup)
+      expect(lineups.value).toEqual(mockLineups)
     })
 
     it('calls POST /api/lineups/generate with correct body', async () => {
-      const mockFetch = makeFetchOk({ id: 'lineup-1', pairs: [] })
+      const mockFetch = makeFetchOk([{ id: 'lineup-1', pairs: [] }])
       vi.stubGlobal('fetch', mockFetch)
       const { generateLineup } = useLineup()
       await generateLineup({ teamId: 'team-1', strategyType: 'preset', preset: 'aggressive' })
@@ -58,7 +58,7 @@ describe('useLineup', () => {
     })
 
     it('includes naturalLanguage when strategyType is custom', async () => {
-      const mockFetch = makeFetchOk({ id: 'lineup-2', pairs: [] })
+      const mockFetch = makeFetchOk([{ id: 'lineup-2', pairs: [] }])
       vi.stubGlobal('fetch', mockFetch)
       const { generateLineup } = useLineup()
       await generateLineup({ teamId: 'team-1', strategyType: 'custom', naturalLanguage: '让前三线强' })
@@ -68,6 +68,22 @@ describe('useLineup', () => {
           body: expect.stringContaining('让前三线强'),
         })
       )
+    })
+
+    it('sends includePlayers and excludePlayers in request body', async () => {
+      const mockFetch = makeFetchOk([{ id: 'lineup-3', pairs: [] }])
+      vi.stubGlobal('fetch', mockFetch)
+      const { generateLineup } = useLineup()
+      await generateLineup({
+        teamId: 'team-1',
+        strategyType: 'preset',
+        preset: 'balanced',
+        includePlayers: ['p1', 'p2'],
+        excludePlayers: ['p8'],
+      })
+      const body = JSON.parse(mockFetch.mock.calls[0][1].body)
+      expect(body.includePlayers).toEqual(['p1', 'p2'])
+      expect(body.excludePlayers).toEqual(['p8'])
     })
   })
 

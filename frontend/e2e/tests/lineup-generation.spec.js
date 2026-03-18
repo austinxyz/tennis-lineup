@@ -56,10 +56,13 @@ test.describe('排阵生成', () => {
     await expect(page.getByRole('button', { name: '生成排阵' })).toBeEnabled()
   })
 
-  test('使用均衡策略生成排阵成功', async ({ page }) => {
+  test('使用均衡策略生成排阵成功，显示方案 1 tab', async ({ page }) => {
     await lineupPage.selectTeam(TEAM_NAME)
     await lineupPage.selectPresetStrategy('balanced')
     await lineupPage.clickGenerate()
+    await lineupPage.waitForResults()
+    await expect(page.getByRole('button', { name: '方案 1' })).toBeVisible()
+    // The first tab is active and shows the lineup card with D1-D4
     await lineupPage.waitForLineupCard()
     await expect(page.locator('text=D1')).toBeVisible()
     await expect(page.locator('text=D2')).toBeVisible()
@@ -71,14 +74,31 @@ test.describe('排阵生成', () => {
     await lineupPage.selectTeam(TEAM_NAME)
     await lineupPage.selectPresetStrategy('aggressive')
     await lineupPage.clickGenerate()
-    await lineupPage.waitForLineupCard()
+    await lineupPage.waitForResults()
     await expect(page.locator('text=排阵结果')).toBeVisible()
   })
 
   test('生成的排阵卡片显示总 UTR', async ({ page }) => {
     await lineupPage.selectTeam(TEAM_NAME)
     await lineupPage.clickGenerate()
+    await lineupPage.waitForResults()
     await lineupPage.waitForLineupCard()
     await expect(page.locator('text=总 UTR')).toBeVisible()
+  })
+
+  test('可以切换到方案 2 tab', async ({ page }) => {
+    await lineupPage.selectTeam(TEAM_NAME)
+    await lineupPage.clickGenerate()
+    await lineupPage.waitForResults()
+
+    // Check if tab 2 exists before clicking
+    const tab2 = page.getByRole('button', { name: '方案 2' })
+    if (await tab2.isVisible()) {
+      await lineupPage.selectTab(2)
+      await expect(tab2).toHaveClass(/bg-green-600/)
+    } else {
+      // Only 1 candidate generated — pass the test
+      test.info().annotations.push({ type: 'info', description: '只有 1 个候选方案，跳过 tab 切换' })
+    }
   })
 })

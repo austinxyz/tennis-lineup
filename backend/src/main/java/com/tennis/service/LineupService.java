@@ -13,7 +13,10 @@ import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -32,7 +35,9 @@ public class LineupService {
         this.aiService = aiService;
     }
 
-    public Lineup generateAndSave(String teamId, String strategyType, String preset, String naturalLanguage) {
+    public List<Lineup> generateMultipleAndSave(String teamId, String strategyType, String preset,
+                                                String naturalLanguage,
+                                                List<String> includePlayers, List<String> excludePlayers) {
         TeamData teamData = jsonRepository.readData();
         Team team = teamData.getTeams().stream()
                 .filter(t -> t.getId().equals(teamId))
@@ -44,50 +49,85 @@ public class LineupService {
             throw new IllegalArgumentException("队伍球员不足8人，无法生成排阵");
         }
 
-        List<Lineup> candidates = generationService.generateCandidates(players);
+        Set<String> include = new HashSet<>(includePlayers != null ? includePlayers : List.of());
+        Set<String> exclude = new HashSet<>(excludePlayers != null ? excludePlayers : List.of());
+
+        List<Lineup> candidates = generationService.generateCandidates(players, include, exclude);
         if (candidates.isEmpty()) {
             throw new IllegalArgumentException("无法生成满足约束的排阵");
         }
 
-        Lineup selected;
-        boolean aiUsed = false;
+        String strategy = "custom".equals(strategyType) ? "balanced" : (preset != null ? preset : "balanced");
+        String strategyLabel = "custom".equals(strategyType)
+                ? (naturalLanguage != null ? naturalLanguage : "custom")
+                : strategy;
 
+        // Sort all candidates by heuristic; AI selects the best one (put it first)
+        List<Lineup> sorted = sortByHeuristic(candidates, strategy);
+
+        boolean aiUsed = false;
         if ("custom".equals(strategyType)) {
-            int aiIndex = aiService.selectBestLineup(candidates, naturalLanguage != null ? naturalLanguage : "balanced");
-            if (aiIndex >= 0) {
-                selected = candidates.get(aiIndex);
+            int aiIndex = aiService.selectBestLineup(sorted, naturalLanguage != null ? naturalLanguage : strategy);
+            if (aiIndex >= 0 && aiIndex < sorted.size()) {
+                Lineup aiPick = sorted.remove(aiIndex);
+                sorted.add(0, aiPick);
                 aiUsed = true;
-            } else {
-                selected = generationService.selectByHeuristic(candidates, "balanced");
             }
         } else {
-            String strategy = preset != null ? preset : "balanced";
-            int aiIndex = aiService.selectBestLineup(candidates, strategy);
-            if (aiIndex >= 0) {
-                selected = candidates.get(aiIndex);
+            int aiIndex = aiService.selectBestLineup(sorted, strategy);
+            if (aiIndex >= 0 && aiIndex < sorted.size()) {
+                Lineup aiPick = sorted.remove(aiIndex);
+                sorted.add(0, aiPick);
                 aiUsed = true;
-            } else {
-                selected = generationService.selectByHeuristic(candidates, strategy);
             }
         }
 
-        String strategyLabel = "custom".equals(strategyType)
-                ? (naturalLanguage != null ? naturalLanguage : "custom")
-                : (preset != null ? preset : "balanced");
+        // Take up to 6 candidates
+        List<Lineup> top6 = sorted.stream().limit(6).collect(Collectors.toList());
 
-        selected.setId(generateLineupId());
-        selected.setCreatedAt(Instant.now());
-        selected.setStrategy(strategyLabel);
-        selected.setAiUsed(aiUsed);
+        // Assign metadata to all returned lineups
+        for (int i = 0; i < top6.size(); i++) {
+            Lineup l = top6.get(i);
+            l.setId(generateLineupId());
+            l.setCreatedAt(Instant.now());
+            l.setStrategy(strategyLabel);
+            l.setAiUsed(i == 0 && aiUsed);
+        }
 
+        // Persist only the first (best) lineup
         if (team.getLineups() == null) {
             team.setLineups(new ArrayList<>());
         }
-        team.getLineups().add(selected);
+        team.getLineups().add(top6.get(0));
         jsonRepository.writeData(teamData);
 
-        log.info("Generated and saved lineup {} for team {}", selected.getId(), teamId);
-        return selected;
+        log.info("Generated {} candidates, saved best lineup {} for team {}", top6.size(), top6.get(0).getId(), teamId);
+        return top6;
+    }
+
+    private List<Lineup> sortByHeuristic(List<Lineup> candidates, String strategy) {
+        List<Lineup> sorted = new ArrayList<>(candidates);
+        if ("aggressive".equals(strategy)) {
+            sorted.sort(Comparator.comparingDouble(this::topThreeUtr).reversed());
+        } else {
+            sorted.sort(Comparator.comparingDouble(this::combinedUtrVariance));
+        }
+        return sorted;
+    }
+
+    private double topThreeUtr(Lineup lineup) {
+        return lineup.getPairs().stream()
+                .filter(p -> "D1".equals(p.getPosition()) || "D2".equals(p.getPosition()) || "D3".equals(p.getPosition()))
+                .mapToDouble(com.tennis.model.Pair::getCombinedUtr)
+                .sum();
+    }
+
+    private double combinedUtrVariance(Lineup lineup) {
+        List<Double> utrs = lineup.getPairs().stream()
+                .map(com.tennis.model.Pair::getCombinedUtr)
+                .toList();
+        double mean = utrs.stream().mapToDouble(Double::doubleValue).average().orElse(0);
+        return utrs.stream().mapToDouble(u -> (u - mean) * (u - mean)).average().orElse(0);
     }
 
     public List<Lineup> getLineupsByTeam(String teamId) {
