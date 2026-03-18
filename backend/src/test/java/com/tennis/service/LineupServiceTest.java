@@ -69,6 +69,8 @@ class LineupServiceTest {
         return players;
     }
 
+    private int lineupCounter = 0;
+
     private Lineup buildLineup(String id) {
         return buildLineupWithTotalUtr(30.0, id);
     }
@@ -78,6 +80,7 @@ class LineupServiceTest {
     }
 
     private Lineup buildLineupWithTotalUtr(double totalUtr, String id) {
+        int slot = lineupCounter++;
         Lineup l = new Lineup();
         l.setId(id);
         l.setCreatedAt(Instant.now());
@@ -87,12 +90,13 @@ class LineupServiceTest {
         double perPair = totalUtr / 4.0;
         List<Pair> pairs = new ArrayList<>();
         String[] positions = {"D1", "D2", "D3", "D4"};
-        for (String pos : positions) {
+        for (int i = 0; i < positions.length; i++) {
             Pair p = new Pair();
-            p.setPosition(pos);
+            p.setPosition(positions[i]);
             p.setCombinedUtr(perPair);
-            p.setPlayer1Id("p1");
-            p.setPlayer2Id("p2");
+            // Use unique player IDs per lineup so dedup treats each lineup as distinct
+            p.setPlayer1Id("p" + (slot * 8 + i * 2 + 1));
+            p.setPlayer2Id("p" + (slot * 8 + i * 2 + 2));
             pairs.add(p);
         }
         l.setPairs(pairs);
@@ -106,7 +110,6 @@ class LineupServiceTest {
         when(jsonRepository.readData()).thenReturn(teamData);
         Lineup candidate = buildLineup(null);
         when(generationService.generateCandidates(any(), any(), any(), any())).thenReturn(List.of(candidate));
-        when(aiService.selectBestLineup(any(), any())).thenReturn(-1);
 
         List<Lineup> results = lineupService.generateMultiple(
                 "team-1", "preset", "balanced", null, List.of(), List.of());
@@ -127,7 +130,6 @@ class LineupServiceTest {
         List<Lineup> manyCandidates = new ArrayList<>();
         for (int i = 0; i < 10; i++) manyCandidates.add(buildLineup(null));
         when(generationService.generateCandidates(any(), any(), any(), any())).thenReturn(manyCandidates);
-        when(aiService.selectBestLineup(any(), any())).thenReturn(-1);
 
         List<Lineup> results = lineupService.generateMultiple(
                 "team-1", "preset", "balanced", null, List.of(), List.of());
@@ -142,7 +144,6 @@ class LineupServiceTest {
         Lineup c1 = buildLineup(null);
         Lineup c2 = buildLineup(null);
         when(generationService.generateCandidates(any(), any(), any(), any())).thenReturn(List.of(c1, c2));
-        when(aiService.selectBestLineup(any(), any())).thenReturn(-1);
 
         lineupService.generateMultiple(
                 "team-1", "preset", "balanced", null, List.of(), List.of());
@@ -189,7 +190,6 @@ class LineupServiceTest {
         Lineup c1 = buildLineupWithTotalUtr(39.0);
         Lineup c2 = buildLineupWithTotalUtr(38.0);
         when(generationService.generateCandidates(any(), any(), any(), any())).thenReturn(List.of(c2, c1));
-        when(aiService.selectBestLineup(any(), any())).thenReturn(-1);
 
         List<Lineup> results = lineupService.generateMultiple(
                 "team-1", "preset", "balanced", null, List.of(), List.of());
@@ -205,7 +205,6 @@ class LineupServiceTest {
         when(jsonRepository.readData()).thenReturn(teamData);
         Lineup candidate = buildLineup(null);
         when(generationService.generateCandidates(any(), any(), any(), any())).thenReturn(List.of(candidate));
-        when(aiService.selectBestLineup(any(), any())).thenReturn(-1);
 
         lineupService.generateMultiple("team-1", "preset", "balanced", null,
                 List.of(), List.of(), Map.of("p1", "D1"));
@@ -220,7 +219,6 @@ class LineupServiceTest {
         when(jsonRepository.readData()).thenReturn(teamData);
         Lineup candidate = buildLineup(null);
         when(generationService.generateCandidates(any(), any(), any(), any())).thenReturn(List.of(candidate));
-        when(aiService.selectBestLineup(any(), any())).thenReturn(-1);
 
         lineupService.generateMultiple("team-1", "preset", "balanced", null,
                 List.of("p1", "p2"), List.of());
@@ -269,6 +267,84 @@ class LineupServiceTest {
 
         assertThrows(NotFoundException.class, () ->
                 lineupService.saveLineup("unknown-team", buildLineup(null)));
+    }
+
+    @Test
+    @DisplayName("saveLineup rejects duplicate: same player set already saved")
+    void testSaveLineupRejectsDuplicate() {
+        when(jsonRepository.readData()).thenReturn(teamData);
+
+        // Build two lineups explicitly with the same 8 player IDs
+        Lineup first = buildLineupWithFixedPlayers("dup-a", "dup-b");
+        lineupService.saveLineup("team-1", first);
+
+        Lineup duplicate = buildLineupWithFixedPlayers("dup-a", "dup-b");
+        assertThrows(IllegalArgumentException.class, () ->
+                lineupService.saveLineup("team-1", duplicate));
+    }
+
+    private Lineup buildLineupWithFixedPlayers(String p1, String p2) {
+        Lineup l = new Lineup();
+        l.setStrategy("balanced");
+        l.setValid(true);
+        l.setTotalUtr(28.0);
+        l.setViolationMessages(new ArrayList<>());
+        List<Pair> pairs = new ArrayList<>();
+        for (String pos : new String[]{"D1", "D2", "D3", "D4"}) {
+            Pair p = new Pair();
+            p.setPosition(pos);
+            p.setPlayer1Id(p1);
+            p.setPlayer2Id(p2);
+            p.setCombinedUtr(7.0);
+            pairs.add(p);
+        }
+        l.setPairs(pairs);
+        return l;
+    }
+
+    @Test
+    @DisplayName("saveLineup accepts non-duplicate: different player set")
+    void testSaveLineupAcceptsNonDuplicate() {
+        when(jsonRepository.readData()).thenReturn(teamData);
+
+        // Save first lineup (uses p1/p2)
+        Lineup first = buildLineup(null);
+        lineupService.saveLineup("team-1", first);
+
+        // Build a second lineup with different player IDs
+        Lineup different = new Lineup();
+        different.setStrategy("balanced");
+        different.setValid(true);
+        different.setTotalUtr(28.0);
+        different.setViolationMessages(new ArrayList<>());
+        String[] positions = {"D1", "D2", "D3", "D4"};
+        List<Pair> pairs = new ArrayList<>();
+        for (String pos : positions) {
+            Pair p = new Pair();
+            p.setPosition(pos);
+            p.setPlayer1Id("p3");
+            p.setPlayer2Id("p4");
+            p.setCombinedUtr(7.0);
+            pairs.add(p);
+        }
+        different.setPairs(pairs);
+
+        Lineup saved = lineupService.saveLineup("team-1", different);
+        assertNotNull(saved.getId());
+        assertEquals(2, team.getLineups().size());
+    }
+
+    @Test
+    @DisplayName("saveLineup first save always accepted when team has no lineups")
+    void testSaveLineupFirstSaveAlwaysAccepted() {
+        // team.lineups is empty by default from setUp()
+        when(jsonRepository.readData()).thenReturn(teamData);
+
+        Lineup lineup = buildLineup(null);
+        Lineup saved = lineupService.saveLineup("team-1", lineup);
+
+        assertNotNull(saved.getId());
+        assertEquals(1, team.getLineups().size());
     }
 
     @Test

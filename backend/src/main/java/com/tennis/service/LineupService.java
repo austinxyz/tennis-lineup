@@ -73,7 +73,7 @@ public class LineupService {
                 ? (naturalLanguage != null ? naturalLanguage : "custom")
                 : strategy;
 
-        // Sort all candidates by heuristic; AI selects the best one (put it first)
+        // Sort all candidates by heuristic; for custom strategy, AI may reorder
         List<Lineup> sorted = sortByHeuristic(candidates, strategy);
 
         boolean aiUsed = false;
@@ -84,17 +84,25 @@ public class LineupService {
                 sorted.add(0, aiPick);
                 aiUsed = true;
             }
-        } else {
-            int aiIndex = aiService.selectBestLineup(sorted, strategy);
-            if (aiIndex >= 0 && aiIndex < sorted.size()) {
-                Lineup aiPick = sorted.remove(aiIndex);
-                sorted.add(0, aiPick);
-                aiUsed = true;
-            }
         }
 
+        // Dedup by player set: keep only the first lineup per unique 8-player combination
+        Set<String> seenPlayerSets = new HashSet<>();
+        List<Lineup> deduped = sorted.stream()
+                .filter(l -> {
+                    if (l.getPairs() == null) return true;
+                    List<String> ids = l.getPairs().stream()
+                            .flatMap(p -> java.util.stream.Stream.of(p.getPlayer1Id(), p.getPlayer2Id()))
+                            .filter(java.util.Objects::nonNull)
+                            .sorted()
+                            .collect(Collectors.toList());
+                    String key = String.join(",", ids);
+                    return seenPlayerSets.add(key);
+                })
+                .collect(Collectors.toList());
+
         // Take up to 6 candidates
-        List<Lineup> top6 = sorted.stream().limit(6).collect(Collectors.toList());
+        List<Lineup> top6 = deduped.stream().limit(6).collect(Collectors.toList());
 
         // Assign metadata (id + createdAt needed for display and potential manual save)
         for (int i = 0; i < top6.size(); i++) {
@@ -129,6 +137,26 @@ public class LineupService {
         if (team.getLineups() == null) {
             team.setLineups(new ArrayList<>());
         }
+
+        // Dedup: reject if same player set already saved
+        if (lineup.getPairs() != null && !lineup.getPairs().isEmpty()) {
+            Set<String> incomingPlayerIds = lineup.getPairs().stream()
+                    .flatMap(p -> java.util.stream.Stream.of(p.getPlayer1Id(), p.getPlayer2Id()))
+                    .filter(java.util.Objects::nonNull)
+                    .collect(Collectors.toSet());
+            boolean duplicate = team.getLineups().stream().anyMatch(existing -> {
+                if (existing.getPairs() == null || existing.getPairs().isEmpty()) return false;
+                Set<String> existingPlayerIds = existing.getPairs().stream()
+                        .flatMap(p -> java.util.stream.Stream.of(p.getPlayer1Id(), p.getPlayer2Id()))
+                        .filter(java.util.Objects::nonNull)
+                        .collect(Collectors.toSet());
+                return incomingPlayerIds.equals(existingPlayerIds);
+            });
+            if (duplicate) {
+                throw new IllegalArgumentException("该排阵已保存，请勿重复保存");
+            }
+        }
+
         team.getLineups().add(lineup);
         jsonRepository.writeData(teamData);
 

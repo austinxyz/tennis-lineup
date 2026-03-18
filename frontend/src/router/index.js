@@ -20,6 +20,12 @@ const routes = [
             name: 'TeamDetail',
             component: () => import('../views/TeamDetail.vue'),
             props: true
+          },
+          {
+            path: 'teams/:id/lineups',
+            name: 'LineupHistory',
+            component: () => import('../views/LineupHistoryView.vue'),
+            props: true
           }
         ]
       },

@@ -97,14 +97,16 @@ function doSwap() {
   const aId = a.slot === 1 ? pairA.player1Id : pairA.player2Id
   const aName = a.slot === 1 ? pairA.player1Name : pairA.player2Name
   const aUtr = a.slot === 1 ? pairA.player1Utr : pairA.player2Utr
+  const aGender = a.slot === 1 ? pairA.player1Gender : pairA.player2Gender
   const bId = b.slot === 1 ? pairB.player1Id : pairB.player2Id
   const bName = b.slot === 1 ? pairB.player1Name : pairB.player2Name
   const bUtr = b.slot === 1 ? pairB.player1Utr : pairB.player2Utr
+  const bGender = b.slot === 1 ? pairB.player1Gender : pairB.player2Gender
 
-  if (a.slot === 1) { pairA.player1Id = bId; pairA.player1Name = bName; pairA.player1Utr = bUtr }
-  else { pairA.player2Id = bId; pairA.player2Name = bName; pairA.player2Utr = bUtr }
-  if (b.slot === 1) { pairB.player1Id = aId; pairB.player1Name = aName; pairB.player1Utr = aUtr }
-  else { pairB.player2Id = aId; pairB.player2Name = aName; pairB.player2Utr = aUtr }
+  if (a.slot === 1) { pairA.player1Id = bId; pairA.player1Name = bName; pairA.player1Utr = bUtr; pairA.player1Gender = bGender }
+  else { pairA.player2Id = bId; pairA.player2Name = bName; pairA.player2Utr = bUtr; pairA.player2Gender = bGender }
+  if (b.slot === 1) { pairB.player1Id = aId; pairB.player1Name = aName; pairB.player1Utr = aUtr; pairB.player1Gender = aGender }
+  else { pairB.player2Id = aId; pairB.player2Name = aName; pairB.player2Utr = aUtr; pairB.player2Gender = aGender }
 
   // Recalculate combinedUtr for affected pairs
   pairA.combinedUtr = (pairA.player1Utr ?? 0) + (pairA.player2Utr ?? 0)

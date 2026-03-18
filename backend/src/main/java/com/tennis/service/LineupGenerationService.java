@@ -45,9 +45,8 @@ public class LineupGenerationService {
      * Algorithm:
      *   1. Validate constraints.
      *   2. Enumerate all 8-player subsets from eligible roster, ordered by:
-     *      a. totalUtr ≤ 40.5
-     *      b. Prefer exactly 2 females
-     *      c. Highest totalUtr first
+     *      a. totalUtr ≤ 40.5 (cap-valid) first
+     *      b. Highest totalUtr first (closest to cap)
      *   3. For each subset, run backtracking to find valid pair arrangements.
      *   4. Post-filter by include and pair-level pin constraints.
      */

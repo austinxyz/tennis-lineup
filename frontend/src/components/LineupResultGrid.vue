@@ -11,7 +11,7 @@
     <!-- Grid: 2 columns on desktop, 1 column on mobile -->
     <div v-else class="grid grid-cols-1 lg:grid-cols-2 gap-4">
       <div
-        v-for="(lineup, index) in lineups"
+        v-for="(lineup, index) in localLineups"
         :key="lineup.id || index"
         class="flex flex-col"
       >
@@ -51,7 +51,7 @@
           <summary class="text-xs text-gray-400 cursor-pointer select-none hover:text-gray-600 py-1">
             调整配对
           </summary>
-          <LineupSwapPanel :lineup="lineup" @update:lineup="(l) => $emit('update:lineup', index, l)" />
+          <LineupSwapPanel :lineup="lineup" @update:lineup="(l) => { localLineups[index] = l }" />
         </details>
       </div>
     </div>
@@ -75,15 +75,16 @@ const props = defineProps({
   },
 })
 
-defineEmits(['update:lineup'])
-
 const { saveLineup } = useLineup()
 
+// Local mutable copy so swap changes are reflected in card and saved correctly
+const localLineups = ref([])
 const savedStates = ref([])
 const savingStates = ref([])
 const saveErrors = ref([])
 
 watch(() => props.lineups, (newLineups) => {
+  localLineups.value = newLineups.map(l => ({ ...l, pairs: l.pairs ? l.pairs.map(p => ({ ...p })) : [] }))
   savedStates.value = new Array(newLineups.length).fill(false)
   savingStates.value = new Array(newLineups.length).fill(false)
   saveErrors.value = new Array(newLineups.length).fill('')

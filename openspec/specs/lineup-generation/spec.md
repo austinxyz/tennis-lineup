@@ -1,19 +1,27 @@
-## ADDED Requirements
+## Requirements
 
 ### Requirement: Generate lineup via API
-The system SHALL expose `POST /api/lineups/generate` to produce a valid lineup for a given team and strategy. The response SHALL be the saved Lineup object directly (no wrapper).
+The system SHALL expose `POST /api/lineups/generate` to produce up to 6 lineup candidates for a given team, strategy, and optional player constraints. The response SHALL be a `List<Lineup>` (1–6 items), best candidate first; only the first is persisted to team history.
 
 #### Scenario: Successful generation with preset balanced strategy
 - **WHEN** client posts `{ "teamId": "team-001", "strategyType": "preset", "preset": "balanced" }` and the team has ≥ 8 players
-- **THEN** system returns HTTP 200 with a Lineup object containing 4 pairs (D1–D4), `valid: true`, and `violationMessages: []`
+- **THEN** system returns HTTP 200 with a JSON array of 1–6 Lineup objects, each containing 4 pairs (D1–D4), `valid: true`, and `violationMessages: []`
 
 #### Scenario: Successful generation with custom natural language strategy
 - **WHEN** client posts `{ "teamId": "team-001", "strategyType": "custom", "naturalLanguage": "让前三线尽量强" }` and the team has ≥ 8 players
-- **THEN** system invokes AI service with the natural language as strategy context, returns HTTP 200 with a valid Lineup object
+- **THEN** system invokes AI service with the natural language as strategy context, returns HTTP 200 with a JSON array where the AI-selected lineup is first
+
+#### Scenario: Successful generation with position pin
+- **WHEN** client posts `{ "teamId": "t1", "strategyType": "preset", "preset": "balanced", "pinPlayers": { "p1": "D1" } }`
+- **THEN** every Lineup in the response has player "p1" in the D1 pair
 
 #### Scenario: AI service unavailable — fallback to heuristic
 - **WHEN** client requests generation but the Zhipu AI API call fails or times out (> 3s)
-- **THEN** system selects lineup using deterministic heuristic (balanced → min variance; aggressive → max D1+D2+D3 UTR), returns HTTP 200 with a valid Lineup, and includes `"aiUsed": false` in the response
+- **THEN** system selects lineups using deterministic heuristic, returns HTTP 200 with a valid Lineup array, and the first element includes `"aiUsed": false`
+
+#### Scenario: With includePlayers and excludePlayers constraints
+- **WHEN** client posts valid `includePlayers` and `excludePlayers` lists
+- **THEN** system filters the roster before enumeration and returns only lineups that satisfy those constraints
 
 #### Scenario: Insufficient players
 - **WHEN** client posts a generate request for a team with fewer than 8 players
@@ -59,14 +67,18 @@ The system SHALL validate all hard constraints and reject any lineup that violat
 ---
 
 ### Requirement: Lineup combination algorithm
-The system SHALL use a backtracking algorithm to enumerate all valid 4-pair combinations from the team's player roster, then assign positions D1–D4 in descending combined UTR order.
+The system SHALL use a backtracking algorithm to enumerate all valid 4-pair combinations from the team's player roster, then assign positions D1–D4 in descending combined UTR order. Before applying strategy-specific sorting, all candidates SHALL be primarily ranked by proximity to the 40.5 total UTR cap.
+
+#### Scenario: Primary sort: candidates closest to 40.5 ranked first
+- **WHEN** multiple valid candidates exist
+- **THEN** candidates are sorted by `40.5 - totalUtr` ascending (candidates closest to the 40.5 cap rank higher) before strategy-specific secondary sorting is applied
 
 #### Scenario: 8-player team produces combinations within 5 seconds
 - **WHEN** a team has exactly 8 eligible players
 - **THEN** the system generates all valid combinations and returns a result within 5 seconds
 
 #### Scenario: Position assignment follows UTR order
-- **WHEN** 4 pairs are selected, one combination is returned
+- **WHEN** 4 pairs are selected
 - **THEN** the pair with highest combined UTR is assigned D1, next D2, next D3, lowest D4
 
 ---
@@ -74,9 +86,9 @@ The system SHALL use a backtracking algorithm to enumerate all valid 4-pair comb
 ### Requirement: Strategy types
 The system SHALL support two strategy types: `preset` and `custom`.
 
-#### Scenario: Preset balanced strategy selects min-variance lineup
+#### Scenario: Preset balanced strategy ranks by per-line evenness toward 10.125
 - **WHEN** `strategyType = "preset"` and `preset = "balanced"` and AI is unavailable
-- **THEN** system selects the valid lineup with smallest variance across D1–D4 combined UTRs
+- **THEN** system ranks all valid candidates by the sum of `|pair.combinedUtr - 10.125|` across D1–D4 (ascending — lower deviation = better); 方案 1 has the smallest total deviation from 10.125 per pair
 
 #### Scenario: Preset aggressive strategy maximizes top-three lines
 - **WHEN** `strategyType = "preset"` and `preset = "aggressive"` and AI is unavailable
@@ -89,3 +101,91 @@ The system SHALL support two strategy types: `preset` and `custom`.
 #### Scenario: Custom strategy AI fallback
 - **WHEN** `strategyType = "custom"` and AI is unavailable
 - **THEN** system falls back to `balanced` heuristic and includes `"aiUsed": false` in response
+
+---
+
+### Requirement: Maximize total UTR toward 40.5 cap
+The lineup generation algorithm SHALL select 8 players from the eligible roster that maximize total UTR (sum of all 8 players' individual UTRs) subject to the constraint that total UTR ≤ 40.5. When the eligible roster has more than 8 players, the algorithm SHALL explore multiple 8-player subsets to find the highest-scoring valid lineups.
+
+#### Scenario: Roster larger than 8 — best 8 selected
+- **WHEN** the eligible roster has 10 players with UTRs summing to 45.0
+- **AND** the top 8 by UTR sum to 38.0 (≤ 40.5)
+- **THEN** generated lineups SHALL use those 8 players (totalUtr = 38.0), not a lower-UTR combination
+
+#### Scenario: Closest-to-40.5 lineup ranks first
+- **WHEN** multiple valid lineups are generated
+- **THEN** the lineup whose totalUtr is closest to (but not exceeding) 40.5 SHALL be ranked as plan 1
+
+---
+
+### Requirement: Prefer minimum female players in selection
+When selecting 8 players from a larger roster, the algorithm SHALL prefer subsets containing exactly 2 female players (the minimum required) unless user constraints force additional females.
+
+#### Scenario: Prefer 2-female subset over 3-female subset
+- **WHEN** a 2-female subset and a 3-female subset both satisfy all hard constraints
+- **AND** neither has materially higher totalUtr
+- **THEN** the 2-female subset SHALL be preferred
+
+#### Scenario: 3 or more females selected when forced by constraints
+- **WHEN** the user pins 3 female players to specific positions
+- **THEN** the algorithm SHALL include all 3 pinned females and still generate valid lineups
+
+---
+
+### Requirement: Pair-level same-position pin
+When two players are both pinned to the same position (e.g., both pinned to D4), the algorithm SHALL require that those two players form a pair at that position.
+
+#### Scenario: Two players pinned to same position form a pair
+- **WHEN** player A and player B are both pinned to D4
+- **THEN** only lineups where A and B are paired together at D4 SHALL be returned
+
+#### Scenario: More than two players pinned to same position is invalid
+- **WHEN** three players are all pinned to D4
+- **THEN** the system SHALL return a 400 error: "不能将超过2名球员固定到同一位置"
+
+---
+
+### Requirement: includePlayers constraint (must-include any position)
+The generate endpoint SHALL accept an `includePlayers` field (array of player IDs) that marks players as must-appear in every lineup without restricting their position.
+
+#### Scenario: Included player always appears in lineup
+- **WHEN** player X is in `includePlayers`
+- **THEN** every returned lineup SHALL contain player X in one of the 4 pairs
+
+#### Scenario: Pinned player implicitly included
+- **WHEN** player Y is in `pinPlayers` (mapped to D2)
+- **THEN** player Y SHALL automatically be treated as included (present in lineup at D2)
+
+---
+
+### Requirement: Position pin constraint on generation request
+The system SHALL accept a `pinPlayers` map in the generate lineup request that assigns specific players to specific positions (D1–D4). All returned lineup candidates MUST honor these assignments.
+
+#### Scenario: Single player pinned to D1
+- **WHEN** client posts `{ "teamId": "t1", "strategyType": "preset", "preset": "balanced", "pinPlayers": { "p1": "D1" } }`
+- **THEN** every lineup in the response has player "p1" appearing in the D1 pair
+
+#### Scenario: Multiple players pinned to different positions
+- **WHEN** client posts `pinPlayers: { "p1": "D1", "p3": "D3" }`
+- **THEN** every lineup in the response places "p1" in D1 and "p3" in D3
+
+#### Scenario: Pin conflicts with exclude list → 400
+- **WHEN** a player ID appears in both `pinPlayers` and `excludePlayers`
+- **THEN** system returns HTTP 400 with `{ "code": "VALIDATION_ERROR", "message": "同一球员不能同时被固定位置和排除" }`
+
+#### Scenario: No valid lineup satisfies position pin → 400
+- **WHEN** the pinned player's UTR is incompatible with the requested position (e.g., lowest-UTR player pinned to D1 violates ordering constraint)
+- **THEN** system returns HTTP 400 with `{ "code": "VALIDATION_ERROR", "message": "无法生成满足位置约束的排阵" }`
+
+#### Scenario: Invalid position value → 400
+- **WHEN** a `pinPlayers` value is not one of "D1", "D2", "D3", "D4"
+- **THEN** system returns HTTP 400 with `{ "code": "VALIDATION_ERROR", "message": "位置必须为 D1/D2/D3/D4" }`
+
+---
+
+### Requirement: gender and UTR fields in Pair model
+The `Pair` model SHALL expose `player1Gender` and `player2Gender` fields (values: "male" | "female") alongside the existing `player1Utr` and `player2Utr` fields.
+
+#### Scenario: Gender fields populated in response
+- **WHEN** a lineup is generated
+- **THEN** each pair in the response SHALL include `player1Gender` and `player2Gender` matching the corresponding player's gender

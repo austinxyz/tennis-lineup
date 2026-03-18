@@ -6,6 +6,12 @@
         <h2 class="text-2xl font-bold text-gray-900">{{ team.name }}</h2>
         <p class="text-gray-500 text-sm">创建于: {{ formatDate(team.createdAt) }}</p>
       </div>
+      <router-link
+        :to="`/teams/${route.params.id}/lineups`"
+        class="text-sm text-blue-600 hover:text-blue-800 underline"
+      >
+        已保存排阵
+      </router-link>
     </div>
 
     <!-- Loading State -->
