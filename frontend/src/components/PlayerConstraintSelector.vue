@@ -26,7 +26,7 @@
             <span
               class="text-xs font-bold px-1 rounded shrink-0"
               :class="player.gender === 'female' ? 'bg-pink-100 text-pink-600' : 'bg-blue-100 text-blue-600'"
-            >{{ player.gender === 'female' ? 'F' : 'M' }}</span>
+            >{{ player.gender === 'female' ? '女' : '男' }}</span>
             <span class="truncate">{{ player.name }}</span>
             <span class="text-xs text-gray-400 shrink-0">{{ player.utr }}</span>
             <span

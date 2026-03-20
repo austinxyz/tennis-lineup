@@ -40,16 +40,14 @@ describe('PlayerConstraintSelector', () => {
   })
 
   describe('性别徽章', () => {
-    it('female 球员显示 F 徽章', () => {
+    it('female 球员显示女徽章', () => {
       const wrapper = mount(PlayerConstraintSelector, { props: { players: samplePlayers } })
-      const text = wrapper.text()
-      expect(text).toContain('F')
+      expect(wrapper.text()).toContain('女')
     })
 
-    it('male 球员显示 M 徽章', () => {
+    it('male 球员显示男徽章', () => {
       const wrapper = mount(PlayerConstraintSelector, { props: { players: samplePlayers } })
-      const text = wrapper.text()
-      expect(text).toContain('M')
+      expect(wrapper.text()).toContain('男')
     })
   })
 

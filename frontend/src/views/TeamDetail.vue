@@ -88,7 +88,7 @@
                 暂无球员，点击上方按钮添加
               </td>
             </tr>
-            <tr v-for="player in players" :key="player.id">
+            <tr v-for="player in sortedPlayers" :key="player.id">
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="text-sm font-medium text-gray-900">{{ player.name }}</div>
               </td>
@@ -234,7 +234,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, onBeforeRouteLeave } from 'vue-router'
 import { useTeams } from '../composables/useTeams'
 import { usePlayers } from '../composables/usePlayers'
@@ -244,6 +244,14 @@ const teamId = route.params.id
 
 const { team, loading: teamsLoading, fetchTeamById } = useTeams()
 const { players, loading: playersLoading, fetchPlayers, addPlayer, updatePlayer, deletePlayer, bulkUpdateUtrs } = usePlayers(teamId)
+
+// Sorted: males first, then females, within each group by UTR descending
+const sortedPlayers = computed(() =>
+  [...players.value].sort((a, b) => {
+    if (a.gender !== b.gender) return a.gender === 'male' ? -1 : 1
+    return b.utr - a.utr
+  })
+)
 
 // Bulk edit state
 const bulkEditMode = ref(false)

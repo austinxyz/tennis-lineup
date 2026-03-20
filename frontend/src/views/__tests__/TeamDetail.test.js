@@ -178,9 +178,9 @@ describe('TeamDetail', () => {
     mockPlayers.value = samplePlayers
     const wrapper = mountDetail()
 
-    // Click edit button for first player
+    // After sorting males first: Bob (index 0), Alice (index 1)
     const editBtns = wrapper.findAll('button').filter(b => b.text() === '编辑')
-    await editBtns[0].trigger('click')
+    await editBtns[1].trigger('click') // Alice is second after sort
 
     // Modal should show with 编辑球员 title
     expect(wrapper.findAll('h3').some(h => h.text().includes('编辑球员'))).toBe(true)
@@ -195,9 +195,9 @@ describe('TeamDetail', () => {
     mockPlayers.value = samplePlayers
     const wrapper = mountDetail()
 
-    // Click edit for Alice
+    // After sorting males first: Bob (index 0), Alice (index 1)
     const editBtns = wrapper.findAll('button').filter(b => b.text() === '编辑')
-    await editBtns[0].trigger('click')
+    await editBtns[1].trigger('click') // Alice is second after sort
 
     // Change name
     await wrapper.find('#playerName').setValue('Alice Renamed')
@@ -230,7 +230,8 @@ describe('TeamDetail', () => {
 
     const wrapper = mountDetail()
     const deleteBtns = wrapper.findAll('button').filter(b => b.text().includes('删除'))
-    await deleteBtns[0].trigger('click')
+    // After sorting males first: Bob (index 0, p2), Alice (index 1, p1)
+    await deleteBtns[1].trigger('click')
 
     expect(mockDeletePlayer).toHaveBeenCalledWith('p1')
   })
@@ -359,9 +360,9 @@ describe('TeamDetail', () => {
     const bulkBtn = wrapper.findAll('button').find(b => b.text().includes('批量编辑 UTR'))
     await bulkBtn.trigger('click')
 
-    // Change Alice's UTR
-    const utrInputs = wrapper.findAll('input[type="number"]').filter(i => i.attributes('step') === '0.01')
-    await utrInputs[0].setValue(9.0)
+    // Change Alice's UTR (find by data-player-id to be sort-order independent)
+    const aliceInput = wrapper.find('input[data-player-id="p1"]')
+    await aliceInput.setValue(9.0)
 
     const saveBtn = wrapper.findAll('button').find(b => b.text() === '保存')
     await saveBtn.trigger('click')
