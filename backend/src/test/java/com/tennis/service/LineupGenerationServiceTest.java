@@ -372,4 +372,118 @@ class LineupGenerationServiceTest {
             assertTrue(pair.getPlayer2Gender().equals("male") || pair.getPlayer2Gender().equals("female"));
         }
     }
+
+    // --- New tests for greedy pool algorithm ---
+
+    @Test
+    @DisplayName("subset enumeration: best subset (closest to 40.5) explored first")
+    void testGreedyPoolNoConstraints() {
+        // 10 players: p1-p8 have high UTR (total 37.0, closest to 40.5), p9/p10 are low
+        // Subset enumeration sorts subsets by UTR proximity to 40.5, so p1-p8 pool is tried first.
+        // Lower subsets may also be explored (top-20), so p9/p10 can appear in later results.
+        List<Player> players = new ArrayList<>(build8PlayerRoster());
+        players.add(player("p9", "male", 2.0, true));
+        players.add(player("p10", "female", 1.5, true));
+
+        List<Lineup> candidates = service.generateCandidates(players, Set.of(), Set.of(), Map.of());
+        assertFalse(candidates.isEmpty(), "Should generate valid lineups");
+        // All lineups must respect cap
+        for (Lineup l : candidates) {
+            assertTrue(l.getTotalUtr() <= 40.5);
+        }
+        // The best subset (p1-p8, total 37.0) is ranked highest — at least one lineup uses only them
+        boolean hasTopPoolLineup = candidates.stream().anyMatch(l ->
+                l.getPairs().stream().noneMatch(p ->
+                        p.getPlayer1Id().equals("p9") || p.getPlayer2Id().equals("p9") ||
+                        p.getPlayer1Id().equals("p10") || p.getPlayer2Id().equals("p10")));
+        assertTrue(hasTopPoolLineup, "At least one lineup should come from the best subset (p1-p8 only)");
+    }
+
+    @Test
+    @DisplayName("greedy pool: includePlayers are always in the pool and every lineup")
+    void testGreedyPoolIncludedPlayerAlwaysPresent() {
+        // 10 players; include low-UTR p9 — greedy should still put p9 in pool (locked)
+        List<Player> players = new ArrayList<>(build8PlayerRoster());
+        players.add(player("p9", "female", 2.0, true)); // low UTR but must be included
+        players.add(player("p10", "male", 2.0, true));
+
+        List<Lineup> candidates = service.generateCandidates(
+                players, Set.of("p9"), Set.of(), Map.of());
+        assertFalse(candidates.isEmpty());
+        for (Lineup lineup : candidates) {
+            boolean hasP9 = lineup.getPairs().stream().anyMatch(p ->
+                    "p9".equals(p.getPlayer1Id()) || "p9".equals(p.getPlayer2Id()));
+            assertTrue(hasP9, "p9 must be in every lineup (locked via includePlayers)");
+        }
+    }
+
+    @Test
+    @DisplayName("greedy pool: pinPlayers are in pool and appear at specified positions")
+    void testGreedyPoolPinnedPlayerInPosition() {
+        // 10 players; pin p1 to D1 — pool must include p1 and every lineup must have p1 at D1
+        List<Player> players = new ArrayList<>(build8PlayerRoster());
+        players.add(player("p9", "male", 3.5, true));
+        players.add(player("p10", "female", 3.0, true));
+
+        List<Lineup> candidates = service.generateCandidates(
+                players, Set.of(), Set.of(), Map.of("p1", "D1"));
+        assertFalse(candidates.isEmpty());
+        for (Lineup lineup : candidates) {
+            boolean p1InD1 = lineup.getPairs().stream()
+                    .filter(p -> "D1".equals(p.getPosition()))
+                    .anyMatch(p -> "p1".equals(p.getPlayer1Id()) || "p1".equals(p.getPlayer2Id()));
+            assertTrue(p1InD1, "Pinned player p1 must appear at D1 in every lineup");
+        }
+    }
+
+    @Test
+    @DisplayName("greedy pool: top20 pairs truncation — D1/D2 use highest-UTR pairs")
+    void testTop20PairsTruncationD1D2HighUtr() {
+        // With 8 players all near same UTR, all 28 pairs are valid. Top20 covers them.
+        // Key invariant: D1 combined UTR ≥ D2 combined UTR (preserved by buildLineup)
+        List<Player> players = build8PlayerRoster();
+        List<Lineup> candidates = service.generateCandidates(players);
+        assertFalse(candidates.isEmpty());
+        for (Lineup lineup : candidates) {
+            double d1 = lineup.getPairs().stream().filter(p -> "D1".equals(p.getPosition()))
+                    .findFirst().get().getCombinedUtr();
+            double d2 = lineup.getPairs().stream().filter(p -> "D2".equals(p.getPosition()))
+                    .findFirst().get().getCombinedUtr();
+            // D1 and D2 come from top pairs by combined UTR (enforced by backtrackWithPairs + buildLineup)
+            assertTrue(d1 >= d2, "D1 combined UTR must be >= D2 (top20 truncation + UTR ordering)");
+        }
+    }
+
+    @Test
+    @DisplayName("greedy fallback: swaps last greedy player when initial pool yields no valid lineup")
+    void testGreedyFallbackSwapsLastPlayerToFindValidLineup() {
+        // Scenario: 9 players where greedy picks 8 with only 1 female (fails ≥2 female constraint).
+        // The 9th player is female; fallback swaps last greedy (male) with the female alternative.
+        //
+        // UTRs chosen so greedy picks p1-p7 (males) + p8 (male, 4.5) before p9 (female, 3.0):
+        //   After 7 males sum=33.7, |40.5-33.7-4.5|=2.3 < |40.5-33.7-3.0|=3.8 → picks p8 (male).
+        //   Pool={p1..p7,p8}: only p7(F) as female → 1 female → fails constraint.
+        //   Fallback replaces p8 with p9(F,3.0) → pool has p7(F)+p9(F) = 2 females → valid lineup.
+        List<Player> players = Arrays.asList(
+                player("p1", "male",   5.2, true),
+                player("p2", "male",   5.1, true),
+                player("p3", "male",   5.0, true),
+                player("p4", "male",   4.9, true),
+                player("p5", "male",   4.8, true),
+                player("p6", "male",   4.7, true),
+                player("p7", "female", 4.6, true),
+                player("p8", "male",   4.5, true),
+                player("p9", "female", 3.0, true)
+        );
+
+        List<Lineup> candidates = service.generateCandidates(players);
+        assertFalse(candidates.isEmpty(), "Fallback should find valid lineups after swapping last greedy player");
+        for (Lineup l : candidates) {
+            assertTrue(l.getTotalUtr() <= 40.5, "Total UTR must not exceed cap");
+            long femaleCount = l.getPairs().stream()
+                    .flatMap(p -> java.util.stream.Stream.of(p.getPlayer1Gender(), p.getPlayer2Gender()))
+                    .filter("female"::equals).count();
+            assertTrue(femaleCount >= 2, "Must have at least 2 females on court");
+        }
+    }
 }

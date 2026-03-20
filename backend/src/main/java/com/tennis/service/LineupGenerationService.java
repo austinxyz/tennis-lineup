@@ -29,9 +29,6 @@ public class LineupGenerationService {
         this.constraintService = constraintService;
     }
 
-    /**
-     * Generate all valid lineups using backtracking with partner UTR gap pruning.
-     */
     public List<Lineup> generateCandidates(List<Player> players) {
         return generateCandidates(players, Set.of(), Set.of(), Map.of());
     }
@@ -42,13 +39,22 @@ public class LineupGenerationService {
 
     /**
      * Generate valid lineups with include/exclude/pin constraints.
+     *
      * Algorithm:
      *   1. Validate constraints.
-     *   2. Enumerate all 8-player subsets from eligible roster, ordered by:
-     *      a. totalUtr ≤ 40.5 (cap-valid) first
-     *      b. Highest totalUtr first (closest to cap)
-     *   3. For each subset, run backtracking to find valid pair arrangements.
-     *   4. Post-filter by include and pair-level pin constraints.
+     *   2. Phase 1: Remove excludePlayers from eligible roster.
+     *   3. Phase 2: Enumerate 8-player subsets where locked players (include ∪ pin)
+     *      are always included. Sort subsets by totalUtr proximity to 40.5
+     *      (cap-valid first, then highest totalUtr).
+     *   4. Backtrack on top-20 subsets using pre-sorted pair candidates:
+     *      - No pin constraints: top-20 pairs for D1/D2 rounds, all pairs for D3/D4.
+     *      - With pin constraints: all pairs for every round (ensures pinned-pair
+     *        combinations aren't missed regardless of their combined UTR rank).
+     *   5. Extend to top-40 subsets if fewer than 6 results after pin filter.
+     *   6. Final filter by include and pin constraints.
+     *
+     * Locked players (include/pin) are present in every subset, so they are never
+     * excluded from consideration regardless of how many subsets are tried.
      */
     public List<Lineup> generateCandidates(List<Player> players, Set<String> include, Set<String> exclude,
                                             Map<String, String> pinPlayers) {
@@ -79,48 +85,41 @@ public class LineupGenerationService {
             }
         }
 
-        // Build effective include set (pins implicitly included)
+        // Locked players: include ∪ pin (always present in every subset)
         Set<String> effectiveInclude = new HashSet<>(include);
         effectiveInclude.addAll(pinPlayers.keySet());
 
         if (effectiveInclude.size() > 8) {
-            throw new IllegalArgumentException("必须上场球员超过8人");
+            throw new IllegalArgumentException("固定参赛球员超过8人");
         }
 
-        // Build eligible roster
-        List<Player> roster = players.stream()
+        // Phase 1: Build eligible roster (remove excluded players)
+        List<Player> eligible = players.stream()
                 .filter(p -> !exclude.contains(p.getId()))
                 .collect(Collectors.toList());
 
-        if (roster.size() < 8) {
+        if (eligible.size() < 8) {
             throw new IllegalArgumentException("排除球员后可用球员不足8人");
         }
 
-        // Collect raw valid lineups via backtracking
+        // Phase 2: Enumerate 8-player subsets with locked players always included.
+        // Subsets are sorted by totalUtr proximity to 40.5 (cap-valid first, then highest).
+        // Each subset is a unique 8-player combination — no dedup needed at this level.
+        List<List<Player>> subsets = enumerateSubsets(eligible, 8, effectiveInclude);
+
+        // Backtrack on top-20 subsets
         List<Lineup> rawCandidates = new ArrayList<>();
+        int firstEnd = Math.min(20, subsets.size());
+        for (int i = 0; i < firstEnd; i++) {
+            backtrackSubset(subsets.get(i), pinPlayers, rawCandidates);
+        }
 
-        if (roster.size() == 8) {
-            // Only one possible subset
-            backtrack(roster, new ArrayList<>(), new boolean[roster.size()], rawCandidates);
-        } else {
-            // Enumerate subsets sorted by UTR proximity to 40.5 cap (highest valid UTR first)
-            List<List<Player>> subsets = enumerateSubsets(roster, 8, effectiveInclude);
-
-            // First batch: top-20 subsets
-            int firstEnd = Math.min(20, subsets.size());
-            for (int i = 0; i < firstEnd; i++) {
-                List<Player> subset = subsets.get(i);
-                backtrack(subset, new ArrayList<>(), new boolean[subset.size()], rawCandidates);
-            }
-
-            // If filtered result < 6 and more subsets available, extend to top-40
-            if (subsets.size() > firstEnd
-                    && filterCandidates(rawCandidates, effectiveInclude, pinPlayers, playersByPin).size() < 6) {
-                int secondEnd = Math.min(40, subsets.size());
-                for (int i = firstEnd; i < secondEnd; i++) {
-                    List<Player> subset = subsets.get(i);
-                    backtrack(subset, new ArrayList<>(), new boolean[subset.size()], rawCandidates);
-                }
+        // Extend to top-40 if fewer than 6 results satisfy pin constraints
+        List<Lineup> filtered = filterCandidates(rawCandidates, effectiveInclude, pinPlayers, playersByPin);
+        if (subsets.size() > firstEnd && filtered.size() < 6) {
+            int secondEnd = Math.min(40, subsets.size());
+            for (int i = firstEnd; i < secondEnd; i++) {
+                backtrackSubset(subsets.get(i), pinPlayers, rawCandidates);
             }
         }
 
@@ -135,9 +134,135 @@ public class LineupGenerationService {
     }
 
     /**
-     * Check that all pin constraints are satisfied:
-     * - For positions with 2 pinned players: both must form a pair at that position.
-     * - For positions with 1 pinned player: that player must appear at that position.
+     * Run pair-level backtracking on a single 8-player subset and collect valid lineups.
+     *
+     * Pair candidates are sorted by combined UTR descending. For the first two pair slots
+     * (which become D1/D2 after UTR-based position assignment) only the top-20 pairs are
+     * considered — UNLESS pin constraints are present, in which case all pairs are used for
+     * every slot to avoid missing pinned-pair combinations that may rank below position 20.
+     */
+    private void backtrackSubset(List<Player> subset, Map<String, String> pinPlayers, List<Lineup> result) {
+        List<int[]> allPairs = generateValidPairs(subset);
+        // With pin constraints: use all pairs every round so pinned combinations are never missed.
+        // Without pin constraints: top-20 pairs for D1/D2 rounds (performance optimization).
+        List<int[]> top20Pairs = pinPlayers.isEmpty()
+                ? allPairs.subList(0, Math.min(20, allPairs.size()))
+                : allPairs;
+        backtrackWithPairs(subset, top20Pairs, allPairs, new ArrayList<>(), new boolean[subset.size()], result);
+    }
+
+    /**
+     * Enumerate all C(optional, remaining) subsets of eligible players where locked players
+     * (mustInclude) are always present. Subsets are sorted by:
+     *   1. Cap-valid (totalUtr ≤ 40.5) first.
+     *   2. Within same validity group: highest totalUtr first (closest to cap).
+     *
+     * Each returned subset is a unique 8-player combination.
+     */
+    private List<List<Player>> enumerateSubsets(List<Player> eligible, int size, Set<String> mustInclude) {
+        List<Player> required = eligible.stream()
+                .filter(p -> mustInclude.contains(p.getId()))
+                .collect(Collectors.toList());
+        List<Player> optional = eligible.stream()
+                .filter(p -> !mustInclude.contains(p.getId()))
+                .collect(Collectors.toList());
+
+        if (required.size() > size) {
+            return List.of();
+        }
+
+        int remaining = size - required.size();
+        List<List<Player>> subsets = new ArrayList<>();
+        generateCombinations(optional, remaining, 0, new ArrayList<>(), required, subsets);
+
+        subsets.sort((a, b) -> {
+            double utrA = totalUtr(a);
+            double utrB = totalUtr(b);
+            boolean validA = utrA <= UTR_CAP;
+            boolean validB = utrB <= UTR_CAP;
+            if (validA != validB) return validA ? -1 : 1;
+            return Double.compare(utrB, utrA);
+        });
+
+        return subsets;
+    }
+
+    private void generateCombinations(List<Player> optional, int remaining, int start,
+                                       List<Player> current, List<Player> required,
+                                       List<List<Player>> result) {
+        if (current.size() == remaining) {
+            List<Player> subset = new ArrayList<>(required);
+            subset.addAll(current);
+            result.add(subset);
+            return;
+        }
+        for (int i = start; i < optional.size(); i++) {
+            current.add(optional.get(i));
+            generateCombinations(optional, remaining, i + 1, current, required, result);
+            current.remove(current.size() - 1);
+        }
+    }
+
+    private double totalUtr(List<Player> subset) {
+        return subset.stream().mapToDouble(Player::getUtr).sum();
+    }
+
+    /**
+     * Generate all valid pairs from pool where |player1.utr - player2.utr| ≤ 3.5,
+     * sorted by combined UTR descending.
+     */
+    private List<int[]> generateValidPairs(List<Player> pool) {
+        List<int[]> pairs = new ArrayList<>();
+        for (int i = 0; i < pool.size(); i++) {
+            for (int j = i + 1; j < pool.size(); j++) {
+                if (Math.abs(pool.get(i).getUtr() - pool.get(j).getUtr()) <= 3.5) {
+                    pairs.add(new int[]{i, j});
+                }
+            }
+        }
+        pairs.sort((a, b) -> Double.compare(
+                pool.get(b[0]).getUtr() + pool.get(b[1]).getUtr(),
+                pool.get(a[0]).getUtr() + pool.get(a[1]).getUtr()
+        ));
+        return pairs;
+    }
+
+    /**
+     * Backtrack over pre-sorted pair candidates to assemble 4 non-overlapping pairs.
+     *
+     * Uses top20Pairs for the first 2 pair slots (which become D1/D2 after UTR-based
+     * position assignment) and allPairs for the remaining slots (D3/D4).
+     */
+    private void backtrackWithPairs(List<Player> pool, List<int[]> top20Pairs, List<int[]> allPairs,
+                                    List<int[]> currentPairs, boolean[] used, List<Lineup> result) {
+        int pairCount = currentPairs.size();
+        if (pairCount == 4) {
+            Lineup lineup = buildLineup(pool, currentPairs);
+            ConstraintService.ValidationResult validation =
+                    constraintService.validateLineup(lineup, pool);
+            if (validation.isValid()) {
+                result.add(lineup);
+            }
+            return;
+        }
+
+        List<int[]> candidates = (pairCount < 2) ? top20Pairs : allPairs;
+
+        for (int[] pair : candidates) {
+            int i = pair[0], j = pair[1];
+            if (used[i] || used[j]) continue;
+            used[i] = true;
+            used[j] = true;
+            currentPairs.add(pair);
+            backtrackWithPairs(pool, top20Pairs, allPairs, currentPairs, used, result);
+            currentPairs.remove(currentPairs.size() - 1);
+            used[i] = false;
+            used[j] = false;
+        }
+    }
+
+    /**
+     * Check that all pin constraints are satisfied.
      */
     private boolean satisfiesPinConstraints(Lineup lineup, Map<String, String> pinPlayers,
                                             Map<String, List<String>> playersByPin) {
@@ -146,7 +271,6 @@ public class LineupGenerationService {
             List<String> pinnedIds = entry.getValue();
 
             if (pinnedIds.size() == 2) {
-                // Both players must form the pair at this position
                 String id1 = pinnedIds.get(0);
                 String id2 = pinnedIds.get(1);
                 boolean found = lineup.getPairs().stream()
@@ -156,7 +280,6 @@ public class LineupGenerationService {
                                 (id2.equals(pair.getPlayer1Id()) && id1.equals(pair.getPlayer2Id())));
                 if (!found) return false;
             } else {
-                // Single pin: player must appear at that position
                 String playerId = pinnedIds.get(0);
                 boolean found = lineup.getPairs().stream()
                         .filter(pair -> position.equals(pair.getPosition()))
@@ -194,105 +317,6 @@ public class LineupGenerationService {
         }
 
         return result;
-    }
-
-    /**
-     * Enumerate all C(n, 8) subsets of `roster`, ordered by:
-     * 1. Subsets with totalUtr ≤ 40.5 first (cap satisfied)
-     * 2. Among valid subsets: those with exactly 2 females first
-     * 3. Within same female-count group: highest totalUtr first
-     *
-     * Required players (mustInclude) are always in every subset.
-     */
-    private List<List<Player>> enumerateSubsets(List<Player> roster, int size, Set<String> mustInclude) {
-        // Separate must-include players from optional players
-        List<Player> required = roster.stream()
-                .filter(p -> mustInclude.contains(p.getId()))
-                .collect(Collectors.toList());
-        List<Player> optional = roster.stream()
-                .filter(p -> !mustInclude.contains(p.getId()))
-                .collect(Collectors.toList());
-
-        if (required.size() > size) {
-            return List.of(); // impossible
-        }
-
-        int remaining = size - required.size();
-
-        // Generate all combinations of `remaining` optional players
-        List<List<Player>> subsets = new ArrayList<>();
-        generateCombinations(optional, remaining, 0, new ArrayList<>(), required, subsets);
-
-        // Sort: cap-valid (≤ 40.5) first, then highest totalUtr first within each group
-        subsets.sort((a, b) -> {
-            double utrA = totalUtr(a);
-            double utrB = totalUtr(b);
-            boolean validA = utrA <= UTR_CAP;
-            boolean validB = utrB <= UTR_CAP;
-            if (validA != validB) return validA ? -1 : 1;
-            // Both in same validity group: higher totalUtr first (closest to cap)
-            return Double.compare(utrB, utrA);
-        });
-
-        return subsets;
-    }
-
-    private void generateCombinations(List<Player> optional, int remaining, int start,
-                                       List<Player> current, List<Player> required,
-                                       List<List<Player>> result) {
-        if (current.size() == remaining) {
-            List<Player> subset = new ArrayList<>(required);
-            subset.addAll(current);
-            result.add(subset);
-            return;
-        }
-        for (int i = start; i < optional.size(); i++) {
-            current.add(optional.get(i));
-            generateCombinations(optional, remaining, i + 1, current, required, result);
-            current.remove(current.size() - 1);
-        }
-    }
-
-    private double totalUtr(List<Player> subset) {
-        return subset.stream().mapToDouble(Player::getUtr).sum();
-    }
-
-    private void backtrack(List<Player> roster, List<int[]> currentPairs,
-                           boolean[] used, List<Lineup> result) {
-        if (currentPairs.size() == 4) {
-            Lineup lineup = buildLineup(roster, currentPairs);
-            ConstraintService.ValidationResult validation =
-                    constraintService.validateLineup(lineup, roster);
-            if (validation.isValid()) {
-                result.add(lineup);
-            }
-            return;
-        }
-
-        // Find the first available player to anchor the next pair
-        int first = -1;
-        for (int i = 0; i < roster.size(); i++) {
-            if (!used[i]) { first = i; break; }
-        }
-        if (first == -1) return;
-
-        used[first] = true;
-        for (int second = first + 1; second < roster.size(); second++) {
-            if (used[second]) continue;
-
-            Player p1 = roster.get(first);
-            Player p2 = roster.get(second);
-
-            // Prune: partner UTR gap > 3.5
-            if (Math.abs(p1.getUtr() - p2.getUtr()) > 3.5) continue;
-
-            used[second] = true;
-            currentPairs.add(new int[]{first, second});
-            backtrack(roster, currentPairs, used, result);
-            currentPairs.remove(currentPairs.size() - 1);
-            used[second] = false;
-        }
-        used[first] = false;
     }
 
     /**

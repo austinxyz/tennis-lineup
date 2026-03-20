@@ -67,19 +67,39 @@ The system SHALL validate all hard constraints and reject any lineup that violat
 ---
 
 ### Requirement: Lineup combination algorithm
-The system SHALL use a backtracking algorithm to enumerate all valid 4-pair combinations from the team's player roster, then assign positions D1–D4 in descending combined UTR order. Before applying strategy-specific sorting, all candidates SHALL be primarily ranked by proximity to the 40.5 total UTR cap.
+The system SHALL use a two-level algorithm to generate lineup candidates:
+
+**Level 1 — 8-player subset enumeration:** All C(n, 8) subsets of the eligible roster are enumerated. Locked players (includePlayers ∪ pinPlayers keys) are always present in every subset. Subsets are sorted by totalUtr proximity to the 40.5 cap: cap-valid subsets (totalUtr ≤ 40.5) first, then by highest totalUtr descending. The top-20 subsets are processed first; if fewer than 6 results satisfy pin constraints after the top-20, the algorithm extends to top-40 subsets.
+
+**Level 2 — Pair-level backtracking within each subset:** All valid pairs (partner UTR gap ≤ 3.5) are generated and sorted by combined UTR descending. Without pin constraints, only the top-20 pairs are considered for the first two pair slots (which become D1/D2 after UTR-based position assignment); all pairs are used for the remaining slots. With pin constraints, all pairs are used for every slot to ensure pinned-pair combinations are never missed. Positions D1–D4 are assigned in descending combined UTR order after all 4 pairs are selected.
 
 #### Scenario: Primary sort: candidates closest to 40.5 ranked first
 - **WHEN** multiple valid candidates exist
-- **THEN** candidates are sorted by `40.5 - totalUtr` ascending (candidates closest to the 40.5 cap rank higher) before strategy-specific secondary sorting is applied
+- **THEN** candidates SHALL be sorted by `40.5 - totalUtr` ascending (candidates closest to the 40.5 cap rank higher) before strategy-specific secondary sorting is applied
 
 #### Scenario: 8-player team produces combinations within 5 seconds
 - **WHEN** a team has exactly 8 eligible players
-- **THEN** the system generates all valid combinations and returns a result within 5 seconds
+- **THEN** the system SHALL generate all valid combinations and return a result within 5 seconds
 
 #### Scenario: Position assignment follows UTR order
 - **WHEN** 4 pairs are selected
-- **THEN** the pair with highest combined UTR is assigned D1, next D2, next D3, lowest D4
+- **THEN** the pair with highest combined UTR SHALL be assigned D1, next D2, next D3, lowest D4
+
+#### Scenario: Locked players always present in every subset
+- **WHEN** `includePlayers` and/or `pinPlayers` are provided
+- **THEN** all locked players (includePlayers ∪ pinPlayers keys) SHALL appear in every enumerated subset and therefore in every returned lineup candidate
+
+#### Scenario: Top-20 subsets processed first, extends to top-40 on pin constraint
+- **WHEN** pin constraints are active and fewer than 6 results are found from the top-20 subsets
+- **THEN** the algorithm SHALL extend processing to up to top-40 subsets before returning results
+
+#### Scenario: Top-20 pair truncation for D1/D2 (no pin)
+- **WHEN** no pin constraints are specified
+- **THEN** only the top-20 pairs by combined UTR SHALL be considered as candidates for the first two pair slots (D1/D2), while all valid pairs are used for D3/D4 slots
+
+#### Scenario: All pairs used when pin constraints are present
+- **WHEN** pin constraints are specified
+- **THEN** all valid pairs SHALL be considered for every slot so that pinned-pair combinations are never excluded regardless of their combined UTR rank
 
 ---
 
@@ -105,30 +125,21 @@ The system SHALL support two strategy types: `preset` and `custom`.
 ---
 
 ### Requirement: Maximize total UTR toward 40.5 cap
-The lineup generation algorithm SHALL select 8 players from the eligible roster that maximize total UTR (sum of all 8 players' individual UTRs) subject to the constraint that total UTR ≤ 40.5. When the eligible roster has more than 8 players, the algorithm SHALL explore multiple 8-player subsets to find the highest-scoring valid lineups.
+The lineup generation algorithm SHALL prioritize 8-player subsets whose totalUtr is closest to (but not exceeding) 40.5. Subsets are sorted with cap-valid subsets (totalUtr ≤ 40.5) first and, within that group, by highest totalUtr descending. This ensures the highest-scoring valid subset is explored first.
 
-#### Scenario: Roster larger than 8 — best 8 selected
-- **WHEN** the eligible roster has 10 players with UTRs summing to 45.0
-- **AND** the top 8 by UTR sum to 38.0 (≤ 40.5)
-- **THEN** generated lineups SHALL use those 8 players (totalUtr = 38.0), not a lower-UTR combination
+#### Scenario: Cap-valid subsets ranked before over-cap subsets
+- **WHEN** some 8-player subsets have totalUtr ≤ 40.5 and others exceed 40.5
+- **THEN** all cap-valid subsets SHALL be ranked ahead of over-cap subsets in exploration order
+
+#### Scenario: Closest-to-40.5 subset explored first
+- **WHEN** multiple cap-valid subsets exist
+- **THEN** the subset with the highest totalUtr (closest to 40.5) SHALL be explored first, so its lineups appear as the top candidates
 
 #### Scenario: Closest-to-40.5 lineup ranks first
 - **WHEN** multiple valid lineups are generated
 - **THEN** the lineup whose totalUtr is closest to (but not exceeding) 40.5 SHALL be ranked as plan 1
 
 ---
-
-### Requirement: Prefer minimum female players in selection
-When selecting 8 players from a larger roster, the algorithm SHALL prefer subsets containing exactly 2 female players (the minimum required) unless user constraints force additional females.
-
-#### Scenario: Prefer 2-female subset over 3-female subset
-- **WHEN** a 2-female subset and a 3-female subset both satisfy all hard constraints
-- **AND** neither has materially higher totalUtr
-- **THEN** the 2-female subset SHALL be preferred
-
-#### Scenario: 3 or more females selected when forced by constraints
-- **WHEN** the user pins 3 female players to specific positions
-- **THEN** the algorithm SHALL include all 3 pinned females and still generate valid lineups
 
 ---
 
