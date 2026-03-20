@@ -222,18 +222,25 @@ public class LineupService {
                 : Map.of();
 
         for (Lineup lineup : lineups) {
+            double lineupTotalUtr = 0;
             for (Pair pair : lineup.getPairs()) {
                 Player p1 = playerMap.get(pair.getPlayer1Id());
                 Player p2 = playerMap.get(pair.getPlayer2Id());
                 if (p1 != null) {
-                    if (pair.getPlayer1Utr() == null) pair.setPlayer1Utr(p1.getUtr());
+                    pair.setPlayer1Utr(p1.getUtr()); // always reflect current UTR
                     if (pair.getPlayer1Gender() == null) pair.setPlayer1Gender(p1.getGender());
                 }
                 if (p2 != null) {
-                    if (pair.getPlayer2Utr() == null) pair.setPlayer2Utr(p2.getUtr());
+                    pair.setPlayer2Utr(p2.getUtr()); // always reflect current UTR
                     if (pair.getPlayer2Gender() == null) pair.setPlayer2Gender(p2.getGender());
                 }
+                // Recalculate combinedUtr from current values
+                double utr1 = pair.getPlayer1Utr() != null ? pair.getPlayer1Utr() : 0;
+                double utr2 = pair.getPlayer2Utr() != null ? pair.getPlayer2Utr() : 0;
+                pair.setCombinedUtr(utr1 + utr2);
+                lineupTotalUtr += utr1 + utr2;
             }
+            lineup.setTotalUtr(lineupTotalUtr);
         }
 
         // Re-validate each lineup against current player UTRs
