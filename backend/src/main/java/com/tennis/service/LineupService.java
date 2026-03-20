@@ -27,14 +27,17 @@ public class LineupService {
     private final JsonRepository jsonRepository;
     private final LineupGenerationService generationService;
     private final ZhipuAiService aiService;
+    private final ConstraintService constraintService;
 
     @Autowired
     public LineupService(JsonRepository jsonRepository,
                          LineupGenerationService generationService,
-                         ZhipuAiService aiService) {
+                         ZhipuAiService aiService,
+                         ConstraintService constraintService) {
         this.jsonRepository = jsonRepository;
         this.generationService = generationService;
         this.aiService = aiService;
+        this.constraintService = constraintService;
     }
 
     public List<Lineup> generateMultiple(String teamId, String strategyType, String preset,
@@ -231,6 +234,14 @@ public class LineupService {
                     if (pair.getPlayer2Gender() == null) pair.setPlayer2Gender(p2.getGender());
                 }
             }
+        }
+
+        // Re-validate each lineup against current player UTRs
+        List<Player> currentPlayers = team.getPlayers() != null ? team.getPlayers() : List.of();
+        for (Lineup lineup : lineups) {
+            ConstraintService.ValidationResult result = constraintService.validateLineup(lineup, currentPlayers);
+            lineup.setCurrentValid(result.isValid());
+            lineup.setCurrentViolations(result.getViolations());
         }
 
         return lineups.stream()

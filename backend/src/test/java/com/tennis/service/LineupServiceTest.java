@@ -24,6 +24,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -36,6 +37,8 @@ class LineupServiceTest {
     private LineupGenerationService generationService;
     @Mock
     private ZhipuAiService aiService;
+    @Mock
+    private ConstraintService constraintService;
 
     @InjectMocks
     private LineupService lineupService;
@@ -53,6 +56,10 @@ class LineupServiceTest {
 
         teamData = new TeamData();
         teamData.setTeams(new ArrayList<>(List.of(team)));
+
+        // Default: validateLineup returns valid with no violations
+        lenient().when(constraintService.validateLineup(any(), any()))
+                .thenReturn(new ConstraintService.ValidationResult(true, List.of()));
     }
 
     private List<Player> buildPlayers(int count) {
@@ -427,5 +434,59 @@ class LineupServiceTest {
         when(jsonRepository.readData()).thenReturn(teamData);
 
         assertThrows(NotFoundException.class, () -> lineupService.deleteLineup("nonexistent"));
+    }
+
+    // ======================== UTR re-validation tests ========================
+
+    @Test
+    @DisplayName("getLineupsByTeam sets currentValid=true when lineup passes re-validation")
+    void testGetLineupsByTeamSetsCurrentValidTrue() {
+        Lineup lineup = buildLineup("lineup-valid");
+        lineup.setCreatedAt(Instant.now());
+        team.setLineups(new ArrayList<>(List.of(lineup)));
+        when(jsonRepository.readData()).thenReturn(teamData);
+        when(constraintService.validateLineup(any(), any()))
+                .thenReturn(new ConstraintService.ValidationResult(true, List.of()));
+
+        List<Lineup> result = lineupService.getLineupsByTeam("team-1");
+
+        assertEquals(1, result.size());
+        assertTrue(result.get(0).isCurrentValid());
+        assertTrue(result.get(0).getCurrentViolations().isEmpty());
+    }
+
+    @Test
+    @DisplayName("getLineupsByTeam sets currentValid=false with violations when UTR changed")
+    void testGetLineupsByTeamSetsCurrentValidFalseOnViolation() {
+        Lineup lineup = buildLineup("lineup-invalid");
+        lineup.setCreatedAt(Instant.now());
+        team.setLineups(new ArrayList<>(List.of(lineup)));
+        when(jsonRepository.readData()).thenReturn(teamData);
+
+        List<String> violations = List.of("总UTR超过40.5: 41.0", "搭档UTR差超过3.5: D1");
+        when(constraintService.validateLineup(any(), any()))
+                .thenReturn(new ConstraintService.ValidationResult(false, violations));
+
+        List<Lineup> result = lineupService.getLineupsByTeam("team-1");
+
+        assertEquals(1, result.size());
+        assertFalse(result.get(0).isCurrentValid());
+        assertEquals(2, result.get(0).getCurrentViolations().size());
+        assertTrue(result.get(0).getCurrentViolations().contains("总UTR超过40.5: 41.0"));
+    }
+
+    @Test
+    @DisplayName("getLineupsByTeam re-validates all lineups with current player list")
+    void testGetLineupsByTeamReValidatesAllLineups() {
+        Lineup l1 = buildLineup("lineup-1");
+        l1.setCreatedAt(Instant.parse("2026-01-01T00:00:00Z"));
+        Lineup l2 = buildLineup("lineup-2");
+        l2.setCreatedAt(Instant.parse("2026-02-01T00:00:00Z"));
+        team.setLineups(new ArrayList<>(List.of(l1, l2)));
+        when(jsonRepository.readData()).thenReturn(teamData);
+
+        lineupService.getLineupsByTeam("team-1");
+
+        verify(constraintService, times(2)).validateLineup(any(), eq(team.getPlayers()));
     }
 }

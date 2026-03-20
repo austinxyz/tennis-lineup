@@ -12,6 +12,7 @@ spring:
 
 storage:
   data-file: ./data/tennis-data.json
+  config-file: ./data/tennis-config.json
 
 zhipu:
   api:

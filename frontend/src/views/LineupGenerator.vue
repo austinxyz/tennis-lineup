@@ -22,6 +22,29 @@
             </select>
           </div>
 
+          <!-- Link to lineup history -->
+          <div v-if="selectedTeamId" class="text-sm">
+            <router-link
+              :to="`/teams/${selectedTeamId}/lineups`"
+              class="text-green-600 hover:text-green-800 underline"
+            >
+              查看已保存排阵 →
+            </router-link>
+          </div>
+
+          <!-- Constraint presets -->
+          <div v-if="selectedTeamId">
+            <label class="block text-sm font-medium text-gray-700 mb-2">约束预设</label>
+            <ConstraintPresetSelector
+              :presets="presets"
+              :players="teamPlayers"
+              :current-constraints="constraints"
+              @load-preset="onLoadPreset"
+              @save-preset="onSavePreset"
+              @delete-preset="onDeletePreset"
+            />
+          </div>
+
           <!-- Strategy selector -->
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">选择策略</label>
@@ -32,6 +55,7 @@
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">球员约束</label>
             <PlayerConstraintSelector
+              ref="playerConstraintRef"
               :players="teamPlayers"
               @update:constraints="onConstraintsChange"
             />
@@ -68,18 +92,22 @@ import { ref } from 'vue'
 import { useTeams } from '../composables/useTeams'
 import { useLineup } from '../composables/useLineup'
 import { usePlayers } from '../composables/usePlayers'
+import { useConstraintPresets } from '../composables/useConstraintPresets'
 import StrategySelector from '../components/StrategySelector.vue'
 import PlayerConstraintSelector from '../components/PlayerConstraintSelector.vue'
+import ConstraintPresetSelector from '../components/ConstraintPresetSelector.vue'
 import LineupResultGrid from '../components/LineupResultGrid.vue'
 
 const { teams, fetchTeams } = useTeams()
 const { lineups, loading, generateLineup } = useLineup()
+const { presets, fetchPresets, savePreset, deletePreset } = useConstraintPresets()
 
 const selectedTeamId = ref('')
 const strategy = ref({ strategyType: 'preset', preset: 'balanced', naturalLanguage: null })
 const constraints = ref({ pinPlayers: {}, includePlayers: [], excludePlayers: [] })
 const errorMessage = ref('')
 const teamPlayers = ref([])
+const playerConstraintRef = ref(null)
 
 fetchTeams()
 
@@ -99,8 +127,42 @@ async function onTeamChange() {
     const { players, fetchPlayers } = usePlayers(selectedTeamId.value)
     await fetchPlayers()
     teamPlayers.value = players.value
+    await fetchPresets(selectedTeamId.value)
   } catch {
-    // non-critical — constraint selector shows empty state
+    // non-critical — selectors show empty state
+  }
+}
+
+function onLoadPreset(presetConstraints) {
+  // Convert preset format to states object for PlayerConstraintSelector
+  const newStates = {}
+  for (const id of presetConstraints.excludePlayers) {
+    newStates[id] = 'exclude'
+  }
+  for (const id of presetConstraints.includePlayers) {
+    if (!newStates[id]) newStates[id] = 'include'
+  }
+  for (const [id, pos] of Object.entries(presetConstraints.pinPlayers)) {
+    newStates[id] = pos
+  }
+  if (playerConstraintRef.value) {
+    playerConstraintRef.value.loadStates(newStates)
+  }
+}
+
+async function onSavePreset(name) {
+  try {
+    await savePreset(selectedTeamId.value, name, constraints.value)
+  } catch (err) {
+    errorMessage.value = err.message || '保存预设失败'
+  }
+}
+
+async function onDeletePreset(presetId) {
+  try {
+    await deletePreset(selectedTeamId.value, presetId)
+  } catch (err) {
+    errorMessage.value = err.message || '删除预设失败'
   }
 }
 

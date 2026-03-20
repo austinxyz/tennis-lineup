@@ -14,6 +14,28 @@
       <div v-for="lineup in lineups" :key="lineup.id" class="relative">
         <LineupCard :lineup="lineup" :show-player-utr="true" />
 
+        <!-- Validity badge -->
+        <div class="mt-1 px-1">
+          <span
+            v-if="lineup.currentValid !== false"
+            class="inline-block px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-700"
+          >
+            合法
+          </span>
+          <span
+            v-else
+            class="inline-block px-2 py-0.5 text-xs font-medium rounded-full bg-red-100 text-red-600"
+          >
+            已失效
+          </span>
+          <ul
+            v-if="lineup.currentValid === false && lineup.currentViolations && lineup.currentViolations.length"
+            class="mt-1 text-xs text-red-600 list-disc list-inside space-y-0.5"
+          >
+            <li v-for="(v, i) in lineup.currentViolations" :key="i">{{ v }}</li>
+          </ul>
+        </div>
+
         <div class="mt-2 flex items-center justify-between px-1">
           <span class="text-xs text-gray-400">{{ formatDate(lineup.createdAt) }}</span>
           <button

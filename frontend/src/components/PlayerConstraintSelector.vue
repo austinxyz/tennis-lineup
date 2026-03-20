@@ -136,4 +136,12 @@ function selectClass(playerId) {
   if (s === 'exclude') return 'border-red-300 text-red-600 bg-red-50'
   return 'border-gray-300 text-gray-500 bg-white'
 }
+
+// Allow parent to load preset states
+function loadStates(newStates) {
+  states.value = { ...newStates }
+  emitConstraints()
+}
+
+defineExpose({ loadStates })
 </script>

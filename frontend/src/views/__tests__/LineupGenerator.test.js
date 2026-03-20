@@ -38,9 +38,26 @@ vi.mock('../../composables/usePlayers', () => ({
   }),
 }))
 
+const mockFetchPresets = vi.fn().mockResolvedValue(undefined)
+const mockSavePreset = vi.fn().mockResolvedValue({})
+const mockDeletePreset = vi.fn().mockResolvedValue(undefined)
+const mockPresets = ref([])
+
+vi.mock('../../composables/useConstraintPresets', () => ({
+  useConstraintPresets: () => ({
+    presets: mockPresets,
+    loading: ref(false),
+    error: ref(null),
+    fetchPresets: mockFetchPresets,
+    savePreset: mockSavePreset,
+    deletePreset: mockDeletePreset,
+  }),
+}))
+
 const stubs = {
   StrategySelector: true,
   PlayerConstraintSelector: true,
+  ConstraintPresetSelector: true,
   LineupResultGrid: true,
 }
 
@@ -48,8 +65,10 @@ beforeEach(() => {
   mockLineups.value = []
   mockLoading.value = false
   mockPlayers.value = []
+  mockPresets.value = []
   mockGenerateLineup.mockReset()
   mockFetchPlayers.mockReset().mockResolvedValue(undefined)
+  mockFetchPresets.mockReset().mockResolvedValue(undefined)
   vi.spyOn(console, 'error').mockImplementation(() => {})
 })
 

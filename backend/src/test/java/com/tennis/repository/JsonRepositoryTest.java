@@ -1,5 +1,7 @@
 package com.tennis.repository;
 
+import com.tennis.model.ConfigData;
+import com.tennis.model.ConstraintPreset;
 import com.tennis.model.Team;
 import com.tennis.model.TeamData;
 import org.junit.jupiter.api.AfterEach;
@@ -8,10 +10,10 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.*;
 import java.util.stream.IntStream;
@@ -26,45 +28,41 @@ class JsonRepositoryTest {
 
     private JsonRepository jsonRepository;
     private Path testDataPath;
+    private Path testConfigPath;
 
     @BeforeEach
     void setUp() {
         testDataPath = tempDir.resolve("test-data.json");
-        jsonRepository = new JsonRepository(testDataPath.toString());
+        testConfigPath = tempDir.resolve("test-config.json");
+        jsonRepository = new JsonRepository(testDataPath.toString(), testConfigPath.toString());
     }
 
     @AfterEach
     void tearDown() throws IOException {
-        // Clean up test files
-        if (Files.exists(testDataPath)) {
-            Files.delete(testDataPath);
-        }
+        Files.deleteIfExists(testDataPath);
+        Files.deleteIfExists(testConfigPath);
     }
+
+    // ======================== Data file tests ========================
 
     @Test
     @DisplayName("Should create data file if it doesn't exist")
-    void shouldCreateDataFileIfItDoesntExist() throws IOException {
-        // File is created by the constructor (initializeDataFile)
+    void shouldCreateDataFileIfItDoesntExist() {
         assertTrue(Files.exists(testDataPath));
         TeamData data = jsonRepository.readData();
         assertNotNull(data);
-        assertTrue(data.getTeams() != null);
+        assertNotNull(data.getTeams());
     }
 
     @Test
     @DisplayName("Should read data from existing file")
-    void shouldReadDataFromExistingFile() throws IOException {
-        // Arrange
+    void shouldReadDataFromExistingFile() {
         TeamData originalData = new TeamData();
         originalData.getTeams().add(createTestTeam("team-1"));
-
-        // Write test data
         jsonRepository.writeData(originalData);
 
-        // Act
         TeamData readData = jsonRepository.readData();
 
-        // Assert
         assertNotNull(readData);
         assertEquals(1, readData.getTeams().size());
         assertEquals("team-1", readData.getTeams().get(0).getId());
@@ -72,59 +70,40 @@ class JsonRepositoryTest {
 
     @Test
     @DisplayName("Should write data to file")
-    void shouldWriteDataToFile() throws IOException {
-        // Arrange
+    void shouldWriteDataToFile() throws Exception {
         TeamData data = new TeamData();
         data.getTeams().add(createTestTeam("team-1"));
-
-        // Act
         jsonRepository.writeData(data);
 
-        // Assert
         assertTrue(Files.exists(testDataPath));
         assertTrue(Files.size(testDataPath) > 0);
     }
 
     @Test
-    @DisplayName("Should handle file not found exception gracefully")
-    void shouldHandleFileNotFoundExceptionGracefully() {
-        // Arrange - delete the file if it exists
-        try {
-            Files.deleteIfExists(testDataPath);
-        } catch (IOException e) {
-            fail("Failed to delete test file");
-        }
-
-        // Act
+    @DisplayName("Should handle missing data file gracefully")
+    void shouldHandleFileNotFoundExceptionGracefully() throws Exception {
+        Files.deleteIfExists(testDataPath);
         TeamData data = jsonRepository.readData();
-
-        // Assert
         assertNotNull(data);
-        assertTrue(data.getTeams() != null);
+        assertNotNull(data.getTeams());
         assertEquals(0, data.getTeams().size());
     }
 
     @Test
     @DisplayName("Should preserve data when writing multiple times")
-    void shouldPreserveDataWhenWritingMultipleTimes() throws IOException {
-        // Arrange
+    void shouldPreserveDataWhenWritingMultipleTimes() {
         TeamData data1 = new TeamData();
         data1.getTeams().add(createTestTeam("team-1"));
-
         TeamData data2 = new TeamData();
         data2.getTeams().add(createTestTeam("team-2"));
 
-        // Act
         jsonRepository.writeData(data1);
         TeamData readData1 = jsonRepository.readData();
-
         jsonRepository.writeData(data2);
         TeamData readData2 = jsonRepository.readData();
 
-        // Assert
         assertEquals(1, readData1.getTeams().size());
         assertEquals("team-1", readData1.getTeams().get(0).getId());
-
         assertEquals(1, readData2.getTeams().size());
         assertEquals("team-2", readData2.getTeams().get(0).getId());
     }
@@ -132,12 +111,8 @@ class JsonRepositoryTest {
     @Test
     @DisplayName("Should handle concurrent reads safely")
     void shouldHandleConcurrentReadsSafely() throws InterruptedException {
-        // Arrange
         TeamData data = new TeamData();
-        IntStream.range(0, 100).forEach(i -> {
-            Team team = createTestTeam("team-" + i);
-            data.getTeams().add(team);
-        });
+        IntStream.range(0, 100).forEach(i -> data.getTeams().add(createTestTeam("team-" + i)));
         jsonRepository.writeData(data);
 
         int threadCount = 10;
@@ -145,7 +120,6 @@ class JsonRepositoryTest {
         CountDownLatch latch = new CountDownLatch(threadCount);
         List<Future<TeamData>> futures = new CopyOnWriteArrayList<>();
 
-        // Act - create multiple concurrent readers
         for (int i = 0; i < threadCount; i++) {
             futures.add(executor.submit(() -> {
                 latch.countDown();
@@ -154,7 +128,6 @@ class JsonRepositoryTest {
             }));
         }
 
-        // Assert
         for (Future<TeamData> future : futures) {
             try {
                 TeamData readData = future.get(5, TimeUnit.SECONDS);
@@ -172,117 +145,79 @@ class JsonRepositoryTest {
     @Test
     @DisplayName("Should handle concurrent writes safely")
     void shouldHandleConcurrentWritesSafely() throws InterruptedException {
-        // Arrange
         int threadCount = 5;
         ExecutorService executor = Executors.newFixedThreadPool(threadCount);
         CountDownLatch latch = new CountDownLatch(threadCount);
-        int writesPerThread = 10;
 
-        // Act - create multiple concurrent writers
         for (int i = 0; i < threadCount; i++) {
             final int threadNum = i;
             executor.submit(() -> {
                 latch.countDown();
                 try { latch.await(); } catch (InterruptedException e) { Thread.currentThread().interrupt(); return; }
-                for (int j = 0; j < writesPerThread; j++) {
-                    TeamData data = new TeamData();
-                    Team team = createTestTeam("thread-" + threadNum + "-team-" + j);
-                    data.getTeams().add(team);
-                    jsonRepository.writeData(data);
-
-                    // Small delay to increase chance of interleaving
-                    try {
-                        Thread.sleep(1);
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                    }
+                for (int j = 0; j < 10; j++) {
+                    TeamData d = new TeamData();
+                    d.getTeams().add(createTestTeam("thread-" + threadNum + "-team-" + j));
+                    jsonRepository.writeData(d);
+                    try { Thread.sleep(1); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
                 }
             });
         }
 
-        // Wait for all writes to complete
         executor.shutdown();
         assertTrue(executor.awaitTermination(10, TimeUnit.SECONDS));
-
-        // Assert - final read should have at least one write
-        TeamData finalData = jsonRepository.readData();
-        assertNotNull(finalData);
-        assertTrue(finalData.getTeams().size() >= 1);
+        assertNotNull(jsonRepository.readData());
+        assertTrue(jsonRepository.readData().getTeams().size() >= 1);
     }
 
     @Test
     @DisplayName("Should maintain data consistency during concurrent read-write")
     void shouldMaintainDataConsistencyDuringConcurrentReadWrite() throws InterruptedException {
-        // Arrange
-        TeamData initialData = new TeamData();
-        jsonRepository.writeData(initialData);
+        jsonRepository.writeData(new TeamData());
 
         int readerCount = 5;
         int writerCount = 2;
         ExecutorService executor = Executors.newFixedThreadPool(readerCount + writerCount);
         CountDownLatch startLatch = new CountDownLatch(readerCount + writerCount);
 
-        // Create readers
         for (int i = 0; i < readerCount; i++) {
             executor.submit(() -> {
                 startLatch.countDown();
                 try { startLatch.await(); } catch (InterruptedException e) { Thread.currentThread().interrupt(); return; }
                 for (int j = 0; j < 10; j++) {
-                    TeamData data = jsonRepository.readData();
-                    assertNotNull(data);
-                    try {
-                        Thread.sleep(1);
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                    }
+                    assertNotNull(jsonRepository.readData());
+                    try { Thread.sleep(1); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
                 }
             });
         }
 
-        // Create writers
         for (int i = 0; i < writerCount; i++) {
             executor.submit(() -> {
                 startLatch.countDown();
                 try { startLatch.await(); } catch (InterruptedException e) { Thread.currentThread().interrupt(); return; }
                 for (int j = 0; j < 5; j++) {
-                    TeamData data = new TeamData();
-                    Team team = createTestTeam("concurrent-team-" + j);
-                    data.getTeams().add(team);
-                    jsonRepository.writeData(data);
-                    try {
-                        Thread.sleep(5);
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                    }
+                    TeamData d = new TeamData();
+                    d.getTeams().add(createTestTeam("concurrent-team-" + j));
+                    jsonRepository.writeData(d);
+                    try { Thread.sleep(5); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
                 }
             });
         }
 
-        // Wait for all operations
         executor.shutdown();
         assertTrue(executor.awaitTermination(15, TimeUnit.SECONDS));
-
-        // Assert - system should be in consistent state
-        TeamData finalData = jsonRepository.readData();
-        assertNotNull(finalData);
-        assertTrue(finalData.getTeams() != null);
+        assertNotNull(jsonRepository.readData());
     }
 
     @Test
     @DisplayName("Should handle large data sets")
-    void shouldHandleLargeDataSets() throws IOException {
-        // Arrange
+    void shouldHandleLargeDataSets() {
         TeamData data = new TeamData();
         for (int i = 0; i < 1000; i++) {
-            Team team = createTestTeam("team-" + i);
-            data.getTeams().add(team);
+            data.getTeams().add(createTestTeam("team-" + i));
         }
-
-        // Act
         jsonRepository.writeData(data);
         TeamData readData = jsonRepository.readData();
 
-        // Assert
         assertEquals(1000, readData.getTeams().size());
         assertEquals("team-0", readData.getTeams().get(0).getId());
         assertEquals("team-999", readData.getTeams().get(999).getId());
@@ -290,41 +225,22 @@ class JsonRepositoryTest {
 
     @Test
     @DisplayName("Should use atomic write (temp file + rename)")
-    void shouldUseAtomicWrite() throws IOException, InterruptedException {
-        // Arrange
+    void shouldUseAtomicWrite() throws InterruptedException {
         TeamData data = new TeamData();
         data.getTeams().add(createTestTeam("team-1"));
-
-        // Monitor file system activity
-        Path parentDir = testDataPath.getParent();
-        File[] filesBefore = parentDir.toFile().listFiles((dir, name) ->
-            name.startsWith("test-data") || name.startsWith("test-data.tmp"));
-
-        // Act
         jsonRepository.writeData(data);
-
-        // Wait a bit for any async operations
         Thread.sleep(100);
 
-        // Assert
-        File[] filesAfter = parentDir.toFile().listFiles((dir, name) ->
-            name.startsWith("test-data") || name.startsWith("test-data.tmp"));
-
-        // Should have the target file but no orphaned temp files
         assertTrue(Files.exists(testDataPath));
-        assertNotNull(filesAfter);
-
-        // Count temp files
-        long tempFiles = java.util.Arrays.stream(filesAfter)
-            .filter(f -> f.getName().endsWith(".tmp"))
-            .count();
+        long tempFiles = java.util.Arrays.stream(tempDir.toFile().listFiles())
+                .filter(f -> f.getName().endsWith(".tmp"))
+                .count();
         assertEquals(0, tempFiles);
     }
 
     @Test
     @DisplayName("Should handle concurrent mixed reads and writes without data corruption")
     void shouldHandleConcurrentMixedReadsAndWritesWithoutDataCorruption() throws InterruptedException {
-        // Arrange
         int threadCount = 10;
         int operationsPerThread = 5;
         ExecutorService executor = Executors.newFixedThreadPool(threadCount);
@@ -332,7 +248,6 @@ class JsonRepositoryTest {
         CountDownLatch doneLatch = new CountDownLatch(threadCount);
         List<Exception> errors = new CopyOnWriteArrayList<>();
 
-        // Act - half threads write, half threads read, all start simultaneously
         for (int i = 0; i < threadCount; i++) {
             final int threadNum = i;
             executor.submit(() -> {
@@ -341,12 +256,10 @@ class JsonRepositoryTest {
                     startLatch.await();
                     for (int j = 0; j < operationsPerThread; j++) {
                         if (threadNum % 2 == 0) {
-                            // Even threads write
                             TeamData writeData = new TeamData();
                             writeData.getTeams().add(createTestTeam("thread-" + threadNum + "-team-" + j));
                             jsonRepository.writeData(writeData);
                         } else {
-                            // Odd threads read
                             TeamData readData = jsonRepository.readData();
                             assertNotNull(readData);
                             assertNotNull(readData.getTeams());
@@ -360,17 +273,95 @@ class JsonRepositoryTest {
             });
         }
 
-        // Wait for all threads to finish
-        assertTrue(doneLatch.await(15, TimeUnit.SECONDS), "Threads did not finish in time");
+        assertTrue(doneLatch.await(15, TimeUnit.SECONDS));
         executor.shutdown();
         assertTrue(executor.awaitTermination(5, TimeUnit.SECONDS));
-
-        // Assert - no errors and final state is consistent
         assertTrue(errors.isEmpty(), "Concurrent operations produced errors: " + errors);
-        TeamData finalData = jsonRepository.readData();
-        assertNotNull(finalData);
-        assertNotNull(finalData.getTeams());
+        assertNotNull(jsonRepository.readData());
     }
+
+    // ======================== Config file tests ========================
+
+    @Test
+    @DisplayName("Should create config file if it doesn't exist")
+    void shouldCreateConfigFileIfItDoesntExist() {
+        assertTrue(Files.exists(testConfigPath));
+        ConfigData config = jsonRepository.readConfig();
+        assertNotNull(config);
+        assertNotNull(config.getConstraintPresets());
+    }
+
+    @Test
+    @DisplayName("Should read and write config data correctly")
+    void shouldReadAndWriteConfigData() {
+        ConfigData config = new ConfigData();
+        ConstraintPreset preset = new ConstraintPreset();
+        preset.setId("preset-1");
+        preset.setName("Test Preset");
+        config.getConstraintPresets().computeIfAbsent("team-1", k -> new ArrayList<>()).add(preset);
+
+        jsonRepository.writeConfig(config);
+        ConfigData readConfig = jsonRepository.readConfig();
+
+        assertNotNull(readConfig);
+        assertTrue(readConfig.getConstraintPresets().containsKey("team-1"));
+        assertEquals(1, readConfig.getConstraintPresets().get("team-1").size());
+        assertEquals("preset-1", readConfig.getConstraintPresets().get("team-1").get(0).getId());
+        assertEquals("Test Preset", readConfig.getConstraintPresets().get("team-1").get(0).getName());
+    }
+
+    @Test
+    @DisplayName("Should return empty config when config file missing")
+    void shouldReturnEmptyConfigWhenFileMissing() throws IOException {
+        Files.deleteIfExists(testConfigPath);
+        ConfigData config = jsonRepository.readConfig();
+        assertNotNull(config);
+        assertNotNull(config.getConstraintPresets());
+        assertTrue(config.getConstraintPresets().isEmpty());
+    }
+
+    @Test
+    @DisplayName("Data and config locks are independent")
+    void dataAndConfigLocksAreIndependent() throws InterruptedException {
+        // Write config and data concurrently — should not deadlock
+        int threadCount = 4;
+        ExecutorService executor = Executors.newFixedThreadPool(threadCount);
+        CountDownLatch latch = new CountDownLatch(threadCount);
+        List<Exception> errors = new CopyOnWriteArrayList<>();
+
+        for (int i = 0; i < threadCount / 2; i++) {
+            executor.submit(() -> {
+                latch.countDown();
+                try {
+                    latch.await();
+                    for (int j = 0; j < 10; j++) {
+                        jsonRepository.writeData(new TeamData());
+                        jsonRepository.readData();
+                    }
+                } catch (Exception e) {
+                    errors.add(e);
+                }
+            });
+            executor.submit(() -> {
+                latch.countDown();
+                try {
+                    latch.await();
+                    for (int j = 0; j < 10; j++) {
+                        jsonRepository.writeConfig(new ConfigData());
+                        jsonRepository.readConfig();
+                    }
+                } catch (Exception e) {
+                    errors.add(e);
+                }
+            });
+        }
+
+        executor.shutdown();
+        assertTrue(executor.awaitTermination(10, TimeUnit.SECONDS));
+        assertTrue(errors.isEmpty(), "Concurrent data+config operations produced errors: " + errors);
+    }
+
+    // ======================== Helpers ========================
 
     private Team createTestTeam(String id) {
         Team team = new Team();

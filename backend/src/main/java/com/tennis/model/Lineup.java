@@ -5,6 +5,8 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import static com.fasterxml.jackson.annotation.JsonProperty.Access.READ_ONLY;
+
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -36,4 +38,11 @@ public class Lineup {
 
     @JsonProperty("violationMessages")
     private List<String> violationMessages = new ArrayList<>();
+
+    // Transient validation fields: serialized to client but not persisted (READ_ONLY = serialize only)
+    @JsonProperty(value = "currentValid", access = READ_ONLY)
+    private boolean currentValid = true;
+
+    @JsonProperty(value = "currentViolations", access = READ_ONLY)
+    private List<String> currentViolations = new ArrayList<>();
 }
