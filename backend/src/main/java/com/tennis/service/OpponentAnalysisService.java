@@ -188,9 +188,21 @@ public class OpponentAnalysisService {
         int aiIndex = aiService.selectBestLineupWithOpponent(aiCandidates, strategy, opponentLineup);
         if (aiIndex >= 0 && aiIndex < aiCandidates.size()) {
             Lineup aiLineup = aiCandidates.get(aiIndex);
-            return new AiRecommendation(aiLineup, "AI 根据对手排阵选择最优方案", true);
+            Map<String, Double> oppUtrByPos = opponentLineup.getPairs().stream()
+                    .collect(Collectors.toMap(Pair::getPosition, Pair::getCombinedUtr));
+            List<LineAnalysis> aiLineAnalysis = computeLineAnalysis(aiLineup, oppUtrByPos);
+            double aiExpected = aiLineAnalysis.stream()
+                    .mapToDouble(a -> POSITION_POINTS.getOrDefault(a.getPosition(), 0) * a.getWinProbability())
+                    .sum();
+            double totalPoints = POSITION_POINTS.values().stream().mapToInt(Integer::intValue).sum();
+            return new AiRecommendation(aiLineup, opponentLineup, aiLineAnalysis,
+                    Math.round(aiExpected * 10.0) / 10.0,
+                    Math.round((totalPoints - aiExpected) * 10.0) / 10.0,
+                    "AI 根据对手排阵选择最优方案", true);
         }
 
-        return new AiRecommendation(utrFallback.getLineup(), "AI 不可用，已用UTR分析代替", false);
+        return new AiRecommendation(utrFallback.getLineup(), opponentLineup,
+                utrFallback.getLineAnalysis(), utrFallback.getExpectedScore(),
+                utrFallback.getOpponentExpectedScore(), "AI 不可用，已用UTR分析代替", false);
     }
 }
