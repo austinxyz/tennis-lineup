@@ -1,7 +1,11 @@
 package com.tennis.controller;
 
 import com.tennis.model.Lineup;
+import com.tennis.model.LineupMatchupResponse;
+import com.tennis.model.OpponentAnalysisResponse;
+import com.tennis.service.LineupMatchupService;
 import com.tennis.service.LineupService;
+import com.tennis.service.OpponentAnalysisService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -12,10 +16,16 @@ import java.util.List;
 public class LineupController {
 
     private final LineupService lineupService;
+    private final OpponentAnalysisService opponentAnalysisService;
+    private final LineupMatchupService lineupMatchupService;
 
     @Autowired
-    public LineupController(LineupService lineupService) {
+    public LineupController(LineupService lineupService,
+                            OpponentAnalysisService opponentAnalysisService,
+                            LineupMatchupService lineupMatchupService) {
         this.lineupService = lineupService;
+        this.opponentAnalysisService = opponentAnalysisService;
+        this.lineupMatchupService = lineupMatchupService;
     }
 
     @PostMapping("/api/lineups/generate")
@@ -30,6 +40,18 @@ public class LineupController {
                 request.getPinPlayers()
         );
         return ResponseEntity.ok(lineups);
+    }
+
+    @PostMapping("/api/lineups/analyze-opponent")
+    public ResponseEntity<OpponentAnalysisResponse> analyzeOpponent(@RequestBody OpponentAnalysisRequest request) {
+        OpponentAnalysisResponse response = opponentAnalysisService.analyze(request);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/api/lineups/matchup")
+    public ResponseEntity<LineupMatchupResponse> matchup(@RequestBody LineupMatchupRequest request) {
+        LineupMatchupResponse response = lineupMatchupService.matchup(request);
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/api/teams/{teamId}/lineups")

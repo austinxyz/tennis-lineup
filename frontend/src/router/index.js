@@ -33,6 +33,11 @@ const routes = [
         path: 'lineup',
         name: 'LineupGenerator',
         component: () => import('../views/LineupGenerator.vue')
+      },
+      {
+        path: 'opponent-analysis',
+        name: 'OpponentAnalysis',
+        component: () => import('../views/OpponentAnalysis.vue')
       }
     ]
   }

@@ -9,6 +9,8 @@ spring:
   application:
     name: tennis-lineup-app
   mandatory-file-encoding: UTF-8
+  profiles:
+    include: local
 
 storage:
   data-file: ./data/tennis-data.json

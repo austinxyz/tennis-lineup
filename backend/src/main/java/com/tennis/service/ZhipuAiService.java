@@ -1,42 +1,126 @@
 package com.tennis.service;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tennis.model.Lineup;
 import com.tennis.model.Pair;
+import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 @Service
 @Slf4j
 public class ZhipuAiService {
 
-    private static final int TIMEOUT_SECONDS = 3;
+    private static final String API_URL = "https://open.bigmodel.cn/api/paas/v4/chat/completions";
+    private static final String MODEL = "glm-4-air";
+    private static final int TIMEOUT_SECONDS = 30;
 
     @Value("${zhipu.api.key:}")
     private String apiKey;
 
-    /**
-     * Select the best lineup from candidates using Zhipu AI.
-     * Returns the index of the selected lineup, or -1 if AI is unavailable/failed.
-     */
+    private final HttpClient httpClient = HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(10))
+            .build();
+
+    private final ObjectMapper mapper = new ObjectMapper();
+
+    @Data
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    static class ChatResponse {
+        private List<Choice> choices;
+    }
+
+    @Data
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    static class Choice {
+        private Message message;
+        private String finishReason;
+    }
+
+    @Data
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    static class Message {
+        private String content;
+    }
+
+    // --- Public API ---
+
+    public int selectBestLineupWithOpponent(List<Lineup> candidates, String strategy, Lineup opponentLineup) {
+        return callWithPrompt(buildPromptWithOpponent(candidates, strategy, opponentLineup), candidates.size());
+    }
+
     public int selectBestLineup(List<Lineup> candidates, String strategy) {
+        return callWithPrompt(buildPrompt(candidates, strategy), candidates.size());
+    }
+
+    // --- Prompt builders ---
+
+    String buildPromptWithOpponent(List<Lineup> candidates, String strategy, Lineup opponentLineup) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("你是一位网球双打教练。请根据对手排阵和策略，选出最合适的己方排阵编号（从1开始）。\n\n");
+        sb.append("策略：").append(strategy).append("\n\n");
+        if (opponentLineup != null) {
+            sb.append("对手排阵：\n");
+            for (Pair pair : opponentLineup.getPairs()) {
+                sb.append("   ").append(pair.getPosition()).append(": ")
+                  .append(pair.getPlayer1Name()).append(" + ").append(pair.getPlayer2Name())
+                  .append(" (组合UTR=").append(String.format("%.1f", pair.getCombinedUtr())).append(")\n");
+            }
+            sb.append("\n");
+        }
+        sb.append("己方候选排阵：\n");
+        for (int i = 0; i < candidates.size(); i++) {
+            appendLineup(sb, i + 1, candidates.get(i));
+        }
+        sb.append("\n请只回复一个数字（排阵编号）。");
+        return sb.toString();
+    }
+
+    String buildPrompt(List<Lineup> candidates, String strategy) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("你是一位网球双打教练。请根据以下策略选出最合适的排阵编号（从1开始）。\n\n");
+        sb.append("策略：").append(strategy).append("\n\n");
+        sb.append("候选排阵：\n");
+        for (int i = 0; i < candidates.size(); i++) {
+            appendLineup(sb, i + 1, candidates.get(i));
+        }
+        sb.append("\n请只回复一个数字（排阵编号）。");
+        return sb.toString();
+    }
+
+    private void appendLineup(StringBuilder sb, int num, Lineup lineup) {
+        sb.append(num).append(". 总UTR=").append(String.format("%.1f", lineup.getTotalUtr())).append("\n");
+        for (Pair pair : lineup.getPairs()) {
+            sb.append("   ").append(pair.getPosition()).append(": ")
+              .append(pair.getPlayer1Name()).append(" + ").append(pair.getPlayer2Name())
+              .append(" (组合UTR=").append(String.format("%.1f", pair.getCombinedUtr())).append(")\n");
+        }
+    }
+
+    // --- Internal ---
+
+    private int callWithPrompt(String prompt, int candidateCount) {
         if (apiKey == null || apiKey.isBlank()) {
             log.info("Zhipu AI API key not configured, using fallback");
             return -1;
         }
-        if (candidates.isEmpty()) return -1;
-
+        log.info("Zhipu AI calling, key prefix=[{}]", apiKey.length() > 8 ? apiKey.substring(0, 8) : apiKey);
         try {
-            String prompt = buildPrompt(candidates, strategy);
             CompletableFuture<Integer> future = CompletableFuture.supplyAsync(
-                    () -> callAiApi(prompt, candidates.size()));
+                    () -> callHttpApi(prompt, candidateCount));
             return future.get(TIMEOUT_SECONDS, TimeUnit.SECONDS);
         } catch (TimeoutException e) {
             log.warn("Zhipu AI call timed out after {}s, using fallback", TIMEOUT_SECONDS);
@@ -46,89 +130,58 @@ public class ZhipuAiService {
         return -1;
     }
 
-    String buildPrompt(List<Lineup> candidates, String strategy) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("你是一位网球双打教练。请根据以下策略选出最合适的排阵编号（从1开始）。\n\n");
-        sb.append("策略：").append(strategy).append("\n\n");
-        sb.append("候选排阵：\n");
-        for (int i = 0; i < candidates.size(); i++) {
-            Lineup lineup = candidates.get(i);
-            sb.append(i + 1).append(". 总UTR=").append(String.format("%.1f", lineup.getTotalUtr())).append("\n");
-            for (Pair pair : lineup.getPairs()) {
-                sb.append("   ").append(pair.getPosition()).append(": ")
-                  .append(pair.getPlayer1Name()).append(" + ").append(pair.getPlayer2Name())
-                  .append(" (组合UTR=").append(String.format("%.1f", pair.getCombinedUtr())).append(")\n");
+    private int callHttpApi(String prompt, int candidateCount) {
+        try {
+            Map<String, Object> sysMsg = Map.of("role", "system", "content", "你只能回复单个阿拉伯数字，不得包含任何其他内容。");
+            Map<String, Object> userMsg = Map.of("role", "user", "content", prompt);
+            Map<String, Object> bodyMap = Map.of(
+                    "model", MODEL,
+                    "messages", List.of(sysMsg, userMsg),
+                    "max_tokens", 50,
+                    "temperature", 0.1
+            );
+            String bodyJson = mapper.writeValueAsString(bodyMap);
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(API_URL))
+                    .header("Content-Type", "application/json")
+                    .header("Authorization", "Bearer " + apiKey.trim())
+                    .timeout(Duration.ofSeconds(60))
+                    .POST(HttpRequest.BodyPublishers.ofString(bodyJson))
+                    .build();
+
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            log.info("Zhipu AI HTTP status: {}, body: {}", response.statusCode(), response.body());
+
+            if (response.statusCode() != 200) {
+                log.warn("Zhipu AI non-200 response: {} {}", response.statusCode(), response.body());
+                return -1;
             }
-        }
-        sb.append("\n请只回复一个数字（排阵编号）。");
-        return sb.toString();
-    }
 
-    private int callAiApi(String prompt, int candidateCount) {
-        try {
-            // Dynamically load the Zhipu AI SDK to avoid compile-time dependency issues
-            Class<?> clientBuilderClass = Class.forName("com.zhipu.oapi.ClientV4$Builder");
-            Object builder = clientBuilderClass.getConstructor(String.class).newInstance(apiKey);
-            Object client = clientBuilderClass.getMethod("build").invoke(builder);
+            ChatResponse chatResponse = mapper.readValue(response.body(), ChatResponse.class);
+            if (chatResponse.getChoices() == null || chatResponse.getChoices().isEmpty()) {
+                return -1;
+            }
 
-            // Build chat messages
-            Class<?> chatMessageClass = Class.forName("com.zhipu.oapi.service.v4.model.ChatMessage");
-            Class<?> chatMessageRoleClass = Class.forName("com.zhipu.oapi.service.v4.model.ChatMessageRole");
-            Object userRole = chatMessageRoleClass.getField("user").get(null);
-            Object message = chatMessageClass.getConstructor(String.class, String.class)
-                    .newInstance(userRole.toString(), prompt);
-
-            // Build request
-            Class<?> requestBuilderClass = Class.forName("com.zhipu.oapi.service.v4.model.ChatCompletionRequest$ChatCompletionRequestBuilder");
-            Object requestBuilder = Class.forName("com.zhipu.oapi.service.v4.model.ChatCompletionRequest")
-                    .getMethod("builder").invoke(null);
-            requestBuilderClass.getMethod("model", String.class).invoke(requestBuilder, "glm-4");
-            requestBuilderClass.getMethod("messages", List.class).invoke(requestBuilder, List.of(message));
-            Object request = requestBuilderClass.getMethod("build").invoke(requestBuilder);
-
-            // Invoke API
-            Object response = client.getClass().getMethod("invokeModelApi", request.getClass())
-                    .invoke(client, request);
-
-            return parseLineupResponse(response, candidateCount);
-        } catch (Exception e) {
-            throw new RuntimeException("AI API call failed: " + e.getMessage(), e);
-        }
-    }
-
-    int parseLineupResponse(Object response, int candidateCount) {
-        try {
-            String content = extractContent(response);
+            Choice choice = chatResponse.getChoices().get(0);
+            String content = choice.getMessage().getContent();
+            log.info("Zhipu AI response: [{}], finishReason: [{}]", content, choice.getFinishReason());
             return parseIndexFromContent(content, candidateCount);
         } catch (Exception e) {
-            log.warn("Could not parse AI response");
-            return -1;
+            throw new RuntimeException("AI HTTP call failed: " + e.getMessage(), e);
         }
     }
 
     int parseIndexFromContent(String content, int candidateCount) {
         if (content == null) return -1;
+        String digits = content.trim().replaceAll("^[^0-9]*([0-9]+).*", "$1");
         try {
-            int index = Integer.parseInt(content.trim()) - 1;
+            int index = Integer.parseInt(digits) - 1;
             if (index < 0 || index >= candidateCount) return -1;
             return index;
         } catch (NumberFormatException e) {
             log.warn("Could not parse AI response as lineup index: {}", content);
             return -1;
-        }
-    }
-
-    private String extractContent(Object response) {
-        try {
-            Object data = response.getClass().getMethod("getData").invoke(response);
-            if (data == null) return null;
-            Object choices = data.getClass().getMethod("getChoices").invoke(data);
-            if (choices == null) return null;
-            Object firstChoice = ((List<?>) choices).get(0);
-            Object message = firstChoice.getClass().getMethod("getMessage").invoke(firstChoice);
-            return (String) message.getClass().getMethod("getContent").invoke(message);
-        } catch (Exception e) {
-            return null;
         }
     }
 }

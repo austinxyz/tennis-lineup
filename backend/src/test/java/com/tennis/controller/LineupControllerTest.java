@@ -4,7 +4,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tennis.exception.NotFoundException;
 import com.tennis.model.Lineup;
 import com.tennis.model.Pair;
+import com.tennis.service.LineupMatchupService;
 import com.tennis.service.LineupService;
+import com.tennis.service.OpponentAnalysisService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -38,6 +40,12 @@ class LineupControllerTest {
 
     @MockBean
     private LineupService lineupService;
+
+    @MockBean
+    private OpponentAnalysisService opponentAnalysisService;
+
+    @MockBean
+    private LineupMatchupService lineupMatchupService;
 
     @Autowired
     private ObjectMapper objectMapper;
