@@ -254,7 +254,7 @@ test.describe('对手策略分析', () => {
     await analysisPage.clickFindBestThree()
     await analysisPage.waitForResults()
 
-    await expect(page.getByRole('button', { name: 'AI 推荐' })).toBeVisible()
+    await expect(page.getByRole('button', { name: '获取 AI 推荐' })).toBeVisible()
   })
 
   // --- 新功能: 逐线对比 AI 评析 ---

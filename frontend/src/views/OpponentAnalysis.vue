@@ -124,110 +124,127 @@
       </div>
     </div>
 
-    <!-- 最佳三阵 results -->
-    <div v-if="analysisMode === 'bestThree' && bestThreeResults.length > 0" class="space-y-4">
-      <div
-        v-for="(res, idx) in bestThreeResults"
-        :key="res.lineup.id"
-        class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden"
-      >
-        <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100 bg-gray-50">
-          <span class="text-sm font-medium text-gray-600">#{{ idx + 1 }} {{ formatLineupLabel(res.lineup) }}</span>
-          <div class="flex items-center gap-3">
-            <span class="text-xs text-gray-500">预期得分 <span class="font-semibold text-gray-800">{{ res.expectedScore }}</span> / 10</span>
-            <span class="px-3 py-1 rounded-full text-xs font-semibold" :class="verdictClass(res.verdict)">
-              {{ res.verdict }}
-            </span>
-          </div>
-        </div>
+    <!-- 最佳三阵 results: two-column layout -->
+    <div v-if="analysisMode === 'bestThree' && bestThreeResults.length > 0" class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
 
-        <div class="divide-y divide-gray-50">
-          <div
-            v-for="line in res.lineAnalysis"
-            :key="line.position"
-            class="grid grid-cols-[auto_1fr_auto_1fr] items-center gap-x-3 px-5 py-3"
-          >
-            <span class="w-8 text-xs font-bold text-green-600">{{ line.position }}</span>
-            <div class="text-sm text-gray-800 min-w-0">
-              {{ pairText(res.lineup, line.position) }}
-              <span class="text-xs text-gray-400 ml-1">({{ line.ownCombinedUtr.toFixed(1) }})</span>
-            </div>
-            <div class="flex flex-col items-center gap-1 px-2">
-              <span class="text-xs font-medium" :class="line.delta > 0 ? 'text-green-600' : line.delta < 0 ? 'text-red-500' : 'text-gray-400'">
-                {{ line.delta > 0 ? '+' : '' }}{{ line.delta.toFixed(1) }}
-              </span>
-              <span :class="winLabelClass(line.winProbability)" class="px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap">
-                {{ line.label }}
-              </span>
-            </div>
-            <div class="text-sm text-gray-500 min-w-0 text-right">
-              {{ pairText(opponentLineupObj, line.position) }}
-              <span class="text-xs text-gray-400 ml-1">({{ line.opponentCombinedUtr.toFixed(1) }})</span>
-            </div>
-          </div>
+      <!-- Left column: UTR-based top 3 -->
+      <div class="space-y-4">
+        <div class="flex items-center gap-2 mb-1">
+          <span class="text-sm font-semibold text-gray-700">UTR 最佳三阵</span>
+          <span class="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full">算法推荐</span>
         </div>
-      </div>
-
-      <!-- Best Three AI recommendation -->
-      <div class="flex justify-end">
-        <span v-if="aiError" class="text-xs text-red-500 mr-3 self-center">{{ aiError }}</span>
-        <button
-          v-if="!aiResult"
-          :disabled="aiLoading"
-          class="px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
-          @click="onRunBestThreeAi"
+        <div
+          v-for="(res, idx) in bestThreeResults"
+          :key="res.lineup.id"
+          class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden"
         >
-          {{ aiLoading ? 'AI 分析中…' : 'AI 推荐' }}
-        </button>
+          <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100 bg-gray-50">
+            <span class="text-sm font-medium text-gray-600">#{{ idx + 1 }} {{ formatLineupLabel(res.lineup) }}</span>
+            <div class="flex items-center gap-3">
+              <span class="text-xs text-gray-500">预期得分 <span class="font-semibold text-gray-800">{{ res.expectedScore }}</span> / 10</span>
+              <span class="px-3 py-1 rounded-full text-xs font-semibold" :class="verdictClass(res.verdict)">
+                {{ res.verdict }}
+              </span>
+            </div>
+          </div>
+
+          <div class="divide-y divide-gray-50">
+            <div
+              v-for="line in res.lineAnalysis"
+              :key="line.position"
+              class="grid grid-cols-[auto_1fr_auto_1fr] items-center gap-x-3 px-5 py-3"
+            >
+              <span class="w-8 text-xs font-bold text-green-600">{{ line.position }}</span>
+              <div class="text-sm text-gray-800 min-w-0">
+                {{ pairText(res.lineup, line.position) }}
+                <span class="text-xs text-gray-400 ml-1">({{ line.ownCombinedUtr.toFixed(1) }})</span>
+              </div>
+              <div class="flex flex-col items-center gap-1 px-2">
+                <span class="text-xs font-medium" :class="line.delta > 0 ? 'text-green-600' : line.delta < 0 ? 'text-red-500' : 'text-gray-400'">
+                  {{ line.delta > 0 ? '+' : '' }}{{ line.delta.toFixed(1) }}
+                </span>
+                <span :class="winLabelClass(line.winProbability)" class="px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap">
+                  {{ line.label }}
+                </span>
+              </div>
+              <div class="text-sm text-gray-500 min-w-0 text-right">
+                {{ pairText(opponentLineupObj, line.position) }}
+                <span class="text-xs text-gray-400 ml-1">({{ line.opponentCombinedUtr.toFixed(1) }})</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <!-- AI recommendation card -->
-      <div v-if="aiResult" class="bg-white rounded-xl border border-purple-200 shadow-sm overflow-hidden">
-        <div class="flex items-center justify-between px-5 py-3 border-b border-purple-100 bg-purple-50">
-          <div class="flex items-center gap-2">
-            <span class="text-sm font-semibold text-purple-800">AI 推荐排阵</span>
-            <span v-if="!aiResult.aiUsed" class="px-2 py-0.5 bg-yellow-100 text-yellow-700 text-xs rounded-full">AI 不可用</span>
-          </div>
-          <div class="flex items-center gap-3">
-            <span class="text-xs text-gray-500">预期得分 <span class="font-semibold text-gray-800">{{ aiResult.expectedScore }}</span> / 10</span>
-            <button
-              :disabled="aiLoading"
-              class="px-3 py-1 text-xs text-purple-600 border border-purple-300 rounded-lg hover:bg-purple-100 disabled:opacity-50 transition"
-              @click="onRunBestThreeAi"
-            >
-              {{ aiLoading ? '分析中…' : '重新分析' }}
-            </button>
-          </div>
+      <!-- Right column: AI recommendation -->
+      <div class="space-y-4">
+        <div class="flex items-center gap-2 mb-1">
+          <span class="text-sm font-semibold text-gray-700">AI 推荐</span>
+          <span class="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs rounded-full">智能分析</span>
         </div>
-        <div v-if="aiResult.explanation" class="px-5 py-2 text-sm text-purple-700 border-b border-purple-100 bg-purple-50/50">
-          {{ aiResult.explanation }}
-        </div>
-        <div class="divide-y divide-gray-50">
-          <div
-            v-for="line in aiResult.lineAnalysis"
-            :key="line.position"
-            class="grid grid-cols-[auto_1fr_auto_1fr] items-center gap-x-3 px-5 py-3"
+
+        <!-- Trigger button (before result) -->
+        <div v-if="!aiResult" class="flex flex-col items-center justify-center bg-white rounded-xl border border-dashed border-purple-200 px-6 py-12 gap-3">
+          <span class="text-sm text-gray-400">基于比赛策略和球员特点，AI 给出最佳出场推荐</span>
+          <span v-if="aiError" class="text-xs text-red-500">{{ aiError }}</span>
+          <button
+            :disabled="aiLoading"
+            class="px-5 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+            @click="onRunBestThreeAi"
           >
-            <span class="w-8 text-xs font-bold text-green-600">{{ line.position }}</span>
-            <div class="text-sm text-gray-800 min-w-0">
-              {{ pairText(aiResult.lineup, line.position) }}
-              <span class="text-xs text-gray-400 ml-1">({{ line.ownCombinedUtr.toFixed(1) }})</span>
+            {{ aiLoading ? 'AI 分析中…' : '获取 AI 推荐' }}
+          </button>
+        </div>
+
+        <!-- AI result card -->
+        <div v-else class="bg-white rounded-xl border border-purple-200 shadow-sm overflow-hidden">
+          <div class="flex items-center justify-between px-5 py-3 border-b border-purple-100 bg-purple-50">
+            <div class="flex items-center gap-2">
+              <span class="text-sm font-semibold text-purple-800">AI 推荐排阵</span>
+              <span v-if="!aiResult.aiUsed" class="px-2 py-0.5 bg-yellow-100 text-yellow-700 text-xs rounded-full">AI 不可用</span>
             </div>
-            <div class="flex flex-col items-center gap-1 px-2">
-              <span class="text-xs font-medium" :class="line.delta > 0 ? 'text-green-600' : line.delta < 0 ? 'text-red-500' : 'text-gray-400'">
-                {{ line.delta > 0 ? '+' : '' }}{{ line.delta.toFixed(1) }}
-              </span>
-              <span :class="winLabelClass(line.winProbability)" class="px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap">
-                {{ line.label }}
-              </span>
+            <div class="flex items-center gap-3">
+              <span class="text-xs text-gray-500">预期得分 <span class="font-semibold text-gray-800">{{ aiResult.expectedScore }}</span> / 10</span>
+              <button
+                :disabled="aiLoading"
+                class="px-3 py-1 text-xs text-purple-600 border border-purple-300 rounded-lg hover:bg-purple-100 disabled:opacity-50 transition"
+                @click="onRunBestThreeAi"
+              >
+                {{ aiLoading ? '分析中…' : '重新分析' }}
+              </button>
             </div>
-            <div class="text-sm text-gray-500 min-w-0 text-right">
-              {{ pairText(aiResult.opponentLineup, line.position) }}
-              <span class="text-xs text-gray-400 ml-1">({{ line.opponentCombinedUtr.toFixed(1) }})</span>
+          </div>
+          <div v-if="aiResult.explanation" class="px-5 py-2 text-sm text-purple-700 border-b border-purple-100 bg-purple-50/50">
+            {{ aiResult.explanation }}
+          </div>
+          <div class="divide-y divide-gray-50">
+            <div
+              v-for="line in aiResult.lineAnalysis"
+              :key="line.position"
+              class="grid grid-cols-[auto_1fr_auto_1fr] items-center gap-x-3 px-5 py-3"
+            >
+              <span class="w-8 text-xs font-bold text-green-600">{{ line.position }}</span>
+              <div class="text-sm text-gray-800 min-w-0">
+                {{ pairText(aiResult.lineup, line.position) }}
+                <span class="text-xs text-gray-400 ml-1">({{ line.ownCombinedUtr.toFixed(1) }})</span>
+              </div>
+              <div class="flex flex-col items-center gap-1 px-2">
+                <span class="text-xs font-medium" :class="line.delta > 0 ? 'text-green-600' : line.delta < 0 ? 'text-red-500' : 'text-gray-400'">
+                  {{ line.delta > 0 ? '+' : '' }}{{ line.delta.toFixed(1) }}
+                </span>
+                <span :class="winLabelClass(line.winProbability)" class="px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap">
+                  {{ line.label }}
+                </span>
+              </div>
+              <div class="text-sm text-gray-500 min-w-0 text-right">
+                {{ pairText(aiResult.opponentLineup, line.position) }}
+                <span class="text-xs text-gray-400 ml-1">({{ line.opponentCombinedUtr.toFixed(1) }})</span>
+              </div>
             </div>
           </div>
         </div>
       </div>
+
     </div>
 
     <!-- 逐线对比 results -->

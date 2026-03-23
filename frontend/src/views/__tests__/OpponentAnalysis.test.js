@@ -282,7 +282,7 @@ describe('OpponentAnalysis', () => {
       await flushPromises()
       await setupAndRunBestThree(wrapper)
 
-      const aiBtn = wrapper.findAll('button').find(b => b.text() === 'AI 推荐')
+      const aiBtn = wrapper.findAll('button').find(b => b.text() === '获取 AI 推荐')
       expect(aiBtn.exists()).toBe(true)
     })
 
@@ -290,7 +290,7 @@ describe('OpponentAnalysis', () => {
       const wrapper = mountComponent()
       await flushPromises()
 
-      const aiBtn = wrapper.findAll('button').find(b => b.text() === 'AI 推荐')
+      const aiBtn = wrapper.findAll('button').find(b => b.text() === '获取 AI 推荐')
       expect(aiBtn).toBeUndefined()
     })
 
@@ -299,7 +299,7 @@ describe('OpponentAnalysis', () => {
       await flushPromises()
       await setupAndRunBestThree(wrapper)
 
-      const aiBtn = wrapper.findAll('button').find(b => b.text() === 'AI 推荐')
+      const aiBtn = wrapper.findAll('button').find(b => b.text() === '获取 AI 推荐')
       await aiBtn.trigger('click')
       await flushPromises()
 
