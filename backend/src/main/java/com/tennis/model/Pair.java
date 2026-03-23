@@ -38,4 +38,10 @@ public class Pair {
 
     @JsonProperty("player2Gender")
     private String player2Gender; // "male" | "female"
+
+    @JsonProperty("player1Notes")
+    private String player1Notes; // optional player characteristics
+
+    @JsonProperty("player2Notes")
+    private String player2Notes; // optional player characteristics
 }

@@ -223,6 +223,40 @@ describe('PlayerForm', () => {
     })
   })
 
+  // ── notes 字段 ───────────────────────────────────────────────────────────────
+
+  describe('notes 字段', () => {
+    it('渲染球员特点备注文本框', () => {
+      const wrapper = mountForm()
+      expect(wrapper.text()).toContain('球员特点备注')
+      expect(wrapper.find('textarea').exists()).toBe(true)
+    })
+
+    it('传入 initialData 时预填 notes', () => {
+      const wrapper = mountForm({ name: '张三', gender: 'male', utr: 8.5, notes: '正手强' })
+      expect(wrapper.find('textarea').element.value).toBe('正手强')
+    })
+
+    it('submit 事件包含 notes 字段', async () => {
+      const wrapper = mountForm({ name: '张三', gender: 'male', utr: 8.5, verified: true })
+      await wrapper.find('textarea').setValue('发球稳定，反手弱')
+      const saveBtn = wrapper.findAll('button').find(b => b.text() === '保存')
+      await saveBtn.trigger('click')
+      const emitted = wrapper.emitted('submit')
+      expect(emitted).toBeTruthy()
+      expect(emitted[0][0].notes).toBe('发球稳定，反手弱')
+    })
+
+    it('notes 未填写时 submit 事件 notes 为空', async () => {
+      const wrapper = mountForm({ name: '张三', gender: 'male', utr: 8.5, verified: true })
+      const saveBtn = wrapper.findAll('button').find(b => b.text() === '保存')
+      await saveBtn.trigger('click')
+      const emitted = wrapper.emitted('submit')
+      expect(emitted).toBeTruthy()
+      expect(emitted[0][0].notes || '').toBe('')
+    })
+  })
+
   // ── watch initialData ────────────────────────────────────────────────────────
 
   describe('监听 initialData 变化', () => {

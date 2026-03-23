@@ -16,29 +16,21 @@ vi.mock('../../composables/useTeams', () => ({
   }),
 }))
 
-const mockAnalyzeOpponent = vi.fn()
-const mockAnalysisLoading = ref(false)
-const mockAnalysisResult = ref(null)
-
-vi.mock('../../composables/useOpponentAnalysis', () => ({
-  useOpponentAnalysis: () => ({
-    loading: mockAnalysisLoading,
-    error: ref(null),
-    result: mockAnalysisResult,
-    analyzeOpponent: mockAnalyzeOpponent,
-  }),
-}))
-
-const mockRunMatchup = vi.fn()
+const mockRunBestThree = vi.fn()
+const mockRunHeadToHead = vi.fn()
+const mockRunAiAnalysis = vi.fn()
+const mockRunCommentary = vi.fn()
 const mockMatchupLoading = ref(false)
-const mockMatchupResults = ref([])
+const mockMatchupError = ref('')
 
-vi.mock('../../composables/useSavedLineupMatchup', () => ({
-  useSavedLineupMatchup: () => ({
+vi.mock('../../composables/useOpponentMatchup', () => ({
+  useOpponentMatchup: () => ({
     loading: mockMatchupLoading,
-    error: ref(null),
-    matchupResults: mockMatchupResults,
-    runMatchup: mockRunMatchup,
+    error: mockMatchupError,
+    runBestThree: mockRunBestThree,
+    runHeadToHead: mockRunHeadToHead,
+    runAiAnalysis: mockRunAiAnalysis,
+    runCommentary: mockRunCommentary,
   }),
 }))
 
@@ -53,62 +45,78 @@ vi.mock('../../composables/useApi', () => ({
   }),
 }))
 
-const stubs = {
-  LineupCard: true,
-  RouterLink: true,
-}
+const mockPairs = [
+  { position: 'D1', player1Name: '甲一', player2Name: '甲二', player1Utr: 6.0, player2Utr: 5.5, combinedUtr: 11.5 },
+  { position: 'D2', player1Name: '乙一', player2Name: '乙二', player1Utr: 5.5, player2Utr: 5.0, combinedUtr: 10.5 },
+  { position: 'D3', player1Name: '丙一', player2Name: '丙二', player1Utr: 5.0, player2Utr: 4.5, combinedUtr: 9.5 },
+  { position: 'D4', player1Name: '丁一', player2Name: '丁二', player1Utr: 4.5, player2Utr: 4.0, combinedUtr: 8.5 },
+]
 
 const mockOpponentLineups = [
-  { id: 'opp-lineup-1', createdAt: '2026-01-01T00:00:00Z', totalUtr: 33.0, pairs: [] },
+  { id: 'opp-lineup-1', createdAt: '2026-01-01T00:00:00Z', totalUtr: 33.0, pairs: mockPairs },
 ]
 
-const mockAnalysisResponse = {
-  utrRecommendation: {
-    lineup: { id: 'lineup-1', pairs: [] },
-    lineAnalysis: [
-      { position: 'D1', ownCombinedUtr: 9.5, opponentCombinedUtr: 8.5, delta: 1.0, winProbability: 0.6, label: '60% 赢' },
-      { position: 'D2', ownCombinedUtr: 8.5, opponentCombinedUtr: 8.5, delta: 0.0, winProbability: 0.5, label: '对等' },
-      { position: 'D3', ownCombinedUtr: 8.0, opponentCombinedUtr: 8.5, delta: -0.5, winProbability: 0.5, label: '对等' },
-      { position: 'D4', ownCombinedUtr: 7.0, opponentCombinedUtr: 8.0, delta: -1.0, winProbability: 0.4, label: '60% 输' },
-    ],
-    expectedScore: 5.0,
-    opponentExpectedScore: 5.0,
-  },
-  aiRecommendation: {
-    lineup: { id: 'lineup-1', pairs: [] },
-    explanation: 'AI 根据对手排阵选择最优方案',
-    aiUsed: true,
-  },
+const mockOwnLineups = [
+  { id: 'own-lineup-1', createdAt: '2026-01-01T00:00:00Z', totalUtr: 34.0, pairs: mockPairs },
+  { id: 'own-lineup-2', createdAt: '2026-01-02T00:00:00Z', totalUtr: 37.0, pairs: [] },
+]
+
+const mockLineAnalysis = [
+  { position: 'D1', ownCombinedUtr: 10.0, opponentCombinedUtr: 9.0, delta: 1.0, winProbability: 0.8, label: '80% 赢' },
+  { position: 'D2', ownCombinedUtr: 8.5, opponentCombinedUtr: 8.5, delta: 0.0, winProbability: 0.5, label: '对等' },
+  { position: 'D3', ownCombinedUtr: 8.0, opponentCombinedUtr: 8.5, delta: -0.5, winProbability: 0.5, label: '对等' },
+  { position: 'D4', ownCombinedUtr: 7.5, opponentCombinedUtr: 7.5, delta: 0.0, winProbability: 0.5, label: '对等' },
+]
+
+const mockBestThreeResults = [
+  { lineup: { id: 'own-2', pairs: [] }, lineAnalysis: mockLineAnalysis, expectedScore: 7.2, opponentExpectedScore: 2.8, verdict: '能赢' },
+  { lineup: { id: 'own-1', pairs: [] }, lineAnalysis: mockLineAnalysis, expectedScore: 5.5, opponentExpectedScore: 4.5, verdict: '势均力敌' },
+  { lineup: { id: 'own-3', pairs: [] }, lineAnalysis: mockLineAnalysis, expectedScore: 4.5, opponentExpectedScore: 5.5, verdict: '劣势' },
+]
+
+const mockHeadToHeadResult = {
+  lineup: { id: 'own-1', pairs: [] },
+  lineAnalysis: mockLineAnalysis,
+  expectedScore: 5.0,
+  opponentExpectedScore: 5.0,
+  verdict: '势均力敌',
 }
 
-const mockMatchupResponse = [
-  {
-    lineup: { id: 'own-lineup-2', createdAt: '2026-01-02T00:00:00Z', totalUtr: 37.0, pairs: [] },
-    lineAnalysis: [
-      { position: 'D1', ownCombinedUtr: 10.0, opponentCombinedUtr: 9.0, delta: 1.0, winProbability: 0.8, label: '80% 赢' },
-    ],
-    expectedScore: 7.2,
-    opponentExpectedScore: 2.8,
-    verdict: '能赢',
-  },
-  {
-    lineup: { id: 'own-lineup-1', createdAt: '2026-01-01T00:00:00Z', totalUtr: 33.0, pairs: [] },
-    lineAnalysis: [
-      { position: 'D1', ownCombinedUtr: 8.0, opponentCombinedUtr: 9.0, delta: -1.0, winProbability: 0.4, label: '60% 输' },
-    ],
-    expectedScore: 4.0,
-    opponentExpectedScore: 6.0,
-    verdict: '势均力敌',
-  },
-]
+const mockAiResult = {
+  aiUsed: true,
+  lineup: { id: 'own-2', pairs: [] },
+  lineAnalysis: mockLineAnalysis,
+  explanation: 'D1组合UTR优势明显',
+  expectedScore: 7.0,
+  opponentExpectedScore: 3.0,
+  opponentLineup: { id: 'opp-lineup-1', pairs: [] },
+}
+
+const mockCommentaryResult = {
+  aiUsed: true,
+  lines: [
+    { position: 'D1', commentary: '己方UTR优势，建议主动进攻' },
+    { position: 'D2', commentary: '势均力敌，注重稳定发挥' },
+    { position: 'D3', commentary: '处于劣势，多以防守反击为主' },
+    { position: 'D4', commentary: '势均力敌，注重稳定发挥' },
+  ],
+}
+
+function setupMockGet({ ownLineups = mockOwnLineups, opponentLineups = mockOpponentLineups } = {}) {
+  mockGet.mockImplementation((url) => {
+    if (url.includes('team-1')) return Promise.resolve(ownLineups)
+    if (url.includes('team-2')) return Promise.resolve(opponentLineups)
+    return Promise.resolve([])
+  })
+}
 
 beforeEach(() => {
-  mockAnalysisResult.value = null
-  mockAnalysisLoading.value = false
-  mockMatchupResults.value = []
   mockMatchupLoading.value = false
-  mockAnalyzeOpponent.mockResolvedValue(mockAnalysisResponse)
-  mockRunMatchup.mockResolvedValue(mockMatchupResponse)
+  mockMatchupError.value = ''
+  mockRunBestThree.mockResolvedValue(mockBestThreeResults)
+  mockRunHeadToHead.mockResolvedValue(mockHeadToHeadResult)
+  mockRunAiAnalysis.mockResolvedValue(mockAiResult)
+  mockRunCommentary.mockResolvedValue(mockCommentaryResult)
   mockGet.mockResolvedValue([])
   vi.spyOn(console, 'error').mockImplementation(() => {})
 })
@@ -118,210 +126,307 @@ afterEach(() => {
 })
 
 function mountComponent() {
-  return mount(OpponentAnalysis, {
-    global: { stubs },
-  })
+  return mount(OpponentAnalysis, { global: { stubs: { RouterLink: true } } })
 }
 
 describe('OpponentAnalysis', () => {
-  describe('排阵生成 mode (default)', () => {
-    it('renders team dropdowns with teams from useTeams', async () => {
-      const wrapper = mountComponent()
-      await flushPromises()
-      const selects = wrapper.findAll('select')
-      expect(selects.length).toBeGreaterThanOrEqual(2)
-      expect(wrapper.text()).toContain('己方队伍')
-      expect(wrapper.text()).toContain('对手队伍')
-    })
-
-    it('analyze button is disabled when no own team selected', () => {
-      const wrapper = mountComponent()
-      const button = wrapper.find('button[disabled]')
-      expect(button.exists()).toBe(true)
-    })
-
-    it('shows empty opponent lineups message when team has no lineups', async () => {
-      mockGet.mockResolvedValue([])
-      const wrapper = mountComponent()
-      await flushPromises()
-
-      const opponentSelect = wrapper.findAll('select')[1]
-      await opponentSelect.setValue('team-2')
-      await opponentSelect.trigger('change')
-      await flushPromises()
-
-      expect(wrapper.text()).toContain('对手队伍暂无保存排阵')
-    })
-
-    it('populates opponent lineup dropdown when lineups exist', async () => {
-      mockGet.mockResolvedValue(mockOpponentLineups)
-      const wrapper = mountComponent()
-      await flushPromises()
-
-      const opponentSelect = wrapper.findAll('select')[1]
-      await opponentSelect.setValue('team-2')
-      await opponentSelect.trigger('change')
-      await flushPromises()
-
-      const allSelects = wrapper.findAll('select')
-      expect(allSelects.length).toBe(3)
-    })
-
-    it('calls analyzeOpponent when analyze button clicked', async () => {
-      mockGet.mockResolvedValue(mockOpponentLineups)
-      const wrapper = mountComponent()
-      await flushPromises()
-
-      await wrapper.findAll('select')[0].setValue('team-1')
-      const opponentSelect = wrapper.findAll('select')[1]
-      await opponentSelect.setValue('team-2')
-      await opponentSelect.trigger('change')
-      await flushPromises()
-
-      await wrapper.findAll('select')[2].setValue('opp-lineup-1')
-      const analyzeBtn = wrapper.findAll('button').find(b => b.text() === '分析')
-      await analyzeBtn.trigger('click')
-      await flushPromises()
-
-      expect(mockAnalyzeOpponent).toHaveBeenCalledWith('team-1', 'team-2', 'opp-lineup-1', {})
-    })
-
-    it('renders UTR panel and AI panel after analysis', async () => {
-      mockAnalysisResult.value = mockAnalysisResponse
-      const wrapper = mountComponent()
-      await flushPromises()
-
-      expect(wrapper.text()).toContain('UTR 比较推荐')
-      expect(wrapper.text()).toContain('AI 建议')
-      expect(wrapper.text()).toContain('预期得分')
-      expect(wrapper.text()).toContain('60% 赢')
-      expect(wrapper.text()).toContain('对等')
-      expect(wrapper.text()).toContain('60% 输')
-    })
-
-    it('shows AI not available warning when aiUsed is false', async () => {
-      mockAnalysisResult.value = {
-        ...mockAnalysisResponse,
-        aiRecommendation: {
-          lineup: { id: 'lineup-1', pairs: [] },
-          explanation: 'AI 不可用，已用UTR分析代替',
-          aiUsed: false,
-        },
-      }
-      const wrapper = mountComponent()
-      await flushPromises()
-
-      expect(wrapper.text()).toContain('AI 不可用')
-      expect(wrapper.text()).toContain('AI 不可用，已用UTR分析代替')
-    })
-
-    it('shows error message on API failure', async () => {
-      mockAnalyzeOpponent.mockRejectedValue(new Error('服务器错误'))
-      mockAnalysisResult.value = null
-      mockGet.mockResolvedValue(mockOpponentLineups)
-
-      const wrapper = mountComponent()
-      await flushPromises()
-
-      await wrapper.findAll('select')[0].setValue('team-1')
-      const opponentSelect = wrapper.findAll('select')[1]
-      await opponentSelect.setValue('team-2')
-      await opponentSelect.trigger('change')
-      await flushPromises()
-
-      await wrapper.findAll('select')[2].setValue('opp-lineup-1')
-      const analyzeBtn = wrapper.findAll('button').find(b => b.text() === '分析')
-      await analyzeBtn.trigger('click')
-      await flushPromises()
-
-      expect(wrapper.text()).toContain('服务器错误')
-    })
+  it('renders mode toggle buttons', async () => {
+    const wrapper = mountComponent()
+    await flushPromises()
+    expect(wrapper.text()).toContain('最佳三阵')
+    expect(wrapper.text()).toContain('逐线对比')
   })
 
-  describe('已保存对比 mode', () => {
-    async function switchToSavedMode(wrapper) {
-      const tabs = wrapper.findAll('button')
-      const savedTab = tabs.find(b => b.text() === '已保存对比')
-      await savedTab.trigger('click')
-      await flushPromises()
-    }
+  it('defaults to 最佳三阵 mode', async () => {
+    const wrapper = mountComponent()
+    await flushPromises()
+    const buttons = wrapper.findAll('button')
+    const bestThreeBtn = buttons.find(b => b.text() === '最佳三阵')
+    expect(bestThreeBtn.classes()).toContain('bg-white')
+  })
 
-    it('mode toggle switches to 已保存对比 tab', async () => {
+  it('renders team dropdowns', async () => {
+    const wrapper = mountComponent()
+    await flushPromises()
+    expect(wrapper.text()).toContain('己方队伍')
+    expect(wrapper.text()).toContain('对手队伍')
+    expect(wrapper.text()).toContain('对手排阵')
+  })
+
+  it('shows empty opponent lineup message when team has no lineups', async () => {
+    setupMockGet({ opponentLineups: [] })
+    const wrapper = mountComponent()
+    await flushPromises()
+
+    const opponentSelect = wrapper.findAll('select')[1]
+    await opponentSelect.setValue('team-2')
+    await opponentSelect.trigger('change')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('对手队伍暂无保存排阵')
+  })
+
+  it('populates opponent lineup dropdown when lineups exist', async () => {
+    setupMockGet()
+    const wrapper = mountComponent()
+    await flushPromises()
+
+    const opponentSelect = wrapper.findAll('select')[1]
+    await opponentSelect.setValue('team-2')
+    await opponentSelect.trigger('change')
+    await flushPromises()
+
+    const allSelects = wrapper.findAll('select')
+    expect(allSelects.length).toBeGreaterThanOrEqual(3)
+  })
+
+  describe('排阵预览', () => {
+    it('shows opponent lineup preview after selecting opponent lineup', async () => {
+      setupMockGet()
       const wrapper = mountComponent()
       await flushPromises()
-      await switchToSavedMode(wrapper)
 
-      const tabs = wrapper.findAll('button')
-      const savedTab = tabs.find(b => b.text() === '已保存对比')
-      expect(savedTab.classes()).toContain('border-green-600')
+      await wrapper.findAll('select')[1].setValue('team-2')
+      await wrapper.findAll('select')[1].trigger('change')
+      await flushPromises()
+
+      await wrapper.findAll('select')[2].setValue('opp-lineup-1')
+      await flushPromises()
+
+      expect(wrapper.text()).toContain('D1: 甲一 + 甲二')
     })
 
-    it('shows 对比 button in 已保存对比 mode', async () => {
+    it('shows own lineup preview in 逐线对比 mode after selecting own lineup', async () => {
+      setupMockGet()
       const wrapper = mountComponent()
       await flushPromises()
-      await switchToSavedMode(wrapper)
 
-      const buttons = wrapper.findAll('button')
-      const compareBtn = buttons.find(b => b.text().includes('对比'))
-      expect(compareBtn.exists()).toBe(true)
-    })
-
-    it('对比 button is disabled when own team not selected', async () => {
-      const wrapper = mountComponent()
+      // Switch to head-to-head
+      await wrapper.findAll('button').find(b => b.text() === '逐线对比').trigger('click')
       await flushPromises()
-      await switchToSavedMode(wrapper)
-
-      const buttons = wrapper.findAll('button')
-      const compareBtn = buttons.find(b => b.text() === '对比')
-      expect(compareBtn.attributes('disabled')).toBeDefined()
-    })
-
-    it('calls runMatchup when 对比 button clicked', async () => {
-      mockGet.mockResolvedValue(mockOpponentLineups)
-      const wrapper = mountComponent()
-      await flushPromises()
-      await switchToSavedMode(wrapper)
 
       await wrapper.findAll('select')[0].setValue('team-1')
       await wrapper.findAll('select')[0].trigger('change')
+      await flushPromises()
+
+      // Select own lineup
+      const ownLineupSelect = wrapper.findAll('select').find(s =>
+        s.findAll('option').some(o => o.element.value === 'own-lineup-1')
+      )
+      await ownLineupSelect.setValue('own-lineup-1')
+      await flushPromises()
+
+      expect(wrapper.text()).toContain('D1: 甲一 + 甲二')
+    })
+  })
+
+  describe('最佳三阵 mode', () => {
+    it('shows 查找最佳三阵 button', async () => {
+      const wrapper = mountComponent()
+      await flushPromises()
+      const buttons = wrapper.findAll('button')
+      const btn = buttons.find(b => b.text().includes('查找最佳三阵'))
+      expect(btn.exists()).toBe(true)
+    })
+
+    it('查找最佳三阵 button is disabled when no team/lineup selected', async () => {
+      const wrapper = mountComponent()
+      await flushPromises()
+      const btn = wrapper.findAll('button').find(b => b.text().includes('查找最佳三阵'))
+      expect(btn.attributes('disabled')).toBeDefined()
+    })
+
+    async function setupAndRunBestThree(wrapper) {
+      setupMockGet()
+      await wrapper.findAll('select')[0].setValue('team-1')
       const opponentSelect = wrapper.findAll('select')[1]
       await opponentSelect.setValue('team-2')
       await opponentSelect.trigger('change')
       await flushPromises()
 
       await wrapper.findAll('select')[2].setValue('opp-lineup-1')
-      const compareBtn = wrapper.findAll('button').find(b => b.text() === '对比')
-      await compareBtn.trigger('click')
+      await wrapper.findAll('button').find(b => b.text().includes('查找最佳三阵')).trigger('click')
+      await flushPromises()
+    }
+
+    it('calls runBestThree when button clicked', async () => {
+      const wrapper = mountComponent()
+      await flushPromises()
+      await setupAndRunBestThree(wrapper)
+
+      expect(mockRunBestThree).toHaveBeenCalledWith('team-1', 'team-2', 'opp-lineup-1')
+    })
+
+    it('displays up to 3 result cards after successful call', async () => {
+      const wrapper = mountComponent()
+      await flushPromises()
+      await setupAndRunBestThree(wrapper)
+
+      expect(wrapper.text()).toContain('能赢')
+      expect(wrapper.text()).toContain('势均力敌')
+      expect(wrapper.text()).toContain('劣势')
+    })
+
+    it('shows per-line comparison in results', async () => {
+      const wrapper = mountComponent()
+      await flushPromises()
+      await setupAndRunBestThree(wrapper)
+
+      expect(wrapper.text()).toContain('D1')
+      expect(wrapper.text()).toContain('80% 赢')
+      expect(wrapper.text()).toContain('对等')
+    })
+
+    it('shows AI 推荐 button after best-three results are displayed', async () => {
+      const wrapper = mountComponent()
+      await flushPromises()
+      await setupAndRunBestThree(wrapper)
+
+      const aiBtn = wrapper.findAll('button').find(b => b.text() === 'AI 推荐')
+      expect(aiBtn.exists()).toBe(true)
+    })
+
+    it('AI 推荐 button not shown before results', async () => {
+      const wrapper = mountComponent()
       await flushPromises()
 
-      expect(mockRunMatchup).toHaveBeenCalledWith('team-1', 'team-2', 'opp-lineup-1')
+      const aiBtn = wrapper.findAll('button').find(b => b.text() === 'AI 推荐')
+      expect(aiBtn).toBeUndefined()
+    })
+
+    it('clicking AI 推荐 shows AI recommendation card', async () => {
+      const wrapper = mountComponent()
+      await flushPromises()
+      await setupAndRunBestThree(wrapper)
+
+      const aiBtn = wrapper.findAll('button').find(b => b.text() === 'AI 推荐')
+      await aiBtn.trigger('click')
+      await flushPromises()
+
+      expect(mockRunAiAnalysis).toHaveBeenCalledWith('team-1', 'team-2', 'opp-lineup-1')
+      expect(wrapper.text()).toContain('AI 推荐排阵')
+      expect(wrapper.text()).toContain('D1组合UTR优势明显')
+    })
+  })
+
+  describe('逐线对比 mode', () => {
+    async function switchToHeadToHead(wrapper) {
+      const btn = wrapper.findAll('button').find(b => b.text() === '逐线对比')
+      await btn.trigger('click')
+      await flushPromises()
+    }
+
+    it('switching to 逐线对比 shows own lineup selector', async () => {
+      const wrapper = mountComponent()
+      await flushPromises()
+      await switchToHeadToHead(wrapper)
+      expect(wrapper.text()).toContain('己方排阵')
+    })
+
+    it('shows 对比分析 button in 逐线对比 mode', async () => {
+      const wrapper = mountComponent()
+      await flushPromises()
+      await switchToHeadToHead(wrapper)
+      const btn = wrapper.findAll('button').find(b => b.text().includes('对比分析'))
+      expect(btn.exists()).toBe(true)
+    })
+
+    async function setupAndRunHeadToHead(wrapper) {
+      setupMockGet()
+      await switchToHeadToHead(wrapper)
+
+      await wrapper.findAll('select')[0].setValue('team-1')
+      await wrapper.findAll('select')[0].trigger('change')
+      await wrapper.findAll('select')[1].setValue('team-2')
+      await wrapper.findAll('select')[1].trigger('change')
+      await flushPromises()
+
+      // After fetching: selects[0]=ownTeam, [1]=oppTeam, [2]=oppLineup, [3]=ownLineup
+      await wrapper.findAll('select')[2].setValue('opp-lineup-1')
+      await wrapper.findAll('select')[3].setValue('own-lineup-1')
+
+      const btn = wrapper.findAll('button').find(b => b.text().includes('对比分析'))
+      await btn.trigger('click')
+      await flushPromises()
+    }
+
+    it('calls runHeadToHead with own lineup id', async () => {
+      const wrapper = mountComponent()
+      await flushPromises()
+      await setupAndRunHeadToHead(wrapper)
+
+      expect(mockRunHeadToHead).toHaveBeenCalledWith('team-1', 'own-lineup-1', 'team-2', 'opp-lineup-1')
+    })
+
+    it('shows UTR comparison result card with verdict', async () => {
+      const wrapper = mountComponent()
+      await flushPromises()
+      await setupAndRunHeadToHead(wrapper)
+
+      expect(wrapper.text()).toContain('UTR 比较分析')
+      expect(wrapper.text()).toContain('势均力敌')
+    })
+
+    it('shows AI 逐线评析 button after head-to-head result', async () => {
+      const wrapper = mountComponent()
+      await flushPromises()
+      await setupAndRunHeadToHead(wrapper)
+
+      const aiBtn = wrapper.findAll('button').find(b => b.text().includes('AI 逐线评析'))
+      expect(aiBtn.exists()).toBe(true)
+    })
+
+    it('calls runCommentary and displays commentary card', async () => {
+      const wrapper = mountComponent()
+      await flushPromises()
+      await setupAndRunHeadToHead(wrapper)
+
+      const aiBtn = wrapper.findAll('button').find(b => b.text().includes('AI 逐线评析'))
+      await aiBtn.trigger('click')
+      await flushPromises()
+
+      expect(mockRunCommentary).toHaveBeenCalledWith('team-1', 'own-lineup-1', 'team-2', 'opp-lineup-1')
+      expect(wrapper.text()).toContain('AI 逐线评析')
+      expect(wrapper.text()).toContain('己方UTR优势，建议主动进攻')
+    })
+
+    it('shows AI 不可用 badge when aiUsed is false in commentary', async () => {
+      mockRunCommentary.mockResolvedValue({ ...mockCommentaryResult, aiUsed: false })
+      const wrapper = mountComponent()
+      await flushPromises()
+      await setupAndRunHeadToHead(wrapper)
+
+      const aiBtn = wrapper.findAll('button').find(b => b.text().includes('AI 逐线评析'))
+      await aiBtn.trigger('click')
+      await flushPromises()
+
+      expect(wrapper.text()).toContain('AI 不可用')
+    })
+
+    it('clears previous result when switching mode', async () => {
+      const wrapper = mountComponent()
+      await flushPromises()
+      await switchToHeadToHead(wrapper)
+
+      // switch back to 最佳三阵
+      const bestThreeBtn = wrapper.findAll('button').find(b => b.text() === '最佳三阵')
+      await bestThreeBtn.trigger('click')
+      await flushPromises()
+
+      expect(wrapper.text()).not.toContain('UTR 比较分析')
     })
 
     it('shows empty own lineups warning when own team has no saved lineups', async () => {
-      mockGet.mockResolvedValue([])
+      setupMockGet({ ownLineups: [] })
       const wrapper = mountComponent()
       await flushPromises()
-      await switchToSavedMode(wrapper)
+      await switchToHeadToHead(wrapper)
 
       await wrapper.findAll('select')[0].setValue('team-1')
       await wrapper.findAll('select')[0].trigger('change')
       await flushPromises()
 
       expect(wrapper.text()).toContain('己方队伍暂无保存排阵')
-    })
-
-    it('renders matchup results with verdicts ranked by score', async () => {
-      mockMatchupResults.value = mockMatchupResponse
-      const wrapper = mountComponent()
-      await flushPromises()
-      await switchToSavedMode(wrapper)
-
-      expect(wrapper.text()).toContain('能赢')
-      expect(wrapper.text()).toContain('势均力敌')
-      expect(wrapper.text()).toContain('预期得分')
-      // First result should appear before second
-      const text = wrapper.text()
-      expect(text.indexOf('能赢')).toBeLessThan(text.indexOf('势均力敌'))
     })
   })
 })

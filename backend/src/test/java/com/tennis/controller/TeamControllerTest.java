@@ -194,7 +194,7 @@ class TeamControllerTest {
         playerRequest.setUtr(1.5);
         playerRequest.setVerified(true);
 
-        when(teamService.addPlayer(eq("team-1"), eq("John Doe"), eq("male"), eq(1.5), eq(null), eq(true), eq(null)))
+        when(teamService.addPlayer(eq("team-1"), eq("John Doe"), eq("male"), eq(1.5), eq(null), eq(true), eq(null), eq(null)))
                 .thenReturn(testPlayer);
 
         // Act & Assert
@@ -216,7 +216,7 @@ class TeamControllerTest {
         playerRequest.setUtr(2.0);
         playerRequest.setVerified(false);
 
-        when(teamService.updatePlayer(eq("team-1"), eq("player-1"), eq("Jane Smith"), eq("female"), eq(2.0), eq(null), eq(false), eq(null)))
+        when(teamService.updatePlayer(eq("team-1"), eq("player-1"), eq("Jane Smith"), eq("female"), eq(2.0), eq(null), eq(false), eq(null), eq(null)))
                 .thenReturn(testPlayer);
 
         // Act & Assert
@@ -319,7 +319,7 @@ class TeamControllerTest {
         playerRequest.setVerified(true);
         playerRequest.setProfileUrl(url);
 
-        when(teamService.addPlayer(eq("team-1"), eq("John Doe"), eq("male"), eq(1.5), eq(null), eq(true), eq(url)))
+        when(teamService.addPlayer(eq("team-1"), eq("John Doe"), eq("male"), eq(1.5), eq(null), eq(true), eq(url), eq(null)))
                 .thenReturn(playerWithUrl);
 
         // Act & Assert

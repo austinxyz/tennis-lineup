@@ -16,4 +16,10 @@ public class LineupMatchupRequest {
 
     @JsonProperty("opponentLineupId")
     private String opponentLineupId;
+
+    @JsonProperty("ownLineupId")
+    private String ownLineupId;
+
+    @JsonProperty("includeAi")
+    private boolean includeAi = false;
 }

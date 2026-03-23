@@ -6,6 +6,7 @@ import com.tennis.model.Lineup;
 import com.tennis.model.Pair;
 import com.tennis.service.LineupMatchupService;
 import com.tennis.service.LineupService;
+import com.tennis.service.MatchupCommentaryService;
 import com.tennis.service.OpponentAnalysisService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -47,6 +48,9 @@ class LineupControllerTest {
     @MockBean
     private LineupMatchupService lineupMatchupService;
 
+    @MockBean
+    private MatchupCommentaryService matchupCommentaryService;
+
     @Autowired
     private ObjectMapper objectMapper;
 
@@ -63,10 +67,10 @@ class LineupControllerTest {
         testLineup.setTotalUtr(30.0);
         testLineup.setViolationMessages(new ArrayList<>());
 
-        Pair d1 = new Pair("D1", "p1", "Alice", "p2", "Bob", 15.5, null, null, null, null);
-        Pair d2 = new Pair("D2", "p3", "Carol", "p4", "Dave", 13.5, null, null, null, null);
-        Pair d3 = new Pair("D3", "p5", "Eve", "p6", "Frank", 11.5, null, null, null, null);
-        Pair d4 = new Pair("D4", "p7", "Grace", "p8", "Hank", 9.5, null, null, null, null);
+        Pair d1 = new Pair("D1", "p1", "Alice", "p2", "Bob", 15.5, null, null, null, null, null, null);
+        Pair d2 = new Pair("D2", "p3", "Carol", "p4", "Dave", 13.5, null, null, null, null, null, null);
+        Pair d3 = new Pair("D3", "p5", "Eve", "p6", "Frank", 11.5, null, null, null, null, null, null);
+        Pair d4 = new Pair("D4", "p7", "Grace", "p8", "Hank", 9.5, null, null, null, null, null, null);
         testLineup.setPairs(Arrays.asList(d1, d2, d3, d4));
     }
 

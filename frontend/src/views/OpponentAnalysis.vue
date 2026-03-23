@@ -2,25 +2,25 @@
   <div class="p-6">
     <h2 class="text-2xl font-bold text-gray-900 mb-6">对手策略分析</h2>
 
-    <!-- Mode toggle tabs -->
-    <div class="flex border-b border-gray-200 mb-6">
+    <!-- Mode radio toggle -->
+    <div class="flex gap-1 bg-gray-100 rounded-lg p-1 w-fit mb-6">
       <button
-        class="px-5 py-2 text-sm font-medium border-b-2 transition"
-        :class="mode === 'generate' ? 'border-green-600 text-green-700' : 'border-transparent text-gray-500 hover:text-gray-700'"
-        @click="mode = 'generate'"
+        class="px-5 py-2 text-sm font-medium rounded-md transition"
+        :class="analysisMode === 'bestThree' ? 'bg-white text-green-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'"
+        @click="onModeChange('bestThree')"
       >
-        排阵生成
+        最佳三阵
       </button>
       <button
-        class="px-5 py-2 text-sm font-medium border-b-2 transition"
-        :class="mode === 'saved' ? 'border-green-600 text-green-700' : 'border-transparent text-gray-500 hover:text-gray-700'"
-        @click="mode = 'saved'"
+        class="px-5 py-2 text-sm font-medium rounded-md transition"
+        :class="analysisMode === 'headToHead' ? 'bg-white text-green-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'"
+        @click="onModeChange('headToHead')"
       >
-        已保存对比
+        逐线对比
       </button>
     </div>
 
-    <!-- Controls (shared) -->
+    <!-- Shared controls -->
     <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5 mb-6">
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <!-- Own team selector -->
@@ -53,7 +53,7 @@
           </select>
         </div>
 
-        <!-- Opponent lineup selector -->
+        <!-- Opponent lineup selector + preview -->
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">对手排阵</label>
           <select
@@ -66,59 +66,90 @@
               {{ formatLineupLabel(lineup) }}
             </option>
           </select>
-          <p v-else-if="opponentTeamId" class="text-sm text-gray-500 mt-2">对手队伍暂无保存排阵</p>
+          <p v-else-if="opponentTeamId" class="text-sm text-yellow-600 mt-2">对手队伍暂无保存排阵</p>
           <p v-else class="text-sm text-gray-400 mt-2">请先选择对手队伍</p>
+          <!-- Opponent lineup preview -->
+          <div v-if="opponentLineupPreviewPairs.length > 0" class="mt-2 text-xs text-gray-400 space-y-0.5">
+            <div v-for="pair in opponentLineupPreviewPairs" :key="pair.position">
+              {{ pair.position }}: {{ pair.player1Name }} + {{ pair.player2Name }}
+            </div>
+          </div>
         </div>
       </div>
 
-      <!-- Action button -->
-      <div class="mt-4 flex items-center gap-3">
-        <!-- 排阵生成 mode -->
-        <button
-          v-if="mode === 'generate'"
-          :disabled="!canAnalyze || loading"
-          class="px-5 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
-          @click="onAnalyze"
+      <!-- 逐线对比 mode: own lineup selector + preview -->
+      <div v-if="analysisMode === 'headToHead'" class="mt-4">
+        <label class="block text-sm font-medium text-gray-700 mb-1">己方排阵</label>
+        <select
+          v-if="ownLineups.length > 0"
+          v-model="ownLineupId"
+          class="w-full md:w-1/3 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
         >
-          {{ loading ? '分析中…' : '分析' }}
+          <option value="" disabled>请选择己方排阵</option>
+          <option v-for="lineup in ownLineups" :key="lineup.id" :value="lineup.id">
+            {{ formatLineupLabel(lineup) }}
+          </option>
+        </select>
+        <p v-else-if="ownTeamId" class="text-sm text-yellow-600 mt-1">己方队伍暂无保存排阵，请先保存排阵</p>
+        <p v-else class="text-sm text-gray-400 mt-1">请先选择己方队伍</p>
+        <!-- Own lineup preview -->
+        <div v-if="ownLineupPreviewPairs.length > 0" class="mt-2 text-xs text-gray-400 space-y-0.5">
+          <div v-for="pair in ownLineupPreviewPairs" :key="pair.position">
+            {{ pair.position }}: {{ pair.player1Name }} + {{ pair.player2Name }}
+          </div>
+        </div>
+      </div>
+
+      <!-- Action buttons -->
+      <div class="mt-4 flex items-center gap-3">
+        <button
+          v-if="analysisMode === 'bestThree'"
+          :disabled="!canRunBestThree || loading"
+          class="px-5 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+          @click="onRunBestThree"
+        >
+          {{ loading ? '查找中…' : '查找最佳三阵' }}
         </button>
 
-        <!-- 已保存对比 mode -->
         <button
           v-else
-          :disabled="!canCompare || matchupLoading"
+          :disabled="!canRunHeadToHead || loading"
           class="px-5 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
-          @click="onRunMatchup"
+          @click="onRunHeadToHead"
         >
-          {{ matchupLoading ? '对比中…' : '对比' }}
+          {{ loading ? '对比中…' : '对比分析' }}
         </button>
 
-        <span v-if="actionError" class="text-sm text-red-500">{{ actionError }}</span>
+        <span v-if="error" class="text-sm text-red-500">{{ error }}</span>
       </div>
     </div>
 
-    <!-- 排阵生成 Results -->
-    <div v-if="mode === 'generate' && result" class="space-y-6">
-
-      <!-- UTR Recommendation -->
-      <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+    <!-- 最佳三阵 results -->
+    <div v-if="analysisMode === 'bestThree' && bestThreeResults.length > 0" class="space-y-4">
+      <div
+        v-for="(res, idx) in bestThreeResults"
+        :key="res.lineup.id"
+        class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden"
+      >
         <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100 bg-gray-50">
-          <span class="text-sm font-semibold text-gray-700">UTR 比较推荐</span>
-          <span class="text-xs text-gray-500">预期得分 <span class="font-semibold text-gray-800">{{ result.utrRecommendation.expectedScore }}</span> / 10
-            <span class="text-gray-400 ml-1">(对手 {{ result.utrRecommendation.opponentExpectedScore }})</span>
-          </span>
+          <span class="text-sm font-medium text-gray-600">#{{ idx + 1 }} {{ formatLineupLabel(res.lineup) }}</span>
+          <div class="flex items-center gap-3">
+            <span class="text-xs text-gray-500">预期得分 <span class="font-semibold text-gray-800">{{ res.expectedScore }}</span> / 10</span>
+            <span class="px-3 py-1 rounded-full text-xs font-semibold" :class="verdictClass(res.verdict)">
+              {{ res.verdict }}
+            </span>
+          </div>
         </div>
 
-        <!-- Per-line comparison -->
         <div class="divide-y divide-gray-50">
           <div
-            v-for="line in result.utrRecommendation.lineAnalysis"
+            v-for="line in res.lineAnalysis"
             :key="line.position"
             class="grid grid-cols-[auto_1fr_auto_1fr] items-center gap-x-3 px-5 py-3"
           >
             <span class="w-8 text-xs font-bold text-green-600">{{ line.position }}</span>
             <div class="text-sm text-gray-800 min-w-0">
-              {{ pairText(result.utrRecommendation.lineup, line.position) }}
+              {{ pairText(res.lineup, line.position) }}
               <span class="text-xs text-gray-400 ml-1">({{ line.ownCombinedUtr.toFixed(1) }})</span>
             </div>
             <div class="flex flex-col items-center gap-1 px-2">
@@ -137,58 +168,49 @@
         </div>
       </div>
 
-      <!-- AI Recommendation -->
-      <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-        <!-- Header: not yet triggered -->
-        <div v-if="!result.aiRecommendation" class="px-5 py-4 flex items-center justify-between">
-          <span class="text-sm font-semibold text-gray-700">AI 排阵建议</span>
-          <div class="flex items-center gap-3">
-            <span v-if="aiError" class="text-xs text-red-500">{{ aiError }}</span>
-            <button
-              :disabled="aiLoading"
-              class="px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
-              @click="onAiAnalyze"
-            >
-              {{ aiLoading ? 'AI 分析中…' : 'AI 排阵分析' }}
-            </button>
-          </div>
-        </div>
+      <!-- Best Three AI recommendation -->
+      <div class="flex justify-end">
+        <span v-if="aiError" class="text-xs text-red-500 mr-3 self-center">{{ aiError }}</span>
+        <button
+          v-if="!aiResult"
+          :disabled="aiLoading"
+          class="px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+          @click="onRunBestThreeAi"
+        >
+          {{ aiLoading ? 'AI 分析中…' : 'AI 推荐' }}
+        </button>
+      </div>
 
-        <!-- Header: AI result shown -->
-        <div v-else class="flex items-center justify-between px-5 py-3 border-b border-gray-100 bg-purple-50">
+      <!-- AI recommendation card -->
+      <div v-if="aiResult" class="bg-white rounded-xl border border-purple-200 shadow-sm overflow-hidden">
+        <div class="flex items-center justify-between px-5 py-3 border-b border-purple-100 bg-purple-50">
           <div class="flex items-center gap-2">
-            <span class="text-sm font-semibold text-purple-800">AI 排阵建议</span>
-            <span v-if="!result.aiRecommendation.aiUsed" class="px-2 py-0.5 bg-yellow-100 text-yellow-700 text-xs rounded-full">AI 不可用</span>
+            <span class="text-sm font-semibold text-purple-800">AI 推荐排阵</span>
+            <span v-if="!aiResult.aiUsed" class="px-2 py-0.5 bg-yellow-100 text-yellow-700 text-xs rounded-full">AI 不可用</span>
           </div>
           <div class="flex items-center gap-3">
-            <span class="text-xs text-gray-500">预期得分 <span class="font-semibold text-gray-800">{{ result.aiRecommendation.expectedScore }}</span> / 10
-              <span class="text-gray-400 ml-1">(对手 {{ result.aiRecommendation.opponentExpectedScore }})</span>
-            </span>
+            <span class="text-xs text-gray-500">预期得分 <span class="font-semibold text-gray-800">{{ aiResult.expectedScore }}</span> / 10</span>
             <button
               :disabled="aiLoading"
               class="px-3 py-1 text-xs text-purple-600 border border-purple-300 rounded-lg hover:bg-purple-100 disabled:opacity-50 transition"
-              @click="onAiAnalyze"
+              @click="onRunBestThreeAi"
             >
               {{ aiLoading ? '分析中…' : '重新分析' }}
             </button>
           </div>
         </div>
-
-        <!-- AI explanation -->
-        <div v-if="result.aiRecommendation" class="px-5 py-2 text-sm text-purple-700 border-b border-purple-100 bg-purple-50/50">
-          {{ result.aiRecommendation.explanation }}
+        <div v-if="aiResult.explanation" class="px-5 py-2 text-sm text-purple-700 border-b border-purple-100 bg-purple-50/50">
+          {{ aiResult.explanation }}
         </div>
-
-        <!-- AI per-line comparison -->
-        <div v-if="result.aiRecommendation" class="divide-y divide-gray-50">
+        <div class="divide-y divide-gray-50">
           <div
-            v-for="line in result.aiRecommendation.lineAnalysis"
+            v-for="line in aiResult.lineAnalysis"
             :key="line.position"
             class="grid grid-cols-[auto_1fr_auto_1fr] items-center gap-x-3 px-5 py-3"
           >
             <span class="w-8 text-xs font-bold text-green-600">{{ line.position }}</span>
             <div class="text-sm text-gray-800 min-w-0">
-              {{ pairText(result.aiRecommendation.lineup, line.position) }}
+              {{ pairText(aiResult.lineup, line.position) }}
               <span class="text-xs text-gray-400 ml-1">({{ line.ownCombinedUtr.toFixed(1) }})</span>
             </div>
             <div class="flex flex-col items-center gap-1 px-2">
@@ -200,7 +222,7 @@
               </span>
             </div>
             <div class="text-sm text-gray-500 min-w-0 text-right">
-              {{ pairText(result.aiRecommendation.opponentLineup, line.position) }}
+              {{ pairText(aiResult.opponentLineup, line.position) }}
               <span class="text-xs text-gray-400 ml-1">({{ line.opponentCombinedUtr.toFixed(1) }})</span>
             </div>
           </div>
@@ -208,73 +230,93 @@
       </div>
     </div>
 
-    <!-- 已保存对比 Results -->
-    <div v-if="mode === 'saved'">
-      <!-- Own team no lineups warning -->
-      <div v-if="ownTeamId && ownLineups.length === 0 && !matchupLoading" class="bg-yellow-50 border border-yellow-200 rounded-lg px-4 py-3 text-sm text-yellow-700 mb-4">
-        己方队伍暂无保存排阵，请先保存排阵
-      </div>
+    <!-- 逐线对比 results -->
+    <div v-if="analysisMode === 'headToHead' && headToHeadResult" class="space-y-4">
 
-      <!-- Matchup results list -->
-      <div v-if="matchupResults.length > 0" class="space-y-6 max-h-[70vh] overflow-y-auto pr-1">
-        <div
-          v-for="(res, idx) in matchupResults"
-          :key="res.lineup.id"
-          class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden"
-        >
-          <!-- Result header -->
-          <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100 bg-gray-50">
-            <span class="text-sm font-medium text-gray-600">#{{ idx + 1 }} {{ formatLineupLabel(res.lineup) }}</span>
-            <span
-              class="px-3 py-1 rounded-full text-xs font-semibold"
-              :class="verdictClass(res.verdict)"
-            >
-              {{ res.verdict }}
+      <!-- UTR comparison card -->
+      <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100 bg-gray-50">
+          <span class="text-sm font-semibold text-gray-700">UTR 比较分析</span>
+          <div class="flex items-center gap-3">
+            <span class="text-xs text-gray-500">预期得分 <span class="font-semibold text-gray-800">{{ headToHeadResult.expectedScore }}</span> / 10
+              <span class="text-gray-400 ml-1">(对手 {{ headToHeadResult.opponentExpectedScore }})</span>
+            </span>
+            <span class="px-3 py-1 rounded-full text-xs font-semibold" :class="verdictClass(headToHeadResult.verdict)">
+              {{ headToHeadResult.verdict }}
             </span>
           </div>
+        </div>
 
-          <!-- Per-line comparison: own | delta+verdict | opponent -->
-          <div class="divide-y divide-gray-50">
-            <div
-              v-for="line in res.lineAnalysis"
-              :key="line.position"
-              class="grid grid-cols-[auto_1fr_auto_1fr] items-center gap-x-3 px-5 py-3"
-            >
-              <!-- Position label -->
-              <span class="w-8 text-xs font-bold text-green-600">{{ line.position }}</span>
-
-              <!-- Own pair -->
-              <div class="text-sm text-gray-800 min-w-0">
-                {{ pairText(res.lineup, line.position) }}
-              </div>
-
-              <!-- Delta + win label -->
-              <div class="flex flex-col items-center gap-1 px-2">
-                <span
-                  class="text-xs font-medium"
-                  :class="line.delta > 0 ? 'text-green-600' : line.delta < 0 ? 'text-red-500' : 'text-gray-400'"
-                >
-                  {{ line.delta > 0 ? '+' : '' }}{{ line.delta.toFixed(1) }}
-                </span>
-                <span :class="winLabelClass(line.winProbability)" class="px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap">
-                  {{ line.label }}
-                </span>
-              </div>
-
-              <!-- Opponent pair -->
-              <div class="text-sm text-gray-500 min-w-0 text-right">
-                {{ pairText(res.opponentLineup, line.position) }}
-              </div>
+        <div class="divide-y divide-gray-50">
+          <div
+            v-for="line in headToHeadResult.lineAnalysis"
+            :key="line.position"
+            class="grid grid-cols-[auto_1fr_auto_1fr] items-center gap-x-3 px-5 py-3"
+          >
+            <span class="w-8 text-xs font-bold text-green-600">{{ line.position }}</span>
+            <div class="text-sm text-gray-800 min-w-0">
+              {{ pairText(headToHeadResult.lineup, line.position) }}
+              <span class="text-xs text-gray-400 ml-1">({{ line.ownCombinedUtr.toFixed(1) }})</span>
             </div>
-
-            <!-- Score footer -->
-            <div class="px-5 py-2 bg-gray-50 flex justify-between text-xs text-gray-500">
-              <span class="font-medium text-gray-700">己方总 UTR: {{ res.lineup.totalUtr?.toFixed(1) }}</span>
-              <span>预期得分 <span class="font-semibold text-gray-800">{{ res.expectedScore }}</span> / 10</span>
-              <span class="font-medium text-gray-700">对手总 UTR: {{ res.opponentLineup?.totalUtr?.toFixed(1) }}</span>
+            <div class="flex flex-col items-center gap-1 px-2">
+              <span class="text-xs font-medium" :class="line.delta > 0 ? 'text-green-600' : line.delta < 0 ? 'text-red-500' : 'text-gray-400'">
+                {{ line.delta > 0 ? '+' : '' }}{{ line.delta.toFixed(1) }}
+              </span>
+              <span :class="winLabelClass(line.winProbability)" class="px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap">
+                {{ line.label }}
+              </span>
+            </div>
+            <div class="text-sm text-gray-500 min-w-0 text-right">
+              {{ pairText(opponentLineupObj, line.position) }}
+              <span class="text-xs text-gray-400 ml-1">({{ line.opponentCombinedUtr.toFixed(1) }})</span>
             </div>
           </div>
         </div>
+      </div>
+
+      <!-- AI 逐线评析 card -->
+      <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <!-- Not triggered yet -->
+        <div v-if="!commentaryResult" class="px-5 py-4 flex items-center justify-between">
+          <span class="text-sm font-semibold text-gray-700">AI 逐线评析</span>
+          <div class="flex items-center gap-3">
+            <span v-if="commentaryError" class="text-xs text-red-500">{{ commentaryError }}</span>
+            <button
+              :disabled="commentaryLoading"
+              class="px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+              @click="onRunCommentary"
+            >
+              {{ commentaryLoading ? 'AI 分析中…' : 'AI 逐线评析' }}
+            </button>
+          </div>
+        </div>
+
+        <!-- Commentary result -->
+        <template v-else>
+          <div class="flex items-center justify-between px-5 py-3 border-b border-purple-100 bg-purple-50">
+            <div class="flex items-center gap-2">
+              <span class="text-sm font-semibold text-purple-800">AI 逐线评析</span>
+              <span v-if="!commentaryResult.aiUsed" class="px-2 py-0.5 bg-yellow-100 text-yellow-700 text-xs rounded-full">AI 不可用</span>
+            </div>
+            <button
+              :disabled="commentaryLoading"
+              class="px-3 py-1 text-xs text-purple-600 border border-purple-300 rounded-lg hover:bg-purple-100 disabled:opacity-50 transition"
+              @click="onRunCommentary"
+            >
+              {{ commentaryLoading ? '分析中…' : '重新分析' }}
+            </button>
+          </div>
+          <div class="divide-y divide-gray-50">
+            <div
+              v-for="line in commentaryResult.lines"
+              :key="line.position"
+              class="px-5 py-3 flex items-start gap-3"
+            >
+              <span class="w-8 text-xs font-bold text-green-600 shrink-0">{{ line.position }}</span>
+              <span class="text-sm text-gray-700">{{ line.commentary }}</span>
+            </div>
+          </div>
+        </template>
       </div>
     </div>
   </div>
@@ -282,37 +324,55 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import LineupCard from '../components/LineupCard.vue'
 import { useTeams } from '../composables/useTeams'
-import { useOpponentAnalysis } from '../composables/useOpponentAnalysis'
-import { useSavedLineupMatchup } from '../composables/useSavedLineupMatchup'
+import { useOpponentMatchup } from '../composables/useOpponentMatchup'
 import { useApi } from '../composables/useApi'
 
 const { teams, fetchTeams } = useTeams()
-const { loading, result, analyzeOpponent } = useOpponentAnalysis()
-const { loading: matchupLoading, matchupResults, runMatchup } = useSavedLineupMatchup()
+const { loading, error, runBestThree, runHeadToHead, runAiAnalysis, runCommentary } = useOpponentMatchup()
 const { get } = useApi()
 
-const mode = ref('generate')
+const analysisMode = ref('bestThree')
 const ownTeamId = ref('')
 const opponentTeamId = ref('')
 const opponentLineupId = ref('')
+const ownLineupId = ref('')
 const opponentLineups = ref([])
 const ownLineups = ref([])
-const actionError = ref('')
 const aiLoading = ref(false)
 const aiError = ref('')
+const commentaryLoading = ref(false)
+const commentaryError = ref('')
 
-const canAnalyze = computed(() => ownTeamId.value && opponentLineupId.value)
-const canCompare = computed(() => ownTeamId.value && opponentLineupId.value)
+const bestThreeResults = ref([])
+const headToHeadResult = ref(null)
+const aiResult = ref(null)
+const commentaryResult = ref(null)
+
+const canRunBestThree = computed(() => ownTeamId.value && opponentLineupId.value)
+const canRunHeadToHead = computed(() => ownTeamId.value && ownLineupId.value && opponentLineupId.value)
 const opponentLineupObj = computed(() => opponentLineups.value.find(l => l.id === opponentLineupId.value) || null)
+const ownLineupObj = computed(() => ownLineups.value.find(l => l.id === ownLineupId.value) || null)
+const opponentLineupPreviewPairs = computed(() => opponentLineupObj.value?.pairs || [])
+const ownLineupPreviewPairs = computed(() => ownLineupObj.value?.pairs || [])
 
 onMounted(() => {
   fetchTeams()
 })
 
+function onModeChange(newMode) {
+  analysisMode.value = newMode
+  bestThreeResults.value = []
+  headToHeadResult.value = null
+  aiResult.value = null
+  aiError.value = ''
+  commentaryResult.value = null
+  commentaryError.value = ''
+}
+
 async function onOwnTeamChange() {
   ownLineups.value = []
+  ownLineupId.value = ''
   if (!ownTeamId.value) return
   try {
     ownLineups.value = await get(`/api/teams/${ownTeamId.value}/lineups`)
@@ -332,20 +392,31 @@ async function onOpponentTeamChange() {
   }
 }
 
-async function onAnalyze() {
-  actionError.value = ''
+async function onRunBestThree() {
+  bestThreeResults.value = []
   try {
-    await analyzeOpponent(ownTeamId.value, opponentTeamId.value, opponentLineupId.value, {}, false)
-  } catch (err) {
-    actionError.value = err.message || '分析失败，请重试'
+    bestThreeResults.value = await runBestThree(ownTeamId.value, opponentTeamId.value, opponentLineupId.value)
+  } catch (_) {
+    // error ref already set in composable
   }
 }
 
-async function onAiAnalyze() {
+async function onRunHeadToHead() {
+  headToHeadResult.value = null
+  commentaryResult.value = null
+  commentaryError.value = ''
+  try {
+    headToHeadResult.value = await runHeadToHead(ownTeamId.value, ownLineupId.value, opponentTeamId.value, opponentLineupId.value)
+  } catch (_) {
+    // error ref already set in composable
+  }
+}
+
+async function onRunBestThreeAi() {
   aiError.value = ''
   aiLoading.value = true
   try {
-    await analyzeOpponent(ownTeamId.value, opponentTeamId.value, opponentLineupId.value, {}, true)
+    aiResult.value = await runAiAnalysis(ownTeamId.value, opponentTeamId.value, opponentLineupId.value)
   } catch (err) {
     aiError.value = err.message || 'AI 分析失败，请重试'
   } finally {
@@ -353,12 +424,15 @@ async function onAiAnalyze() {
   }
 }
 
-async function onRunMatchup() {
-  actionError.value = ''
+async function onRunCommentary() {
+  commentaryError.value = ''
+  commentaryLoading.value = true
   try {
-    await runMatchup(ownTeamId.value, opponentTeamId.value, opponentLineupId.value)
+    commentaryResult.value = await runCommentary(ownTeamId.value, ownLineupId.value, opponentTeamId.value, opponentLineupId.value)
   } catch (err) {
-    actionError.value = err.message || '对比失败，请重试'
+    commentaryError.value = err.message || 'AI 评析失败，请重试'
+  } finally {
+    commentaryLoading.value = false
   }
 }
 

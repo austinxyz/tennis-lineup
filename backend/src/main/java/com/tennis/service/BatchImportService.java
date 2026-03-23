@@ -199,7 +199,7 @@ public class BatchImportService {
                 // For now, we'll just add them to a default team or create a new team
                 // This is a simplified implementation
                 playerService.addPlayer("team-1", player.getName(), player.getGender(),
-                                    player.getUtr(), null, player.getVerified(), null);
+                                    player.getUtr(), null, player.getVerified(), null, null);
                 successCount++;
             } catch (Exception e) {
                 errors.add("导入失败: " + e.getMessage());

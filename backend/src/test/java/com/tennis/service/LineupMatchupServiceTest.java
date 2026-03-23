@@ -2,12 +2,11 @@ package com.tennis.service;
 
 import com.tennis.controller.LineupMatchupRequest;
 import com.tennis.exception.NotFoundException;
+import com.tennis.model.AiRecommendation;
 import com.tennis.model.LineAnalysis;
 import com.tennis.model.Lineup;
 import com.tennis.model.LineupMatchupResponse;
-import com.tennis.model.MatchupResult;
 import com.tennis.model.Pair;
-import com.tennis.model.Player;
 import com.tennis.model.Team;
 import com.tennis.model.TeamData;
 import com.tennis.repository.JsonRepository;
@@ -16,26 +15,25 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.mock;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class LineupMatchupServiceTest {
 
-    @Mock
-    private JsonRepository jsonRepository;
-
-    @Mock
-    private OpponentAnalysisService opponentAnalysisService;
+    @Mock private JsonRepository jsonRepository;
+    @Mock private OpponentAnalysisService opponentAnalysisService;
+    @Mock private ZhipuAiService aiService;
 
     @InjectMocks
     private LineupMatchupService service;
@@ -87,23 +85,82 @@ class LineupMatchupServiceTest {
     @Test
     void matchup_resultsSortedByExpectedScoreDescending() {
         stubRepository();
-        // own-1 gets lower analysis, own-2 gets higher
-        List<LineAnalysis> lowAnalysis = buildAnalysis(0.4, 0.4, 0.4, 0.4); // low win probs
-        List<LineAnalysis> highAnalysis = buildAnalysis(0.8, 0.8, 0.8, 0.8); // high win probs
+        List<LineAnalysis> lowAnalysis = buildAnalysis(0.4, 0.4, 0.4, 0.4);
+        List<LineAnalysis> highAnalysis = buildAnalysis(0.8, 0.8, 0.8, 0.8);
 
         when(opponentAnalysisService.computeLineAnalysis(
-                argMatchingId("own-1"), org.mockito.ArgumentMatchers.anyMap()))
-                .thenReturn(lowAnalysis);
+                argMatchingId("own-1"), anyMap())).thenReturn(lowAnalysis);
         when(opponentAnalysisService.computeLineAnalysis(
-                argMatchingId("own-2"), org.mockito.ArgumentMatchers.anyMap()))
-                .thenReturn(highAnalysis);
+                argMatchingId("own-2"), anyMap())).thenReturn(highAnalysis);
 
-        LineupMatchupRequest req = buildRequest("own-team", "opp-team", "opp-lineup-1");
-        LineupMatchupResponse response = service.matchup(req);
+        LineupMatchupResponse response = service.matchup(buildRequest("own-team", "opp-team", "opp-lineup-1"));
 
         assertThat(response.getResults()).hasSize(2);
         assertThat(response.getResults().get(0).getExpectedScore())
                 .isGreaterThan(response.getResults().get(1).getExpectedScore());
+    }
+
+    // --- ownLineupId filter (task 3.1) ---
+
+    @Test
+    void matchup_withOwnLineupId_returnsSingleResult() {
+        stubRepository();
+        when(opponentAnalysisService.computeLineAnalysis(
+                argMatchingId("own-2"), anyMap())).thenReturn(buildAnalysis(0.8, 0.8, 0.8, 0.8));
+
+        LineupMatchupRequest req = buildRequest("own-team", "opp-team", "opp-lineup-1");
+        req.setOwnLineupId("own-2");
+        LineupMatchupResponse response = service.matchup(req);
+
+        assertThat(response.getResults()).hasSize(1);
+        assertThat(response.getResults().get(0).getLineup().getId()).isEqualTo("own-2");
+    }
+
+    @Test
+    void matchup_withOwnLineupId_notFound_returnsEmpty() {
+        stubRepository();
+        LineupMatchupRequest req = buildRequest("own-team", "opp-team", "opp-lineup-1");
+        req.setOwnLineupId("nonexistent");
+        LineupMatchupResponse response = service.matchup(req);
+
+        assertThat(response.getResults()).isEmpty();
+    }
+
+    // --- includeAi (task 3.2) ---
+
+    @Test
+    void matchup_includeAi_callsAiServiceAndPopulatesRecommendation() {
+        stubRepository();
+        List<LineAnalysis> analysis = buildAnalysis(0.8, 0.8, 0.8, 0.8);
+        when(opponentAnalysisService.computeLineAnalysis(any(), anyMap())).thenReturn(analysis);
+        when(aiService.selectBestWithResult(any(), any(), any()))
+                .thenReturn(new ZhipuAiService.AiResult(0, "D1组合UTR优势明显"));
+
+        LineupMatchupRequest req = buildRequest("own-team", "opp-team", "opp-lineup-1");
+        req.setIncludeAi(true);
+        LineupMatchupResponse response = service.matchup(req);
+
+        assertThat(response.getAiRecommendation()).isNotNull();
+        assertThat(response.getAiRecommendation().isAiUsed()).isTrue();
+        assertThat(response.getAiRecommendation().getExplanation()).isEqualTo("D1组合UTR优势明显");
+        verify(aiService).selectBestWithResult(any(), any(), any());
+    }
+
+    // --- includeAi + ownLineupId ignores AI (task 3.3) ---
+
+    @Test
+    void matchup_includeAiWithOwnLineupId_aiNotCalled_aiRecNull() {
+        stubRepository();
+        when(opponentAnalysisService.computeLineAnalysis(
+                argMatchingId("own-1"), anyMap())).thenReturn(buildAnalysis(0.5, 0.5, 0.5, 0.5));
+
+        LineupMatchupRequest req = buildRequest("own-team", "opp-team", "opp-lineup-1");
+        req.setOwnLineupId("own-1");
+        req.setIncludeAi(true);
+        LineupMatchupResponse response = service.matchup(req);
+
+        assertThat(response.getAiRecommendation()).isNull();
+        verify(aiService, never()).selectBestWithResult(any(), any(), any());
     }
 
     // --- Not found errors ---
@@ -111,38 +168,29 @@ class LineupMatchupServiceTest {
     @Test
     void matchup_ownTeamNotFound_throws404() {
         stubRepository();
-        LineupMatchupRequest req = buildRequest("nonexistent", "opp-team", "opp-lineup-1");
-        assertThatThrownBy(() -> service.matchup(req))
-                .isInstanceOf(NotFoundException.class)
-                .hasMessageContaining("队伍不存在");
+        assertThatThrownBy(() -> service.matchup(buildRequest("nonexistent", "opp-team", "opp-lineup-1")))
+                .isInstanceOf(NotFoundException.class).hasMessageContaining("队伍不存在");
     }
 
     @Test
     void matchup_opponentTeamNotFound_throws404() {
         stubRepository();
-        LineupMatchupRequest req = buildRequest("own-team", "nonexistent", "opp-lineup-1");
-        assertThatThrownBy(() -> service.matchup(req))
-                .isInstanceOf(NotFoundException.class)
-                .hasMessageContaining("对手队伍不存在");
+        assertThatThrownBy(() -> service.matchup(buildRequest("own-team", "nonexistent", "opp-lineup-1")))
+                .isInstanceOf(NotFoundException.class).hasMessageContaining("对手队伍不存在");
     }
 
     @Test
     void matchup_opponentLineupNotFound_throws404() {
         stubRepository();
-        LineupMatchupRequest req = buildRequest("own-team", "opp-team", "nonexistent-lineup");
-        assertThatThrownBy(() -> service.matchup(req))
-                .isInstanceOf(NotFoundException.class)
-                .hasMessageContaining("对手排阵不存在");
+        assertThatThrownBy(() -> service.matchup(buildRequest("own-team", "opp-team", "nonexistent-lineup")))
+                .isInstanceOf(NotFoundException.class).hasMessageContaining("对手排阵不存在");
     }
-
-    // --- Own team with no saved lineups ---
 
     @Test
     void matchup_ownTeamNoLineups_returnsEmptyResults() {
         stubRepository();
         ownTeam.setLineups(new ArrayList<>());
-        LineupMatchupRequest req = buildRequest("own-team", "opp-team", "opp-lineup-1");
-        LineupMatchupResponse response = service.matchup(req);
+        LineupMatchupResponse response = service.matchup(buildRequest("own-team", "opp-team", "opp-lineup-1"));
         assertThat(response.getResults()).isEmpty();
     }
 

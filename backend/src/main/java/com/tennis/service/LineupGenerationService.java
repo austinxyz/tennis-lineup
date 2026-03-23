@@ -346,10 +346,12 @@ public class LineupGenerationService {
             pair.setPlayer1Name(p1.getName());
             pair.setPlayer1Utr(p1.getUtr());
             pair.setPlayer1Gender(p1.getGender());
+            pair.setPlayer1Notes(p1.getNotes());
             pair.setPlayer2Id(p2.getId());
             pair.setPlayer2Name(p2.getName());
             pair.setPlayer2Utr(p2.getUtr());
             pair.setPlayer2Gender(p2.getGender());
+            pair.setPlayer2Notes(p2.getNotes());
             pair.setCombinedUtr(combined);
             pairs.add(pair);
         }

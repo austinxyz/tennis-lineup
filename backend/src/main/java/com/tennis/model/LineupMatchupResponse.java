@@ -14,4 +14,7 @@ public class LineupMatchupResponse {
 
     @JsonProperty("results")
     private List<MatchupResult> results;
+
+    @JsonProperty("aiRecommendation")
+    private AiRecommendation aiRecommendation;
 }

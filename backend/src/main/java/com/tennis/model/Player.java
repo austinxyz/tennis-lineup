@@ -33,4 +33,7 @@ public class Player {
 
     @JsonProperty("profileUrl")
     private String profileUrl; // UTR profile page URL, optional
+
+    @JsonProperty("notes")
+    private String notes; // player characteristics notes, optional
 }

@@ -2,6 +2,7 @@ package com.tennis.service;
 
 import com.tennis.controller.LineupMatchupRequest;
 import com.tennis.exception.NotFoundException;
+import com.tennis.model.AiRecommendation;
 import com.tennis.model.LineAnalysis;
 import com.tennis.model.Lineup;
 import com.tennis.model.LineupMatchupResponse;
@@ -29,12 +30,15 @@ public class LineupMatchupService {
 
     private final JsonRepository jsonRepository;
     private final OpponentAnalysisService opponentAnalysisService;
+    private final ZhipuAiService aiService;
 
     @Autowired
     public LineupMatchupService(JsonRepository jsonRepository,
-                                OpponentAnalysisService opponentAnalysisService) {
+                                OpponentAnalysisService opponentAnalysisService,
+                                ZhipuAiService aiService) {
         this.jsonRepository = jsonRepository;
         this.opponentAnalysisService = opponentAnalysisService;
+        this.aiService = aiService;
     }
 
     public LineupMatchupResponse matchup(LineupMatchupRequest request) {
@@ -55,10 +59,20 @@ public class LineupMatchupService {
                 opponentTeam, request.getOpponentLineupId(), "对手排阵不存在");
 
         // Get own team's saved lineups (may be empty)
-        List<Lineup> ownLineups = ownTeam.getLineups() != null ? ownTeam.getLineups() : List.of();
+        List<Lineup> allOwnLineups = ownTeam.getLineups() != null ? ownTeam.getLineups() : List.of();
+
+        // Filter to specific own lineup if provided (Mode B head-to-head)
+        List<Lineup> ownLineups;
+        if (request.getOwnLineupId() != null && !request.getOwnLineupId().isBlank()) {
+            ownLineups = allOwnLineups.stream()
+                    .filter(l -> request.getOwnLineupId().equals(l.getId()))
+                    .toList();
+        } else {
+            ownLineups = allOwnLineups;
+        }
 
         if (ownLineups.isEmpty()) {
-            return new LineupMatchupResponse(List.of());
+            return new LineupMatchupResponse(List.of(), null);
         }
 
         // Enrich own lineup UTRs from current own team roster
@@ -84,7 +98,55 @@ public class LineupMatchupService {
         }
 
         results.sort(Comparator.comparingDouble(MatchupResult::getExpectedScore).reversed());
-        return new LineupMatchupResponse(results);
+
+        // AI recommendation: only when includeAi=true AND no specific ownLineupId (task 1.7)
+        AiRecommendation aiRec = null;
+        if (request.isIncludeAi() && (request.getOwnLineupId() == null || request.getOwnLineupId().isBlank())) {
+            aiRec = computeAiRecommendation(results, opponentLineup, opponentUtrByPosition);
+        }
+
+        return new LineupMatchupResponse(results, aiRec);
+    }
+
+    private AiRecommendation computeAiRecommendation(List<MatchupResult> sortedResults,
+                                                      Lineup opponentLineup,
+                                                      Map<String, Double> opponentUtrByPosition) {
+        // Take top-5 by expected score for AI to evaluate
+        List<Lineup> top5 = sortedResults.stream()
+                .limit(5)
+                .map(MatchupResult::getLineup)
+                .toList();
+
+        ZhipuAiService.AiResult aiResult = aiService.selectBestWithResult(top5, "均衡", opponentLineup);
+        int aiIndex = aiResult.index();
+
+        Lineup aiLineup;
+        String explanation;
+        boolean aiUsed;
+
+        if (aiIndex >= 0 && aiIndex < top5.size()) {
+            aiLineup = top5.get(aiIndex);
+            explanation = aiResult.explanation() != null
+                    ? aiResult.explanation()
+                    : "AI 根据对手排阵选择最优方案";
+            aiUsed = true;
+        } else {
+            // Fallback to UTR top result
+            aiLineup = sortedResults.get(0).getLineup();
+            explanation = "AI 不可用，已用UTR分析代替";
+            aiUsed = false;
+        }
+
+        List<LineAnalysis> lineAnalysis = opponentAnalysisService.computeLineAnalysis(aiLineup, opponentUtrByPosition);
+        double expectedScore = lineAnalysis.stream()
+                .mapToDouble(a -> POSITION_POINTS.getOrDefault(a.getPosition(), 0) * a.getWinProbability())
+                .sum();
+        double totalPoints = POSITION_POINTS.values().stream().mapToInt(Integer::intValue).sum();
+
+        return new AiRecommendation(aiLineup, opponentLineup, lineAnalysis,
+                Math.round(expectedScore * 10.0) / 10.0,
+                Math.round((totalPoints - expectedScore) * 10.0) / 10.0,
+                explanation, aiUsed);
     }
 
     private Lineup findAndEnrichLineup(Team team, String lineupId, String notFoundMsg) {
@@ -104,7 +166,6 @@ public class LineupMatchupService {
     }
 
     private Lineup enrichLineup(Lineup lineup, Map<String, Player> playerMap) {
-        // Create a shallow copy with enriched pair UTRs (don't mutate stored data)
         List<Pair> enrichedPairs = new ArrayList<>();
         double totalUtr = 0;
         for (Pair pair : lineup.getPairs()) {
@@ -138,10 +199,12 @@ public class LineupMatchupService {
         p.setPlayer1Name(src.getPlayer1Name());
         p.setPlayer1Utr(src.getPlayer1Utr());
         p.setPlayer1Gender(src.getPlayer1Gender());
+        p.setPlayer1Notes(src.getPlayer1Notes());
         p.setPlayer2Id(src.getPlayer2Id());
         p.setPlayer2Name(src.getPlayer2Name());
         p.setPlayer2Utr(src.getPlayer2Utr());
         p.setPlayer2Gender(src.getPlayer2Gender());
+        p.setPlayer2Notes(src.getPlayer2Notes());
         p.setCombinedUtr(src.getCombinedUtr());
         return p;
     }

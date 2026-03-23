@@ -118,7 +118,7 @@ public class TeamService {
         return "player-" + System.nanoTime();
     }
 
-    public Player addPlayer(String teamId, String name, String gender, Double utr, Double verifiedDoublesUtr, Boolean verified, String profileUrl) {
+    public Player addPlayer(String teamId, String name, String gender, Double utr, Double verifiedDoublesUtr, Boolean verified, String profileUrl, String notes) {
         TeamData teamData = jsonRepository.readData();
 
         Team team = teamData.getTeams().stream()
@@ -153,6 +153,7 @@ public class TeamService {
         newPlayer.setVerifiedDoublesUtr(verifiedDoublesUtr);
         newPlayer.setVerified(verified);
         newPlayer.setProfileUrl(profileUrl != null && profileUrl.isBlank() ? null : profileUrl);
+        newPlayer.setNotes(notes != null && notes.isBlank() ? null : notes);
 
         team.getPlayers().add(newPlayer);
         jsonRepository.writeData(teamData);
@@ -161,7 +162,7 @@ public class TeamService {
         return newPlayer;
     }
 
-    public Player updatePlayer(String teamId, String playerId, String name, String gender, Double utr, Double verifiedDoublesUtr, Boolean verified, String profileUrl) {
+    public Player updatePlayer(String teamId, String playerId, String name, String gender, Double utr, Double verifiedDoublesUtr, Boolean verified, String profileUrl, String notes) {
         TeamData teamData = jsonRepository.readData();
 
         Team team = teamData.getTeams().stream()
@@ -206,6 +207,7 @@ public class TeamService {
         if (verifiedDoublesUtr != null) playerToUpdate.setVerifiedDoublesUtr(verifiedDoublesUtr);
         if (verified != null) playerToUpdate.setVerified(verified);
         if (profileUrl != null) playerToUpdate.setProfileUrl(profileUrl.isBlank() ? null : profileUrl);
+        if (notes != null) playerToUpdate.setNotes(notes.isBlank() ? null : notes);
 
         jsonRepository.writeData(teamData);
 

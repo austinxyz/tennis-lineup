@@ -21,4 +21,7 @@ public class PlayerRequest {
     public void setVerified(Boolean verified) { this.verified = verified; }
     public String getProfileUrl() { return profileUrl; }
     public void setProfileUrl(String profileUrl) { this.profileUrl = profileUrl; }
+    private String notes;
+    public String getNotes() { return notes; }
+    public void setNotes(String notes) { this.notes = notes; }
 }

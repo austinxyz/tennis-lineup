@@ -153,6 +153,7 @@ class OpponentAnalysisServiceTest {
         when(aiService.selectBestLineupWithOpponent(anyList(), anyString(), any())).thenReturn(-1);
 
         OpponentAnalysisRequest req = buildRequest("own-team", "opp-team", "opp-lineup-1");
+        req.setIncludeAi(true);
         OpponentAnalysisResponse response = service.analyze(req);
 
         AiRecommendation aiRec = response.getAiRecommendation();

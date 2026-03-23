@@ -5,6 +5,7 @@ import com.tennis.model.LineupMatchupResponse;
 import com.tennis.model.OpponentAnalysisResponse;
 import com.tennis.service.LineupMatchupService;
 import com.tennis.service.LineupService;
+import com.tennis.service.MatchupCommentaryService;
 import com.tennis.service.OpponentAnalysisService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -18,14 +19,17 @@ public class LineupController {
     private final LineupService lineupService;
     private final OpponentAnalysisService opponentAnalysisService;
     private final LineupMatchupService lineupMatchupService;
+    private final MatchupCommentaryService matchupCommentaryService;
 
     @Autowired
     public LineupController(LineupService lineupService,
                             OpponentAnalysisService opponentAnalysisService,
-                            LineupMatchupService lineupMatchupService) {
+                            LineupMatchupService lineupMatchupService,
+                            MatchupCommentaryService matchupCommentaryService) {
         this.lineupService = lineupService;
         this.opponentAnalysisService = opponentAnalysisService;
         this.lineupMatchupService = lineupMatchupService;
+        this.matchupCommentaryService = matchupCommentaryService;
     }
 
     @PostMapping("/api/lineups/generate")
@@ -51,6 +55,12 @@ public class LineupController {
     @PostMapping("/api/lineups/matchup")
     public ResponseEntity<LineupMatchupResponse> matchup(@RequestBody LineupMatchupRequest request) {
         LineupMatchupResponse response = lineupMatchupService.matchup(request);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/api/lineups/matchup-commentary")
+    public ResponseEntity<MatchupCommentaryResponse> matchupCommentary(@RequestBody MatchupCommentaryRequest request) {
+        MatchupCommentaryResponse response = matchupCommentaryService.getCommentary(request);
         return ResponseEntity.ok(response);
     }
 

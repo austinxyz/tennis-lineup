@@ -54,7 +54,7 @@ class PlayerServiceTest {
         when(jsonRepository.readData()).thenReturn(mockTeamData);
 
         // Act
-        Player result = playerService.addPlayer("team-1", playerName, gender, utr, null, verified, null);
+        Player result = playerService.addPlayer("team-1", playerName, gender, utr, null, verified, null, null);
 
         // Assert
         assertNotNull(result);
@@ -74,7 +74,7 @@ class PlayerServiceTest {
 
         // Act & Assert
         assertThrows(IllegalArgumentException.class, () -> {
-            playerService.addPlayer("team-1", "", "male", 1.5, null, true, null);
+            playerService.addPlayer("team-1", "", "male", 1.5, null, true, null, null);
         });
     }
 
@@ -86,7 +86,7 @@ class PlayerServiceTest {
 
         // Act & Assert
         assertThrows(IllegalArgumentException.class, () -> {
-            playerService.addPlayer("team-1", null, "male", 1.5, null, true, null);
+            playerService.addPlayer("team-1", null, "male", 1.5, null, true, null, null);
         });
     }
 
@@ -98,7 +98,7 @@ class PlayerServiceTest {
 
         // Act & Assert
         assertThrows(IllegalArgumentException.class, () -> {
-            playerService.addPlayer("team-1", "John Doe", "unknown", 1.5, null, true, null);
+            playerService.addPlayer("team-1", "John Doe", "unknown", 1.5, null, true, null, null);
         });
     }
 
@@ -110,11 +110,11 @@ class PlayerServiceTest {
 
         // Act & Assert
         assertThrows(IllegalArgumentException.class, () -> {
-            playerService.addPlayer("team-1", "John Doe", "male", -1.0, null, true, null);
+            playerService.addPlayer("team-1", "John Doe", "male", -1.0, null, true, null, null);
         });
 
         assertThrows(IllegalArgumentException.class, () -> {
-            playerService.addPlayer("team-1", "John Doe", "male", 16.1, null, true, null);
+            playerService.addPlayer("team-1", "John Doe", "male", 16.1, null, true, null, null);
         });
     }
 
@@ -126,7 +126,7 @@ class PlayerServiceTest {
 
         // Act & Assert
         assertThrows(IllegalArgumentException.class, () -> {
-            playerService.addPlayer("non-existent-team", "John Doe", "male", 1.5, null, true, null);
+            playerService.addPlayer("non-existent-team", "John Doe", "male", 1.5, null, true, null, null);
         });
     }
 
@@ -146,7 +146,7 @@ class PlayerServiceTest {
 
         // Act
         Player result = playerService.updatePlayer("team-1", "player-1",
-            "Updated Name", "female", 2.0, null, true, null);
+            "Updated Name", "female", 2.0, null, true, null, null);
 
         // Assert
         assertNotNull(result);
@@ -165,7 +165,7 @@ class PlayerServiceTest {
         // Act & Assert
         assertThrows(IllegalArgumentException.class, () -> {
             playerService.updatePlayer("team-1", "non-existent-player",
-                "Name", "male", 1.5, null, true, null);
+                "Name", "male", 1.5, null, true, null, null);
         });
     }
 
@@ -265,7 +265,7 @@ class PlayerServiceTest {
         when(jsonRepository.readData()).thenReturn(mockTeamData);
 
         // Act
-        Player result = playerService.addPlayer("team-1", "John Doe", "MALE", 1.5, null, true, null);
+        Player result = playerService.addPlayer("team-1", "John Doe", "MALE", 1.5, null, true, null, null);
 
         // Assert
         assertEquals("male", result.getGender());
@@ -278,7 +278,7 @@ class PlayerServiceTest {
         when(jsonRepository.readData()).thenReturn(mockTeamData);
 
         // Act
-        Player result = playerService.addPlayer("team-1", "  John Doe  ", "male", 1.5, null, true, null);
+        Player result = playerService.addPlayer("team-1", "  John Doe  ", "male", 1.5, null, true, null, null);
 
         // Assert
         assertEquals("John Doe", result.getName());
@@ -292,7 +292,7 @@ class PlayerServiceTest {
         String url = "https://app.utrsports.net/profiles/12345";
 
         // Act
-        Player result = playerService.addPlayer("team-1", "John Doe", "male", 1.5, null, true, url);
+        Player result = playerService.addPlayer("team-1", "John Doe", "male", 1.5, null, true, url, null);
 
         // Assert
         assertEquals(url, result.getProfileUrl());
@@ -305,7 +305,7 @@ class PlayerServiceTest {
         when(jsonRepository.readData()).thenReturn(mockTeamData);
 
         // Act
-        Player result = playerService.addPlayer("team-1", "John Doe", "male", 1.5, null, true, "   ");
+        Player result = playerService.addPlayer("team-1", "John Doe", "male", 1.5, null, true, "   ", null);
 
         // Assert
         assertNull(result.getProfileUrl());
@@ -318,7 +318,7 @@ class PlayerServiceTest {
         when(jsonRepository.readData()).thenReturn(mockTeamData);
 
         // Act
-        Player result = playerService.addPlayer("team-1", "John Doe", "male", 1.5, null, true, null);
+        Player result = playerService.addPlayer("team-1", "John Doe", "male", 1.5, null, true, null, null);
 
         // Assert
         assertNull(result.getProfileUrl());
@@ -341,7 +341,7 @@ class PlayerServiceTest {
 
         // Act
         Player result = playerService.updatePlayer("team-1", "player-1",
-            "Original Name", "male", 1.0, null, false, url);
+            "Original Name", "male", 1.0, null, false, url, null);
 
         // Assert
         assertEquals(url, result.getProfileUrl());
@@ -354,12 +354,51 @@ class PlayerServiceTest {
         when(jsonRepository.readData()).thenReturn(mockTeamData);
 
         // Act
-        Player player1 = playerService.addPlayer("team-1", "Player 1", "male", 1.0, null, true, null);
-        Player player2 = playerService.addPlayer("team-1", "Player 2", "female", 2.0, null, false, null);
+        Player player1 = playerService.addPlayer("team-1", "Player 1", "male", 1.0, null, true, null, null);
+        Player player2 = playerService.addPlayer("team-1", "Player 2", "female", 2.0, null, false, null, null);
 
         // Assert
         assertNotEquals(player1.getId(), player2.getId());
         assertTrue(player1.getId().startsWith("player-"));
         assertTrue(player2.getId().startsWith("player-"));
+    }
+
+    @Test
+    @DisplayName("Should save notes when adding player")
+    void shouldSaveNotesWhenAddingPlayer() {
+        when(jsonRepository.readData()).thenReturn(mockTeamData);
+
+        Player result = playerService.addPlayer("team-1", "John Doe", "male", 1.5, null, true, null, "正手强，发球好");
+
+        assertEquals("正手强，发球好", result.getNotes());
+    }
+
+    @Test
+    @DisplayName("Should save null notes when notes is blank")
+    void shouldSaveNullWhenNotesIsBlank() {
+        when(jsonRepository.readData()).thenReturn(mockTeamData);
+
+        Player result = playerService.addPlayer("team-1", "John Doe", "male", 1.5, null, true, null, "   ");
+
+        assertNull(result.getNotes());
+    }
+
+    @Test
+    @DisplayName("Should update notes when updating player")
+    void shouldUpdateNotesWhenUpdatingPlayer() {
+        Player original = new Player();
+        original.setId("player-1");
+        original.setName("John Doe");
+        original.setGender("male");
+        original.setUtr(1.5);
+        original.setVerified(false);
+        mockTeam.getPlayers().add(original);
+
+        when(jsonRepository.readData()).thenReturn(mockTeamData);
+
+        Player result = playerService.updatePlayer("team-1", "player-1",
+            "John Doe", "male", 1.5, null, false, null, "反手相对弱");
+
+        assertEquals("反手相对弱", result.getNotes());
     }
 }
