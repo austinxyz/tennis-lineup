@@ -50,24 +50,19 @@ export class LineupGeneratorPage {
   }
 
   /**
-   * Pin a player to a specific position by clicking their toggle button the appropriate
-   * number of times. Cycle: 中立(0) → D1(1) → D2(2) → D3(3) → D4(4) → 排除(5) → 中立(0)
+   * Pin a player to a specific position using the constraint combobox.
    * @param {string} name player name
    * @param {string} position 'D1'|'D2'|'D3'|'D4'|'exclude'
    */
   async pinPlayerToPosition(name, position) {
-    const cycle = ['中立', 'D1', 'D2', 'D3', 'D4', '排除']
-    const targetIndex = cycle.indexOf(position === 'exclude' ? '排除' : position)
-    if (targetIndex <= 0) return
-    const row = this.page.locator('div').filter({ hasText: name }).last()
-    const btn = row.getByRole('button')
-    for (let i = 0; i < targetIndex; i++) {
-      await btn.click()
-    }
+    const value = position === 'exclude' ? '不上' : position
+    // Find the row containing the player name, then select its combobox
+    const row = this.page.locator('div').filter({ hasText: name }).filter({ has: this.page.locator('select') }).last()
+    await row.locator('select').selectOption(value)
   }
 
   /**
-   * Exclude a player by clicking their toggle button 5 times (to reach '排除' state).
+   * Exclude a player by selecting '不上' in their constraint combobox.
    * @param {string} name player name
    */
   async excludePlayer(name) {

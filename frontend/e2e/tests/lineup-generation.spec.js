@@ -63,10 +63,11 @@ test.describe('排阵生成', () => {
     await lineupPage.waitForResults()
     // All plan cards visible simultaneously — no tab navigation needed
     await expect(page.locator('text=方案 1')).toBeVisible()
-    await expect(page.locator('text=D1')).toBeVisible()
-    await expect(page.locator('text=D2')).toBeVisible()
-    await expect(page.locator('text=D3')).toBeVisible()
-    await expect(page.locator('text=D4')).toBeVisible()
+    // Use the position labels in result cards (green bold spans), not the option elements
+    await expect(page.locator('.text-green-600').filter({ hasText: /^D1$/ }).first()).toBeVisible()
+    await expect(page.locator('.text-green-600').filter({ hasText: /^D2$/ }).first()).toBeVisible()
+    await expect(page.locator('.text-green-600').filter({ hasText: /^D3$/ }).first()).toBeVisible()
+    await expect(page.locator('.text-green-600').filter({ hasText: /^D4$/ }).first()).toBeVisible()
   })
 
   test('方案 2 也直接可见，无需切换 tab', async ({ page }) => {
@@ -119,7 +120,7 @@ test.describe('排阵生成', () => {
       await lineupPage.clickGenerate()
       await lineupPage.waitForResults()
       // 张三 should appear in the D1 row of the first lineup card
-      const d1Row = page.locator('text=D1').first().locator('..')
+      const d1Row = page.locator('.text-green-600').filter({ hasText: /^D1$/ }).first().locator('..')
       await expect(d1Row).toContainText('张三')
     }
   })

@@ -54,7 +54,8 @@ export class TeamManagerPage {
 
   /** Returns all team names currently in the left panel list */
   async getTeamNames() {
-    const links = this.page.locator('a[href*="/teams/"]')
+    // Exclude /lineups sub-routes (e.g. "已保存排阵" links share the /teams/ prefix)
+    const links = this.page.locator('a[href*="/teams/"]:not([href*="/lineups"])')
     const count = await links.count()
     const names = []
     for (let i = 0; i < count; i++) {
