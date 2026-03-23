@@ -3,6 +3,7 @@ package com.tennis.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tennis.model.Team;
 import com.tennis.service.BatchImportService;
+import com.tennis.service.PlayerService;
 import com.tennis.service.TeamService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -42,6 +43,9 @@ class TeamControllerTest {
 
     @MockBean
     private BatchImportService batchImportService;
+
+    @MockBean
+    private PlayerService playerService;
 
     @Autowired
     private ObjectMapper objectMapper;

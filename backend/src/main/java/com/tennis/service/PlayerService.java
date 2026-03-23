@@ -1,9 +1,12 @@
 package com.tennis.service;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.tennis.model.Player;
 import com.tennis.model.Team;
 import com.tennis.model.TeamData;
 import com.tennis.repository.JsonRepository;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -81,6 +84,32 @@ public class PlayerService {
 
         log.info("Updated player {} in team {}", playerId, teamId);
         return playerToUpdate;
+    }
+
+    public void bulkUpdateNotes(String teamId, List<PlayerNoteUpdate> updates) {
+        TeamData teamData = jsonRepository.readData();
+        Team team = teamData.getTeams().stream()
+                .filter(t -> t.getId().equals(teamId))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("队伍不存在"));
+
+        for (PlayerNoteUpdate update : updates) {
+            team.getPlayers().stream()
+                    .filter(p -> p.getId().equals(update.getPlayerId()))
+                    .findFirst()
+                    .ifPresent(p -> p.setNotes(update.getNotes() == null || update.getNotes().isBlank() ? null : update.getNotes()));
+        }
+        jsonRepository.writeData(teamData);
+        log.info("Bulk updated notes for {} players in team {}", updates.size(), teamId);
+    }
+
+    @Data
+    @NoArgsConstructor
+    public static class PlayerNoteUpdate {
+        @JsonProperty("playerId")
+        private String playerId;
+        @JsonProperty("notes")
+        private String notes;
     }
 
     public void deletePlayer(String teamId, String playerId) {

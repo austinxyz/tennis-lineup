@@ -21,14 +21,21 @@
 
     <!-- Players Section -->
     <div v-else>
+      <!-- Top button bar -->
       <div class="flex justify-between items-center mb-4">
         <h3 class="text-xl font-semibold">球员列表 ({{ players.length }})</h3>
         <div class="flex space-x-2">
-          <template v-if="!bulkEditMode">
+          <!-- Normal mode buttons -->
+          <template v-if="!bulkEditMode && !bulkNotesMode">
             <button
               @click="enterBulkEdit"
               class="bg-yellow-500 text-white px-4 py-2 rounded-md hover:bg-yellow-600 transition-colors">
               批量编辑 UTR
+            </button>
+            <button
+              @click="enterBulkNotes"
+              class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition-colors">
+              批量编辑 Notes
             </button>
             <button
               @click="showAddPlayerModal = true"
@@ -36,7 +43,9 @@
               添加球员
             </button>
           </template>
-          <template v-else>
+
+          <!-- UTR bulk edit mode -->
+          <template v-else-if="bulkEditMode">
             <button
               @click="saveBulkEdit"
               :disabled="playersLoading"
@@ -49,10 +58,26 @@
               取消
             </button>
           </template>
+
+          <!-- Notes bulk edit mode -->
+          <template v-else-if="bulkNotesMode">
+            <span class="text-sm font-medium text-indigo-700 self-center mr-2">正在批量编辑个人备注</span>
+            <button
+              @click="saveBulkNotes"
+              :disabled="savingNotes"
+              class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition-colors disabled:opacity-50">
+              保存全部
+            </button>
+            <button
+              @click="cancelBulkNotes"
+              class="bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400 transition-colors">
+              取消
+            </button>
+          </template>
         </div>
       </div>
 
-      <!-- Bulk edit error messages -->
+      <!-- Bulk edit UTR errors -->
       <div v-if="bulkEditErrors.length > 0" class="mb-4 bg-red-50 border border-red-200 rounded-md p-3">
         <p class="text-sm font-medium text-red-800 mb-1">以下球员更新失败：</p>
         <ul class="text-sm text-red-700 list-disc list-inside">
@@ -60,87 +85,156 @@
         </ul>
       </div>
 
+      <!-- Bulk notes error banner -->
+      <div v-if="bulkNotesError" class="mb-4 bg-red-50 border border-red-200 rounded-md p-3">
+        <p class="text-sm text-red-700">{{ bulkNotesError }}</p>
+      </div>
+
       <!-- Players Table -->
       <div class="bg-white rounded-lg shadow overflow-hidden">
         <table class="min-w-full divide-y divide-gray-200">
           <thead class="bg-gray-50">
             <tr>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                姓名
-              </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                性别
-              </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                UTR
-              </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                已验证
-              </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                操作
-              </th>
+              <th class="px-3 py-3 w-8"></th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">姓名</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">性别</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">UTR</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">已验证</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-40">个人备注</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">搭档笔记</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
             <tr v-if="players.length === 0">
-              <td colspan="5" class="px-6 py-4 text-center text-gray-500">
+              <td colspan="8" class="px-6 py-4 text-center text-gray-500">
                 暂无球员，点击上方按钮添加
               </td>
             </tr>
-            <tr v-for="player in sortedPlayers" :key="player.id">
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm font-medium text-gray-900">{{ player.name }}</div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
-                      :class="player.gender === 'male' ? 'bg-blue-100 text-blue-800' : 'bg-pink-100 text-pink-800'">
-                  {{ player.gender === 'male' ? '男' : '女' }}
-                </span>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                <template v-if="bulkEditMode">
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    max="16"
-                    :data-player-id="player.id"
-                    v-model.number="bulkUtrValues[player.id]"
-                    :class="['w-24 px-2 py-1 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500',
-                             bulkUtrValues[player.id] !== player.utr ? 'border-yellow-400 bg-yellow-50' : 'border-gray-300',
-                             bulkEditFailedIds.has(player.id) ? 'border-red-500' : '']" />
-                </template>
-                <template v-else>
-                  {{ Number(player.utr).toFixed(2) }}
-                  <a v-if="player.profileUrl"
-                     :href="player.profileUrl"
-                     target="_blank"
-                     rel="noopener noreferrer"
-                     class="ml-2 text-blue-500 hover:text-blue-700 text-xs underline">
-                    UTR主页
-                  </a>
-                </template>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
-                      :class="player.verified ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'">
-                  {{ player.verified ? '已验证' : '未验证' }}
-                </span>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                <button
-                  @click="editPlayer(player)"
-                  class="text-indigo-600 hover:text-indigo-900 mr-3">
-                  编辑
-                </button>
-                <button
-                  @click="confirmDeletePlayer(player)"
-                  class="text-red-600 hover:text-red-800">
-                  删除
-                </button>
-              </td>
-            </tr>
+            <template v-for="player in sortedPlayers" :key="player.id">
+              <!-- Main player row -->
+              <tr
+                :class="expandedPlayerId === player.id ? 'bg-purple-50' : 'hover:bg-gray-50'"
+                class="transition-colors"
+              >
+                <!-- Expand toggle -->
+                <td class="px-3 py-4 w-8">
+                  <button
+                    @click="toggleExpand(player.id)"
+                    class="text-gray-400 hover:text-purple-600 transition-colors text-xs"
+                  >{{ expandedPlayerId === player.id ? '▼' : '▶' }}</button>
+                </td>
+
+                <!-- Name -->
+                <td class="px-4 py-4 whitespace-nowrap">
+                  <div class="text-sm font-medium text-gray-900">{{ player.name }}</div>
+                </td>
+
+                <!-- Gender -->
+                <td class="px-4 py-4 whitespace-nowrap">
+                  <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
+                        :class="player.gender === 'male' ? 'bg-blue-100 text-blue-800' : 'bg-pink-100 text-pink-800'">
+                    {{ player.gender === 'male' ? '男' : '女' }}
+                  </span>
+                </td>
+
+                <!-- UTR -->
+                <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <template v-if="bulkEditMode">
+                    <input
+                      type="number" step="0.01" min="0" max="16"
+                      :data-player-id="player.id"
+                      v-model.number="bulkUtrValues[player.id]"
+                      :class="['w-24 px-2 py-1 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500',
+                               bulkUtrValues[player.id] !== player.utr ? 'border-yellow-400 bg-yellow-50' : 'border-gray-300',
+                               bulkEditFailedIds.has(player.id) ? 'border-red-500' : '']" />
+                  </template>
+                  <template v-else>
+                    {{ Number(player.utr).toFixed(2) }}
+                    <a v-if="player.profileUrl" :href="player.profileUrl" target="_blank" rel="noopener noreferrer"
+                       class="ml-2 text-blue-500 hover:text-blue-700 text-xs underline">UTR主页</a>
+                  </template>
+                </td>
+
+                <!-- Verified -->
+                <td class="px-4 py-4 whitespace-nowrap">
+                  <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
+                        :class="player.verified ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'">
+                    {{ player.verified ? '已验证' : '未验证' }}
+                  </span>
+                </td>
+
+                <!-- 个人备注 -->
+                <td class="px-4 py-4 w-40">
+                  <template v-if="bulkNotesMode">
+                    <input
+                      v-model="bulkNoteValues[player.id]"
+                      type="text"
+                      :placeholder="`${player.name} 的备注…`"
+                      class="w-full px-2 py-1 border border-indigo-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                    />
+                  </template>
+                  <template v-else>
+                    <span v-if="player.notes" class="text-sm text-gray-600">{{ player.notes }}</span>
+                    <span v-else class="text-sm text-gray-300">—</span>
+                  </template>
+                </td>
+
+                <!-- 搭档笔记 chips -->
+                <td class="px-4 py-4">
+                  <!-- Loading skeleton -->
+                  <template v-if="partnerNotesLoading">
+                    <div class="h-5 w-32 bg-gray-200 rounded-full animate-pulse"></div>
+                  </template>
+                  <!-- Error -->
+                  <template v-else-if="partnerNotesError">
+                    <button @click="loadPartnerNotes" class="text-xs text-red-500 hover:text-red-700">加载失败 重试</button>
+                  </template>
+                  <!-- Has chips -->
+                  <template v-else-if="partnerNotesMap[player.id]?.length">
+                    <div class="flex flex-wrap gap-1">
+                      <span
+                        v-for="note in partnerNotesMap[player.id]"
+                        :key="note.id"
+                        class="bg-purple-100 text-purple-700 px-2.5 py-1 rounded-full text-xs leading-relaxed"
+                      >{{ chipLabel(note, player.id) }}</span>
+                      <button
+                        @click="toggleExpand(player.id)"
+                        class="bg-gray-100 text-gray-400 hover:text-gray-600 px-2 py-1 rounded-full text-xs transition-colors"
+                      >+</button>
+                    </div>
+                  </template>
+                  <!-- No chips — add prompt -->
+                  <template v-else>
+                    <button
+                      @click="toggleExpand(player.id)"
+                      class="bg-gray-100 text-gray-400 hover:text-purple-600 px-2.5 py-1 rounded-full text-xs transition-colors"
+                    >+ 添加搭档笔记</button>
+                  </template>
+                </td>
+
+                <!-- Actions -->
+                <td class="px-4 py-4 whitespace-nowrap text-sm font-medium">
+                  <button @click="editPlayer(player)" class="text-indigo-600 hover:text-indigo-900 mr-3">编辑</button>
+                  <button @click="confirmDeletePlayer(player)" class="text-red-600 hover:text-red-800">删除</button>
+                </td>
+              </tr>
+
+              <!-- Expanded partner notes row -->
+              <tr v-if="expandedPlayerId === player.id" :key="`${player.id}-expanded`">
+                <td colspan="8" class="p-0">
+                  <PlayerPartnerNotesRow
+                    :teamId="teamId"
+                    :playerId="player.id"
+                    :playerName="player.name"
+                    :players="sortedPlayers"
+                    :notes="partnerNotesMap[player.id] ?? []"
+                    @saved="onPartnerNotesSaved"
+                    @cancel="expandedPlayerId = null"
+                  />
+                </td>
+              </tr>
+            </template>
           </tbody>
         </table>
       </div>
@@ -155,73 +249,38 @@
           </h3>
           <form @submit.prevent="savePlayer">
             <div class="mb-4">
-              <label for="playerName" class="block text-sm font-medium text-gray-700 mb-2">
-                姓名
-              </label>
-              <input
-                type="text"
-                id="playerName"
-                v-model="playerForm.name"
-                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required />
+              <label for="playerName" class="block text-sm font-medium text-gray-700 mb-2">姓名</label>
+              <input type="text" id="playerName" v-model="playerForm.name" required
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
             <div class="mb-4">
-              <label for="playerGender" class="block text-sm font-medium text-gray-700 mb-2">
-                性别
-              </label>
-              <select
-                id="playerGender"
-                v-model="playerForm.gender"
+              <label for="playerGender" class="block text-sm font-medium text-gray-700 mb-2">性别</label>
+              <select id="playerGender" v-model="playerForm.gender"
                 class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
                 <option value="male">男</option>
                 <option value="female">女</option>
               </select>
             </div>
             <div class="mb-4">
-              <label for="playerUtr" class="block text-sm font-medium text-gray-700 mb-2">
-                UTR
-              </label>
-              <input
-                type="number"
-                id="playerUtr"
-                v-model.number="playerForm.utr"
-                step="0.01"
-                min="0"
-                max="16"
-                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required />
+              <label for="playerUtr" class="block text-sm font-medium text-gray-700 mb-2">UTR</label>
+              <input type="number" id="playerUtr" v-model.number="playerForm.utr" step="0.01" min="0" max="16" required
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
             <div class="mb-4">
-              <label for="playerVerified" class="block text-sm font-medium text-gray-700 mb-2">
-                已验证
-              </label>
-              <input
-                type="checkbox"
-                id="playerVerified"
-                v-model="playerForm.verified"
+              <label for="playerVerified" class="block text-sm font-medium text-gray-700 mb-2">已验证</label>
+              <input type="checkbox" id="playerVerified" v-model="playerForm.verified"
                 class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
             </div>
             <div class="mb-4">
-              <label for="playerProfileUrl" class="block text-sm font-medium text-gray-700 mb-2">
-                UTR 主页链接
-              </label>
-              <input
-                type="text"
-                id="playerProfileUrl"
-                v-model="playerForm.profileUrl"
+              <label for="playerProfileUrl" class="block text-sm font-medium text-gray-700 mb-2">UTR 主页链接</label>
+              <input type="text" id="playerProfileUrl" v-model="playerForm.profileUrl"
                 placeholder="https://app.utrsports.net/profiles/..."
                 class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
             <div class="flex justify-end space-x-3">
-              <button
-                type="button"
-                @click="cancelPlayerEdit"
-                class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400">
-                取消
-              </button>
-              <button
-                type="submit"
-                :disabled="playersLoading"
+              <button type="button" @click="cancelPlayerEdit"
+                class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400">取消</button>
+              <button type="submit" :disabled="playersLoading"
                 class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50">
                 {{ editingPlayer ? '更新' : '添加' }}
               </button>
@@ -238,12 +297,15 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, onBeforeRouteLeave } from 'vue-router'
 import { useTeams } from '../composables/useTeams'
 import { usePlayers } from '../composables/usePlayers'
+import { usePartnerNotes } from '../composables/usePartnerNotes'
+import PlayerPartnerNotesRow from '../components/PlayerPartnerNotesRow.vue'
 
 const route = useRoute()
 const teamId = route.params.id
 
 const { team, loading: teamsLoading, fetchTeamById } = useTeams()
 const { players, loading: playersLoading, fetchPlayers, addPlayer, updatePlayer, deletePlayer, bulkUpdateUtrs } = usePlayers(teamId)
+const { bulkUpdatePersonalNotes } = usePartnerNotes(teamId)
 
 // Sorted: males first, then females, within each group by UTR descending
 const sortedPlayers = computed(() =>
@@ -253,27 +315,138 @@ const sortedPlayers = computed(() =>
   })
 )
 
-// Bulk edit state
+// --- UTR bulk edit ---
 const bulkEditMode = ref(false)
 const bulkUtrValues = ref({})
 const bulkUtrOriginal = ref({})
 const bulkEditErrors = ref([])
 const bulkEditFailedIds = ref(new Set())
 
+// --- Notes bulk edit ---
+const bulkNotesMode = ref(false)
+const bulkNoteValues = ref({})
+const bulkNoteOriginal = ref({})
+const bulkNotesError = ref('')
+const savingNotes = ref(false)
+
+// --- Partner notes ---
+const partnerNotesMap = ref({})     // { [playerId]: PartnerNote[] }
+const partnerNotesLoading = ref(false)
+const partnerNotesError = ref(false)
+
+// --- Expand ---
+const expandedPlayerId = ref(null)
+
+// --- Modal ---
 const showAddPlayerModal = ref(false)
 const editingPlayer = ref(null)
-const playerForm = ref({
-  name: '',
-  gender: 'male',
-  utr: 1.0,
-  verified: false,
-  profileUrl: '',
-})
+const playerForm = ref({ name: '', gender: 'male', utr: 1.0, verified: false, profileUrl: '' })
 
-const formatDate = (dateString) => {
-  return new Date(dateString).toLocaleDateString('zh-CN')
+// --- Helpers ---
+const formatDate = (d) => new Date(d).toLocaleDateString('zh-CN')
+
+function chipLabel(note, playerId) {
+  const partnerName = note.player1Id === playerId ? note.player2Name : note.player1Name
+  return `${partnerName}: ${note.note}`
 }
 
+// --- Partner notes loading ---
+async function loadPartnerNotes() {
+  partnerNotesLoading.value = true
+  partnerNotesError.value = false
+  try {
+    const res = await fetch(`/api/teams/${teamId}/partner-notes`)
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    const allNotes = await res.json()
+    const map = {}
+    allNotes.forEach(n => {
+      if (!map[n.player1Id]) map[n.player1Id] = []
+      if (!map[n.player2Id]) map[n.player2Id] = []
+      map[n.player1Id].push(n)
+      map[n.player2Id].push(n)
+    })
+    partnerNotesMap.value = map
+  } catch {
+    partnerNotesError.value = true
+  } finally {
+    partnerNotesLoading.value = false
+  }
+}
+
+async function onPartnerNotesSaved() {
+  expandedPlayerId.value = null
+  await loadPartnerNotes()
+}
+
+// --- Expand ---
+function toggleExpand(playerId) {
+  expandedPlayerId.value = expandedPlayerId.value === playerId ? null : playerId
+}
+
+// --- UTR bulk edit ---
+const enterBulkEdit = () => {
+  const values = {}
+  players.value.forEach(p => { values[p.id] = p.utr })
+  bulkUtrValues.value = values
+  bulkUtrOriginal.value = { ...values }
+  bulkEditErrors.value = []
+  bulkEditFailedIds.value = new Set()
+  bulkEditMode.value = true
+}
+
+const cancelBulkEdit = () => {
+  bulkUtrValues.value = { ...bulkUtrOriginal.value }
+  bulkEditMode.value = false
+  bulkEditErrors.value = []
+  bulkEditFailedIds.value = new Set()
+}
+
+const saveBulkEdit = async () => {
+  const changes = players.value
+    .filter(p => bulkUtrValues.value[p.id] !== p.utr)
+    .map(p => ({ playerId: p.id, utr: bulkUtrValues.value[p.id] }))
+  if (!changes.length) { bulkEditMode.value = false; return }
+  const { failed } = await bulkUpdateUtrs(changes)
+  bulkEditErrors.value = failed
+  bulkEditFailedIds.value = new Set(failed.map(f => f.playerId))
+  if (!failed.length) bulkEditMode.value = false
+}
+
+// --- Notes bulk edit ---
+const enterBulkNotes = () => {
+  const values = {}
+  players.value.forEach(p => { values[p.id] = p.notes ?? '' })
+  bulkNoteValues.value = values
+  bulkNoteOriginal.value = { ...values }
+  bulkNotesError.value = ''
+  bulkNotesMode.value = true
+}
+
+const cancelBulkNotes = () => {
+  bulkNoteValues.value = { ...bulkNoteOriginal.value }
+  bulkNotesMode.value = false
+  bulkNotesError.value = ''
+}
+
+const saveBulkNotes = async () => {
+  savingNotes.value = true
+  bulkNotesError.value = ''
+  try {
+    const updates = players.value.map(p => ({
+      playerId: p.id,
+      notes: bulkNoteValues.value[p.id] ?? '',
+    }))
+    await bulkUpdatePersonalNotes(updates)
+    bulkNotesMode.value = false
+    await fetchPlayers()
+  } catch (err) {
+    bulkNotesError.value = '保存失败，请重试'
+  } finally {
+    savingNotes.value = false
+  }
+}
+
+// --- Player CRUD ---
 const loadTeam = async () => {
   await fetchTeamById(teamId)
   await fetchPlayers()
@@ -301,49 +474,7 @@ const savePlayer = async () => {
 const cancelPlayerEdit = () => {
   editingPlayer.value = null
   showAddPlayerModal.value = false
-  playerForm.value = {
-    name: '',
-    gender: 'male',
-    utr: 1.0,
-    verified: false,
-    profileUrl: '',
-  }
-}
-
-const enterBulkEdit = () => {
-  const values = {}
-  players.value.forEach(p => { values[p.id] = p.utr })
-  bulkUtrValues.value = values
-  bulkUtrOriginal.value = { ...values }
-  bulkEditErrors.value = []
-  bulkEditFailedIds.value = new Set()
-  bulkEditMode.value = true
-}
-
-const cancelBulkEdit = () => {
-  bulkUtrValues.value = { ...bulkUtrOriginal.value }
-  bulkEditMode.value = false
-  bulkEditErrors.value = []
-  bulkEditFailedIds.value = new Set()
-}
-
-const saveBulkEdit = async () => {
-  const changes = players.value
-    .filter(p => bulkUtrValues.value[p.id] !== p.utr)
-    .map(p => ({ playerId: p.id, utr: bulkUtrValues.value[p.id] }))
-
-  if (!changes.length) {
-    bulkEditMode.value = false
-    return
-  }
-
-  const { failed } = await bulkUpdateUtrs(changes)
-  bulkEditErrors.value = failed
-  bulkEditFailedIds.value = new Set(failed.map(f => f.playerId))
-
-  if (!failed.length) {
-    bulkEditMode.value = false
-  }
+  playerForm.value = { name: '', gender: 'male', utr: 1.0, verified: false, profileUrl: '' }
 }
 
 const confirmDeletePlayer = async (player) => {
@@ -353,16 +484,15 @@ const confirmDeletePlayer = async (player) => {
   }
 }
 
-onMounted(() => {
-  loadTeam()
+onMounted(async () => {
+  await loadTeam()
+  await loadPartnerNotes()
 })
 
 onBeforeRouteLeave(() => {
   if (bulkEditMode.value) {
     const hasChanges = players.value.some(p => bulkUtrValues.value[p.id] !== p.utr)
-    if (hasChanges) {
-      return confirm('有未保存的 UTR 修改，确定离开吗？')
-    }
+    if (hasChanges) return confirm('有未保存的 UTR 修改，确定离开吗？')
   }
 })
 

@@ -2,6 +2,7 @@ package com.tennis.service;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.tennis.controller.LineupMatchupRequest;
 import com.tennis.model.Lineup;
 import com.tennis.model.Pair;
 import lombok.Data;
@@ -75,7 +76,16 @@ public class ZhipuAiService {
 
     /** Returns index + explanation */
     public AiResult selectBestWithResult(List<Lineup> candidates, String strategy, Lineup opponentLineup) {
-        return callWithPrompt(buildPromptWithOpponent(candidates, strategy, opponentLineup), candidates.size());
+        return selectBestWithResult(candidates, strategy, opponentLineup, null, null);
+    }
+
+    /** Returns index + explanation, with optional partner notes context */
+    public AiResult selectBestWithResult(List<Lineup> candidates, String strategy, Lineup opponentLineup,
+            List<LineupMatchupRequest.PartnerNoteDto> ownPartnerNotes,
+            List<LineupMatchupRequest.PartnerNoteDto> opponentPartnerNotes) {
+        return callWithPrompt(
+                buildPromptWithOpponent(candidates, strategy, opponentLineup, ownPartnerNotes, opponentPartnerNotes),
+                candidates.size());
     }
 
     // --- Prompt builders ---
@@ -93,6 +103,12 @@ public class ZhipuAiService {
     }
 
     String buildPromptWithOpponent(List<Lineup> candidates, String strategy, Lineup opponentLineup) {
+        return buildPromptWithOpponent(candidates, strategy, opponentLineup, null, null);
+    }
+
+    String buildPromptWithOpponent(List<Lineup> candidates, String strategy, Lineup opponentLineup,
+            List<LineupMatchupRequest.PartnerNoteDto> ownPartnerNotes,
+            List<LineupMatchupRequest.PartnerNoteDto> opponentPartnerNotes) {
         StringBuilder sb = new StringBuilder();
         sb.append("你是一位网球双打教练。请根据对手排阵和策略，选出最合适的己方排阵编号（从1开始）。\n\n");
         sb.append("策略：").append(strategy).append("\n\n");
@@ -107,12 +123,38 @@ public class ZhipuAiService {
             }
             sb.append("\n");
         }
+        appendPartnerNotesSection(sb, ownPartnerNotes, opponentPartnerNotes);
         sb.append("己方候选排阵：\n");
         for (int i = 0; i < candidates.size(); i++) {
             appendLineup(sb, i + 1, candidates.get(i));
         }
         sb.append("\n请回复格式：排阵编号<TAB>一句话理由（中文）。例如：2\t己方D1组合UTR优势明显，整体胜率最高。");
         return sb.toString();
+    }
+
+    private void appendPartnerNotesSection(StringBuilder sb,
+            List<LineupMatchupRequest.PartnerNoteDto> ownNotes,
+            List<LineupMatchupRequest.PartnerNoteDto> oppNotes) {
+        boolean hasOwn = ownNotes != null && !ownNotes.isEmpty();
+        boolean hasOpp = oppNotes != null && !oppNotes.isEmpty();
+        if (!hasOwn && !hasOpp) return;
+
+        sb.append("搭档笔记：\n");
+        if (hasOwn) {
+            sb.append("  己方：\n");
+            for (LineupMatchupRequest.PartnerNoteDto n : ownNotes) {
+                sb.append("    [").append(n.getPlayer1Name()).append(" + ").append(n.getPlayer2Name())
+                  .append("]: ").append(n.getNote()).append("\n");
+            }
+        }
+        if (hasOpp) {
+            sb.append("  对手：\n");
+            for (LineupMatchupRequest.PartnerNoteDto n : oppNotes) {
+                sb.append("    [").append(n.getPlayer1Name()).append(" + ").append(n.getPlayer2Name())
+                  .append("]: ").append(n.getNote()).append("\n");
+            }
+        }
+        sb.append("\n");
     }
 
     private void appendLineup(StringBuilder sb, int num, Lineup lineup) {

@@ -1,7 +1,29 @@
 ## Requirements
 
 ### Requirement: Saved lineup matchup API
-The system SHALL expose `POST /api/lineups/matchup` accepting `teamId`, `opponentTeamId`, and `opponentLineupId`. The endpoint SHALL evaluate all saved lineups from the own team against the opponent lineup using the UTR win probability algorithm, and return all results sorted by expected score descending.
+The system SHALL expose `POST /api/lineups/matchup` accepting `teamId`, `opponentTeamId`, `opponentLineupId`, and two new optional fields: `ownLineupId` (string) and `includeAi` (boolean, default false). The endpoint SHALL evaluate saved lineups from the own team against the opponent lineup using the UTR win probability algorithm, and return all results sorted by expected score descending.
+
+#### Scenario: ownLineupId filters to single own lineup
+- **WHEN** `ownLineupId` is provided
+- **THEN** only that saved lineup is evaluated and the response contains exactly one result (or empty if not found)
+
+#### Scenario: includeAi triggers AI recommendation
+- **WHEN** `includeAi: true` and no `ownLineupId`
+- **THEN** AI evaluates top 5 own saved lineups by expected score and picks the best
+- **AND** the response includes an `aiRecommendation` field alongside `results`
+
+#### Scenario: AI recommendation includes reasoning
+- **WHEN** AI returns a result
+- **THEN** `aiRecommendation.explanation` SHALL contain a brief reasoning string in Chinese (not just a fixed "AI 根据对手排阵选择最优方案")
+- **AND** `aiRecommendation.lineAnalysis` and `aiRecommendation.expectedScore` SHALL be populated for the AI-selected lineup
+
+#### Scenario: includeAi with ownLineupId is ignored
+- **WHEN** both `ownLineupId` and `includeAi: true` are provided
+- **THEN** `includeAi` is ignored; only the specified lineup is evaluated; no AI recommendation is returned
+
+#### Scenario: Results still sorted by expected score descending
+- **WHEN** no `ownLineupId` is provided (Mode A)
+- **THEN** results are sorted by `expectedScore` descending regardless of `includeAi`
 
 #### Scenario: Returns all own saved lineups ranked by expected score
 - **WHEN** `POST /api/lineups/matchup` is called with valid IDs
@@ -47,38 +69,3 @@ Each result in the matchup response SHALL contain: `lineup` (own saved Lineup), 
 - **THEN** own saved lineup pair UTRs SHALL be recalculated from the own team's current player roster
 - **AND** opponent saved lineup pair UTRs SHALL be recalculated from the opponent team's current player roster
 
----
-
-### Requirement: Saved lineup comparison mode on opponent analysis page
-The opponent analysis page at `/opponent-analysis` SHALL display a mode toggle with two tabs: **排阵生成** (existing generate mode) and **已保存对比** (saved lineup comparison mode).
-
-#### Scenario: Mode toggle switches between tabs
-- **WHEN** user clicks "已保存对比" tab
-- **THEN** the saved lineup comparison controls and results area are shown
-- **AND** the generate-mode results and controls are hidden
-
-#### Scenario: Compare button triggers matchup API
-- **WHEN** user has selected own team + opponent team + opponent lineup and clicks "对比"
-- **THEN** `POST /api/lineups/matchup` is called
-- **AND** loading state is shown during the call
-
-#### Scenario: Own team has no saved lineups
-- **WHEN** the own team has no saved lineups
-- **THEN** the page SHALL show "己方队伍暂无保存排阵，请先保存排阵" and disable the "对比" button
-
-#### Scenario: Matchup results displayed ranked
-- **WHEN** results are returned
-- **THEN** each own saved lineup is shown as a card containing: verdict badge, expected score, LineupCard with pairs, and per-line analysis table
-- **AND** results are displayed in order of expected score (highest first)
-
-#### Scenario: Verdict badge color coding
-- **WHEN** `verdict` is "能赢"
-- **THEN** badge is shown in green
-- **WHEN** `verdict` is "势均力敌"
-- **THEN** badge is shown in yellow/orange
-- **WHEN** `verdict` is "劣势"
-- **THEN** badge is shown in red
-
-#### Scenario: Error displayed on API failure
-- **WHEN** the matchup API call fails
-- **THEN** an error message is shown and the results area is cleared

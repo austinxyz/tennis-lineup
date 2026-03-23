@@ -133,7 +133,7 @@ class LineupMatchupServiceTest {
         stubRepository();
         List<LineAnalysis> analysis = buildAnalysis(0.8, 0.8, 0.8, 0.8);
         when(opponentAnalysisService.computeLineAnalysis(any(), anyMap())).thenReturn(analysis);
-        when(aiService.selectBestWithResult(any(), any(), any()))
+        when(aiService.selectBestWithResult(any(), any(), any(), any(), any()))
                 .thenReturn(new ZhipuAiService.AiResult(0, "D1组合UTR优势明显"));
 
         LineupMatchupRequest req = buildRequest("own-team", "opp-team", "opp-lineup-1");
@@ -143,7 +143,7 @@ class LineupMatchupServiceTest {
         assertThat(response.getAiRecommendation()).isNotNull();
         assertThat(response.getAiRecommendation().isAiUsed()).isTrue();
         assertThat(response.getAiRecommendation().getExplanation()).isEqualTo("D1组合UTR优势明显");
-        verify(aiService).selectBestWithResult(any(), any(), any());
+        verify(aiService).selectBestWithResult(any(), any(), any(), any(), any());
     }
 
     // --- includeAi + ownLineupId ignores AI (task 3.3) ---

@@ -77,6 +77,20 @@
         </div>
       </div>
 
+      <!-- Opponent partner notes (scouting notes) -->
+      <div v-if="opponentTeamId && opponentPlayers.length >= 2" class="mt-3">
+        <button
+          @click="showOppNotes = !showOppNotes"
+          class="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1"
+        >
+          <span>对手搭档笔记</span>
+          <span>{{ showOppNotes ? '▲' : '▼' }}</span>
+        </button>
+        <div v-if="showOppNotes" class="mt-2 bg-gray-50 rounded-lg border border-gray-200 p-3">
+          <PartnerNotesEditor :teamId="opponentTeamId" :players="opponentPlayers" />
+        </div>
+      </div>
+
       <!-- 逐线对比 mode: own lineup selector + preview -->
       <div v-if="analysisMode === 'headToHead'" class="mt-4">
         <label class="block text-sm font-medium text-gray-700 mb-1">己方排阵</label>
@@ -344,6 +358,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useTeams } from '../composables/useTeams'
 import { useOpponentMatchup } from '../composables/useOpponentMatchup'
 import { useApi } from '../composables/useApi'
+import PartnerNotesEditor from '../components/PartnerNotesEditor.vue'
 
 const { teams, fetchTeams } = useTeams()
 const { loading, error, runBestThree, runHeadToHead, runAiAnalysis, runCommentary } = useOpponentMatchup()
@@ -356,6 +371,8 @@ const opponentLineupId = ref('')
 const ownLineupId = ref('')
 const opponentLineups = ref([])
 const ownLineups = ref([])
+const opponentPlayers = ref([])
+const showOppNotes = ref(false)
 const aiLoading = ref(false)
 const aiError = ref('')
 const commentaryLoading = ref(false)
@@ -401,11 +418,18 @@ async function onOwnTeamChange() {
 async function onOpponentTeamChange() {
   opponentLineupId.value = ''
   opponentLineups.value = []
+  opponentPlayers.value = []
+  showOppNotes.value = false
   if (!opponentTeamId.value) return
   try {
-    opponentLineups.value = await get(`/api/teams/${opponentTeamId.value}/lineups`)
+    const [lineups, players] = await Promise.all([
+      get(`/api/teams/${opponentTeamId.value}/lineups`),
+      get(`/api/teams/${opponentTeamId.value}/players`),
+    ])
+    opponentLineups.value = lineups
+    opponentPlayers.value = players
   } catch (err) {
-    console.error('Failed to fetch opponent lineups:', err)
+    console.error('Failed to fetch opponent data:', err)
   }
 }
 

@@ -62,7 +62,7 @@ export class PlayerDetailPage {
 
   /** Returns array of player names in the table */
   async getPlayerNames() {
-    const rows = this.page.locator('tbody tr td:first-child .text-sm.font-medium')
+    const rows = this.page.locator('tbody tr td:nth-child(2) .text-sm.font-medium')
     const count = await rows.count()
     const names = []
     for (let i = 0; i < count; i++) {

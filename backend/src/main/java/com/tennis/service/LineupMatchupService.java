@@ -99,10 +99,11 @@ public class LineupMatchupService {
 
         results.sort(Comparator.comparingDouble(MatchupResult::getExpectedScore).reversed());
 
-        // AI recommendation: only when includeAi=true AND no specific ownLineupId (task 1.7)
+        // AI recommendation: only when includeAi=true AND no specific ownLineupId
         AiRecommendation aiRec = null;
         if (request.isIncludeAi() && (request.getOwnLineupId() == null || request.getOwnLineupId().isBlank())) {
-            aiRec = computeAiRecommendation(results, opponentLineup, opponentUtrByPosition);
+            aiRec = computeAiRecommendation(results, opponentLineup, opponentUtrByPosition,
+                    request.getOwnPartnerNotes(), request.getOpponentPartnerNotes());
         }
 
         return new LineupMatchupResponse(results, aiRec);
@@ -110,14 +111,17 @@ public class LineupMatchupService {
 
     private AiRecommendation computeAiRecommendation(List<MatchupResult> sortedResults,
                                                       Lineup opponentLineup,
-                                                      Map<String, Double> opponentUtrByPosition) {
+                                                      Map<String, Double> opponentUtrByPosition,
+                                                      List<LineupMatchupRequest.PartnerNoteDto> ownPartnerNotes,
+                                                      List<LineupMatchupRequest.PartnerNoteDto> opponentPartnerNotes) {
         // Take top-5 by expected score for AI to evaluate
         List<Lineup> top5 = sortedResults.stream()
                 .limit(5)
                 .map(MatchupResult::getLineup)
                 .toList();
 
-        ZhipuAiService.AiResult aiResult = aiService.selectBestWithResult(top5, "均衡", opponentLineup);
+        ZhipuAiService.AiResult aiResult = aiService.selectBestWithResult(
+                top5, "均衡", opponentLineup, ownPartnerNotes, opponentPartnerNotes);
         int aiIndex = aiResult.index();
 
         Lineup aiLineup;

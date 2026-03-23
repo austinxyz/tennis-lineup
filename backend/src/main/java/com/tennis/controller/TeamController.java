@@ -3,6 +3,7 @@ package com.tennis.controller;
 import com.tennis.model.Player;
 import com.tennis.model.Team;
 import com.tennis.service.BatchImportService;
+import com.tennis.service.PlayerService;
 import com.tennis.service.TeamService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -19,11 +20,13 @@ import java.util.List;
 public class TeamController {
     private final TeamService teamService;
     private final BatchImportService batchImportService;
+    private final PlayerService playerService;
 
     @Autowired
-    public TeamController(TeamService teamService, BatchImportService batchImportService) {
+    public TeamController(TeamService teamService, BatchImportService batchImportService, PlayerService playerService) {
         this.teamService = teamService;
         this.batchImportService = batchImportService;
+        this.playerService = playerService;
     }
 
     @GetMapping
@@ -92,6 +95,14 @@ public class TeamController {
     public ResponseEntity<Void> deletePlayer(@PathVariable String id, @PathVariable String playerId) {
         teamService.deletePlayer(id, playerId);
         return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/{id}/players/notes")
+    public ResponseEntity<Void> bulkUpdatePlayerNotes(
+            @PathVariable String id,
+            @RequestBody List<PlayerService.PlayerNoteUpdate> updates) {
+        playerService.bulkUpdateNotes(id, updates);
+        return ResponseEntity.ok().build();
     }
 
     @PostMapping("/import")

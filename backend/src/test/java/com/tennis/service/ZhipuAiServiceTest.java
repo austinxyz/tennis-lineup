@@ -252,4 +252,65 @@ class ZhipuAiServiceTest {
         assertTrue(prompt.contains("对手乙(UTR 5.0)"));
     }
 
+    // ── Partner Notes in Prompt ──────────────────────────────────────────────
+
+    @Test
+    @DisplayName("Partner notes section included when notes are provided")
+    void testPartnerNotesSectionIncluded() {
+        Lineup lineup = buildLineup("balanced", 10.0, 9.0, 8.0, 7.0);
+
+        com.tennis.controller.LineupMatchupRequest.PartnerNoteDto ownNote =
+                new com.tennis.controller.LineupMatchupRequest.PartnerNoteDto();
+        ownNote.setPlayer1Name("张三");
+        ownNote.setPlayer2Name("李四");
+        ownNote.setNote("默契好，配合稳定");
+
+        com.tennis.controller.LineupMatchupRequest.PartnerNoteDto oppNote =
+                new com.tennis.controller.LineupMatchupRequest.PartnerNoteDto();
+        oppNote.setPlayer1Name("对手甲");
+        oppNote.setPlayer2Name("对手乙");
+        oppNote.setNote("发球强，正手攻击力强");
+
+        String prompt = service.buildPromptWithOpponent(
+                List.of(lineup), "均衡", null,
+                List.of(ownNote), List.of(oppNote));
+
+        assertTrue(prompt.contains("搭档笔记"), "prompt should contain 搭档笔记 section");
+        assertTrue(prompt.contains("[张三 + 李四]: 默契好，配合稳定"), "own partner note present");
+        assertTrue(prompt.contains("[对手甲 + 对手乙]: 发球强，正手攻击力强"), "opponent partner note present");
+        assertTrue(prompt.contains("己方："), "own section label present");
+        assertTrue(prompt.contains("对手："), "opponent section label present");
+    }
+
+    @Test
+    @DisplayName("Partner notes section absent when lists are empty")
+    void testPartnerNotesSectionAbsentWhenEmpty() {
+        Lineup lineup = buildLineup("balanced", 10.0, 9.0, 8.0, 7.0);
+
+        String prompt = service.buildPromptWithOpponent(
+                List.of(lineup), "均衡", null,
+                List.of(), null);
+
+        assertFalse(prompt.contains("搭档笔记"), "prompt should not contain 搭档笔记 section when no notes");
+    }
+
+    @Test
+    @DisplayName("Own partner notes only: no opponent section added")
+    void testOnlyOwnPartnerNotes() {
+        Lineup lineup = buildLineup("balanced", 10.0, 9.0, 8.0, 7.0);
+
+        com.tennis.controller.LineupMatchupRequest.PartnerNoteDto ownNote =
+                new com.tennis.controller.LineupMatchupRequest.PartnerNoteDto();
+        ownNote.setPlayer1Name("甲");
+        ownNote.setPlayer2Name("乙");
+        ownNote.setNote("配合好");
+
+        String prompt = service.buildPromptWithOpponent(
+                List.of(lineup), "均衡", null, List.of(ownNote), null);
+
+        assertTrue(prompt.contains("搭档笔记"));
+        assertTrue(prompt.contains("己方："));
+        assertFalse(prompt.contains("对手："), "should not have opponent section when no opponent notes");
+    }
+
 }

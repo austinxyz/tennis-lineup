@@ -1,10 +1,26 @@
 import { ref } from 'vue'
 import { useApi } from './useApi'
 
+const MAX_PARTNER_NOTES = 10
+
+async function fetchPartnerNotesForAi(teamId, get) {
+  try {
+    const notes = await get(`/api/teams/${teamId}/partner-notes`)
+    if (!Array.isArray(notes) || notes.length === 0) return []
+    return notes
+      .filter(n => n.updatedAt)
+      .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
+      .slice(0, MAX_PARTNER_NOTES)
+      .map(n => ({ player1Name: n.player1Name, player2Name: n.player2Name, note: n.note }))
+  } catch {
+    return []
+  }
+}
+
 export function useOpponentMatchup() {
   const loading = ref(false)
   const error = ref('')
-  const { post } = useApi()
+  const { post, get } = useApi()
 
   async function runBestThree(ownTeamId, opponentTeamId, opponentLineupId) {
     loading.value = true
@@ -47,11 +63,17 @@ export function useOpponentMatchup() {
     loading.value = true
     error.value = ''
     try {
+      const [ownPartnerNotes, opponentPartnerNotes] = await Promise.all([
+        fetchPartnerNotesForAi(ownTeamId, get),
+        fetchPartnerNotesForAi(opponentTeamId, get),
+      ])
       const res = await post('/api/lineups/matchup', {
         teamId: ownTeamId,
         opponentTeamId,
         opponentLineupId,
         includeAi: true,
+        ownPartnerNotes: ownPartnerNotes.length > 0 ? ownPartnerNotes : undefined,
+        opponentPartnerNotes: opponentPartnerNotes.length > 0 ? opponentPartnerNotes : undefined,
       })
       return res?.aiRecommendation ?? null
     } catch (err) {

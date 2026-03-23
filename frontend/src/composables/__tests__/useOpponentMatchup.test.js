@@ -164,7 +164,10 @@ describe('useOpponentMatchup', () => {
 
       await runAiAnalysis('team-A', 'team-B', 'lineup-X')
 
-      const body = JSON.parse(mockFetch.mock.calls[0][1].body)
+      // runAiAnalysis first fetches partner notes (GET calls), then POSTs to matchup
+      // Find the POST call by checking for a request body
+      const postCall = mockFetch.mock.calls.find(call => call[1]?.method === 'POST')
+      const body = JSON.parse(postCall[1].body)
       expect(body.includeAi).toBe(true)
       expect(body.ownLineupId).toBeUndefined()
     })

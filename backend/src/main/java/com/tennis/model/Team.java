@@ -30,4 +30,7 @@ public class Team {
 
     @JsonProperty("lineups")
     private List<Lineup> lineups = new ArrayList<>();
+
+    @JsonProperty("partnerNotes")
+    private List<PartnerNote> partnerNotes = new ArrayList<>();
 }
