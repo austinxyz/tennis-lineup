@@ -49,3 +49,28 @@ The system SHALL provide a frontend page at `/opponent-analysis` with a **mode t
 #### Scenario: Nav link present in sidebar
 - **WHEN** user views any page
 - **THEN** a nav link "对手分析" is shown in the sidebar pointing to `/opponent-analysis`
+
+#### Scenario: AI recommendation button shown after best-three results (排阵生成 mode)
+- **WHEN** the UTR best-three results are displayed in 排阵生成 mode
+- **THEN** an "AI 推荐" button (purple) is shown
+- **WHEN** user clicks "AI 推荐"
+- **THEN** `POST /api/lineups/matchup` is called with `includeAi: true` and no `ownLineupId`
+- **AND** the AI recommendation result is displayed in a separate card with purple border/title
+- **AND** the AI card contains: per-line comparison (own | delta badge | opponent), expected score, and AI reasoning text
+- **AND** if `aiUsed: false`, a warning "AI 不可用" badge is shown and the highest UTR-score lineup is used as fallback
+
+#### Scenario: Opponent lineup preview shown after selection (已保存对比 mode)
+- **WHEN** user selects an opponent lineup in 已保存对比 mode
+- **THEN** a preview of that lineup's players is shown below the dropdown (D1-D4, format "D1: 甲 + 乙")
+- **WHEN** user selects own lineup in 已保存对比 mode
+- **THEN** a preview of the own lineup's players is shown below that dropdown
+- Preview style: simple, small gray text for confirmation purposes
+
+#### Scenario: AI line commentary button shown after UTR comparison results (已保存对比 mode)
+- **WHEN** UTR line-by-line comparison results are displayed in 已保存对比 mode
+- **THEN** an "AI 逐线评析" button (purple) is shown
+- **WHEN** user clicks "AI 逐线评析"
+- **THEN** `POST /api/lineups/matchup-commentary` is called
+- **AND** an AI commentary card is displayed showing per-line (D1-D4) analysis text, positioned below or adjacent to each UTR comparison row
+- **AND** if AI is unavailable, each line shows the rule-based fallback text
+- **AND** the commentary card does not include a recommended lineup, only text analysis
