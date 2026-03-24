@@ -15,7 +15,8 @@
       "gender" : "male",
       "utr" : 6.48,
       "verified" : true,
-      "notes" : "非常稳定，就是要给他配一个好的搭档，搭档不好他态度比较不好，该finish的球可以稳定finish"
+      "notes" : "非常稳定，就是要给他配一个好的搭档，搭档不好他态度比较不好，该finish的球可以稳定finish",
+      "actualUtr" : 6.8
     }, {
       "id" : "player-515158521247000",
       "name" : "Mitch Hu",
