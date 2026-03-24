@@ -178,8 +178,8 @@ const handleDrop = (e) => { importFile.value = e.dataTransfer.files[0] || null }
 const handleImport = async () => {
   if (!importFile.value) return
   const ext = importFile.value.name.split('.').pop().toLowerCase()
-  if (ext === 'json') await importFromJSON(importFile.value)
-  else await importFromCSV(importFile.value)
+  if (ext === 'json') await importFromJSON(activeTeamId.value, importFile.value)
+  else await importFromCSV(activeTeamId.value, importFile.value)
   await fetchTeams()
 }
 

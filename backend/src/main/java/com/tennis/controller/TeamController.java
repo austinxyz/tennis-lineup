@@ -105,8 +105,10 @@ public class TeamController {
         return ResponseEntity.ok().build();
     }
 
-    @PostMapping("/import")
-    public ResponseEntity<BatchImportService.ImportResult> importPlayers(@RequestParam("file") MultipartFile file) {
+    @PostMapping("/{id}/import")
+    public ResponseEntity<BatchImportService.ImportResult> importPlayers(
+            @PathVariable String id,
+            @RequestParam("file") MultipartFile file) {
         if (file.isEmpty()) {
             throw new IllegalArgumentException("请选择要导入的文件");
         }
@@ -120,9 +122,9 @@ public class TeamController {
             String fileName = file.getOriginalFilename().toLowerCase();
 
             if (fileName.endsWith(".csv")) {
-                result = batchImportService.importFromCSV(content);
+                result = batchImportService.importFromCSV(id, content);
             } else if (fileName.endsWith(".json")) {
-                result = batchImportService.importFromJSON(content);
+                result = batchImportService.importFromJSON(id, content);
             } else {
                 throw new IllegalArgumentException("不支持的文件格式，请上传 CSV 或 JSON 文件");
             }

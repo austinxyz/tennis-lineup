@@ -38,7 +38,7 @@ class BatchImportServiceTest {
         when(playerService.addPlayer(any(), any(), any(), any(), any(), any(), any(), any())).thenReturn(new Player());
 
         // Act
-        BatchImportService.ImportResult result = batchImportService.importFromCSV(csvContent);
+        BatchImportService.ImportResult result = batchImportService.importFromCSV("test-team", csvContent);
 
         // Assert
         assertEquals(2, result.getSuccessCount());
@@ -58,7 +58,7 @@ class BatchImportServiceTest {
         when(playerService.addPlayer(any(), any(), any(), any(), any(), any(), any(), any())).thenReturn(new Player());
 
         // Act
-        BatchImportService.ImportResult result = batchImportService.importFromCSV(csvContent);
+        BatchImportService.ImportResult result = batchImportService.importFromCSV("test-team", csvContent);
 
         // Assert
         assertEquals(1, result.getSuccessCount());
@@ -75,7 +75,7 @@ class BatchImportServiceTest {
         when(jsonRepository.readData()).thenReturn(teamData);
 
         // Act
-        BatchImportService.ImportResult result = batchImportService.importFromCSV(csvContent);
+        BatchImportService.ImportResult result = batchImportService.importFromCSV("test-team", csvContent);
 
         // Assert
         assertEquals(0, result.getSuccessCount());
@@ -93,7 +93,7 @@ class BatchImportServiceTest {
         when(jsonRepository.readData()).thenReturn(teamData);
 
         // Act
-        BatchImportService.ImportResult result = batchImportService.importFromCSV(csvContent);
+        BatchImportService.ImportResult result = batchImportService.importFromCSV("test-team", csvContent);
 
         // Assert
         assertEquals(0, result.getSuccessCount());
@@ -112,7 +112,7 @@ class BatchImportServiceTest {
         when(jsonRepository.readData()).thenReturn(teamData);
 
         // Act
-        BatchImportService.ImportResult result = batchImportService.importFromCSV(csvContent);
+        BatchImportService.ImportResult result = batchImportService.importFromCSV("test-team", csvContent);
 
         // Assert
         assertEquals(0, result.getSuccessCount());
@@ -131,7 +131,7 @@ class BatchImportServiceTest {
         when(jsonRepository.readData()).thenReturn(teamData);
 
         // Act
-        BatchImportService.ImportResult result = batchImportService.importFromCSV(csvContent);
+        BatchImportService.ImportResult result = batchImportService.importFromCSV("test-team", csvContent);
 
         // Assert
         assertEquals(0, result.getSuccessCount());
@@ -150,7 +150,7 @@ class BatchImportServiceTest {
         when(jsonRepository.readData()).thenReturn(teamData);
 
         // Act
-        BatchImportService.ImportResult result = batchImportService.importFromCSV(csvContent);
+        BatchImportService.ImportResult result = batchImportService.importFromCSV("test-team", csvContent);
 
         // Assert
         assertEquals(0, result.getSuccessCount());
@@ -169,7 +169,7 @@ class BatchImportServiceTest {
         when(jsonRepository.readData()).thenReturn(teamData);
 
         // Act
-        BatchImportService.ImportResult result = batchImportService.importFromCSV(csvContent);
+        BatchImportService.ImportResult result = batchImportService.importFromCSV("test-team", csvContent);
 
         // Assert
         assertEquals(0, result.getSuccessCount());
@@ -189,7 +189,7 @@ class BatchImportServiceTest {
         when(playerService.addPlayer(any(), any(), any(), any(), any(), any(), any(), any())).thenReturn(new Player());
 
         // Act
-        BatchImportService.ImportResult result = batchImportService.importFromJSON(jsonContent);
+        BatchImportService.ImportResult result = batchImportService.importFromJSON("test-team", jsonContent);
 
         // Assert
         assertEquals(2, result.getSuccessCount());
@@ -209,7 +209,7 @@ class BatchImportServiceTest {
         when(playerService.addPlayer(any(), any(), any(), any(), any(), any(), any(), any())).thenReturn(new Player());
 
         // Act
-        BatchImportService.ImportResult result = batchImportService.importFromJSON(jsonContent);
+        BatchImportService.ImportResult result = batchImportService.importFromJSON("test-team", jsonContent);
 
         // Assert
         assertEquals(1, result.getSuccessCount());
@@ -226,7 +226,7 @@ class BatchImportServiceTest {
         when(jsonRepository.readData()).thenReturn(teamData);
 
         // Act
-        BatchImportService.ImportResult result = batchImportService.importFromJSON(jsonContent);
+        BatchImportService.ImportResult result = batchImportService.importFromJSON("test-team", jsonContent);
 
         // Assert
         assertEquals(0, result.getSuccessCount());
@@ -241,7 +241,7 @@ class BatchImportServiceTest {
         String jsonContent = "invalid json";
 
         // Act (no stubs needed - parseJSONContent throws before calling readData)
-        BatchImportService.ImportResult result = batchImportService.importFromJSON(jsonContent);
+        BatchImportService.ImportResult result = batchImportService.importFromJSON("test-team", jsonContent);
 
         // Assert
         assertEquals(0, result.getSuccessCount());
@@ -265,7 +265,7 @@ class BatchImportServiceTest {
         when(playerService.addPlayer(any(), any(), any(), any(), any(), any(), any(), any())).thenReturn(new Player());
 
         // Act
-        BatchImportService.ImportResult result = batchImportService.importFromCSV(csvContent);
+        BatchImportService.ImportResult result = batchImportService.importFromCSV("test-team", csvContent);
 
         // Assert
         assertEquals(2, result.getSuccessCount());
@@ -289,7 +289,7 @@ class BatchImportServiceTest {
             .when(playerService).addPlayer("team-1", "Jane Smith", "female", 2.0, null, false, null, null);
 
         // Act
-        BatchImportService.ImportResult result = batchImportService.importFromCSV(csvContent);
+        BatchImportService.ImportResult result = batchImportService.importFromCSV("test-team", csvContent);
 
         // Assert
         assertEquals(1, result.getSuccessCount());
@@ -310,7 +310,7 @@ class BatchImportServiceTest {
         when(playerService.addPlayer(any(), any(), any(), any(), any(), any(), any(), any())).thenReturn(new Player());
 
         // Act
-        BatchImportService.ImportResult result = batchImportService.importFromJSON(jsonContent);
+        BatchImportService.ImportResult result = batchImportService.importFromJSON("test-team", jsonContent);
 
         // Assert
         // Should handle gracefully

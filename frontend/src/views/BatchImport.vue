@@ -51,8 +51,10 @@
 
 <script setup>
 import { ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { useBatchImport } from '../composables/useBatchImport'
 
+const route = useRoute()
 const { loading, error, importResult, importFromCSV, importFromJSON } = useBatchImport()
 const selectedFile = ref(null)
 
@@ -66,11 +68,12 @@ const handleDrop = (e) => {
 
 const handleImport = async () => {
   if (!selectedFile.value) return
+  const teamId = route.params.id
   const ext = selectedFile.value.name.split('.').pop().toLowerCase()
   if (ext === 'json') {
-    await importFromJSON(selectedFile.value)
+    await importFromJSON(teamId, selectedFile.value)
   } else {
-    await importFromCSV(selectedFile.value)
+    await importFromCSV(teamId, selectedFile.value)
   }
 }
 </script>

@@ -1,0 +1,176 @@
+<h2>队员笔记 — 布局 v2</h2>
+<p class="subtitle">个人备注显示在同一行；展开行只显示搭档笔记</p>
+
+<div class="mockup">
+  <div class="mockup-header">正常模式（个人备注显示在行内）</div>
+  <div class="mockup-body" style="padding:0">
+
+    <!-- Top bar -->
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid #e5e7eb;background:#f9fafb">
+      <span style="font-weight:600;color:#111;font-size:14px">球员列表 (8)</span>
+      <div style="display:flex;gap:8px">
+        <button style="background:#d97706;color:white;border:none;padding:5px 11px;border-radius:6px;font-size:12px">批量编辑 UTR</button>
+        <button style="background:#6366f1;color:white;border:none;padding:5px 11px;border-radius:6px;font-size:12px">批量编辑 Notes</button>
+        <button style="background:#16a34a;color:white;border:none;padding:5px 11px;border-radius:6px;font-size:12px">添加球员</button>
+      </div>
+    </div>
+
+    <!-- Table header -->
+    <div style="display:grid;grid-template-columns:28px 90px 52px 58px 58px 1fr 80px;gap:0;border-bottom:2px solid #e5e7eb;background:#f9fafb;padding:7px 16px;font-size:11px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:0.04em">
+      <span></span>
+      <span>姓名</span>
+      <span>性别</span>
+      <span>UTR</span>
+      <span>已验证</span>
+      <span>个人备注</span>
+      <span>操作</span>
+    </div>
+
+    <!-- Row: collapsed, has note -->
+    <div style="border-bottom:1px solid #f3f4f6">
+      <div style="display:grid;grid-template-columns:28px 90px 52px 58px 58px 1fr 80px;align-items:center;padding:9px 16px;background:white;cursor:pointer">
+        <span style="color:#9ca3af;font-size:11px">▶</span>
+        <span style="font-size:13px;font-weight:500;color:#111">张三</span>
+        <span><span style="background:#dbeafe;color:#1d4ed8;padding:2px 6px;border-radius:999px;font-size:11px;font-weight:600">男</span></span>
+        <span style="font-size:13px;color:#374151">7.50</span>
+        <span><span style="background:#dcfce7;color:#166534;padding:2px 5px;border-radius:999px;font-size:11px;font-weight:600">已验证</span></span>
+        <span style="font-size:12px;color:#6b7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">发球强，底线稳定，擅长正手</span>
+        <div style="display:flex;gap:8px">
+          <span style="color:#4f46e5;font-size:12px;cursor:pointer">编辑</span>
+          <span style="color:#dc2626;font-size:12px;cursor:pointer">删除</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Row: EXPANDED — only partner notes -->
+    <div style="border-bottom:1px solid #e5e7eb;background:#fafafa">
+      <div style="display:grid;grid-template-columns:28px 90px 52px 58px 58px 1fr 80px;align-items:center;padding:9px 16px;background:#eff6ff;cursor:pointer">
+        <span style="color:#3b82f6;font-size:11px">▼</span>
+        <span style="font-size:13px;font-weight:500;color:#1d4ed8">李四</span>
+        <span><span style="background:#dbeafe;color:#1d4ed8;padding:2px 6px;border-radius:999px;font-size:11px;font-weight:600">男</span></span>
+        <span style="font-size:13px;color:#374151">6.80</span>
+        <span><span style="background:#dcfce7;color:#166534;padding:2px 5px;border-radius:999px;font-size:11px;font-weight:600">已验证</span></span>
+        <span style="font-size:12px;color:#9ca3af;font-style:italic">暂无备注</span>
+        <div style="display:flex;gap:8px">
+          <span style="color:#4f46e5;font-size:12px;cursor:pointer">编辑</span>
+          <span style="color:#dc2626;font-size:12px;cursor:pointer">删除</span>
+        </div>
+      </div>
+
+      <!-- Expanded: partner notes only -->
+      <div style="padding:12px 16px 14px 44px;border-top:1px solid #dbeafe">
+        <div style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;margin-bottom:8px">搭档笔记</div>
+
+        <!-- existing partner note row -->
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+          <select style="padding:4px 7px;border:1px solid #d1d5db;border-radius:5px;font-size:12px;min-width:88px">
+            <option>张三</option>
+          </select>
+          <input type="text" value="默契很好，打过3次USTA，2胜1负" style="flex:1;max-width:400px;padding:4px 9px;border:1px solid #d1d5db;border-radius:5px;font-size:12px" />
+          <button style="background:none;border:none;color:#d1d5db;cursor:pointer;font-size:15px;line-height:1;padding:2px 4px">✕</button>
+        </div>
+
+        <!-- second partner note row -->
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+          <select style="padding:4px 7px;border:1px solid #d1d5db;border-radius:5px;font-size:12px;min-width:88px">
+            <option>王五</option>
+          </select>
+          <input type="text" value="网前配合好，发球+截击战术佳" style="flex:1;max-width:400px;padding:4px 9px;border:1px solid #d1d5db;border-radius:5px;font-size:12px" />
+          <button style="background:none;border:none;color:#d1d5db;cursor:pointer;font-size:15px;line-height:1;padding:2px 4px">✕</button>
+        </div>
+
+        <!-- blank row to add new -->
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+          <select style="padding:4px 7px;border:1px dashed #d1d5db;border-radius:5px;font-size:12px;min-width:88px;color:#9ca3af">
+            <option>选搭档…</option>
+          </select>
+          <input type="text" placeholder="添加笔记…" style="flex:1;max-width:400px;padding:4px 9px;border:1px dashed #d1d5db;border-radius:5px;font-size:12px;color:#9ca3af" />
+          <div style="width:22px"></div>
+        </div>
+
+        <button style="background:#3b82f6;color:white;border:none;padding:5px 14px;border-radius:5px;font-size:12px;cursor:pointer">保存</button>
+        <button style="background:none;border:1px solid #d1d5db;color:#6b7280;padding:5px 12px;border-radius:5px;font-size:12px;cursor:pointer;margin-left:6px">取消</button>
+      </div>
+    </div>
+
+    <!-- Row: no note, collapsed -->
+    <div style="border-bottom:1px solid #f3f4f6">
+      <div style="display:grid;grid-template-columns:28px 90px 52px 58px 58px 1fr 80px;align-items:center;padding:9px 16px;background:white;cursor:pointer">
+        <span style="color:#9ca3af;font-size:11px">▶</span>
+        <span style="font-size:13px;font-weight:500;color:#111">王五</span>
+        <span><span style="background:#fce7f3;color:#9d174d;padding:2px 6px;border-radius:999px;font-size:11px;font-weight:600">女</span></span>
+        <span style="font-size:13px;color:#374151">5.20</span>
+        <span><span style="background:#fef9c3;color:#854d0e;padding:2px 5px;border-radius:999px;font-size:11px;font-weight:600">未验证</span></span>
+        <span style="font-size:12px;color:#d1d5db;font-style:italic">—</span>
+        <div style="display:flex;gap:8px">
+          <span style="color:#4f46e5;font-size:12px;cursor:pointer">编辑</span>
+          <span style="color:#dc2626;font-size:12px;cursor:pointer">删除</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="padding:8px 16px;color:#9ca3af;font-size:12px;text-align:center">… 更多球员</div>
+  </div>
+</div>
+
+<div style="margin-top:24px">
+  <div class="mockup">
+    <div class="mockup-header">批量编辑 Notes 模式（点击顶部按钮后，行内直接编辑）</div>
+    <div class="mockup-body" style="padding:0">
+
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid #e5e7eb;background:#eef2ff">
+        <span style="font-weight:600;color:#4338ca;font-size:14px">正在批量编辑个人备注</span>
+        <div style="display:flex;gap:8px">
+          <button style="background:#4f46e5;color:white;border:none;padding:5px 14px;border-radius:6px;font-size:12px">保存全部</button>
+          <button style="background:none;border:1px solid #a5b4fc;color:#4338ca;padding:5px 12px;border-radius:6px;font-size:12px">取消</button>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:28px 90px 52px 58px 58px 1fr 80px;gap:0;border-bottom:2px solid #e5e7eb;background:#f9fafb;padding:7px 16px;font-size:11px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:0.04em">
+        <span></span><span>姓名</span><span>性别</span><span>UTR</span><span>已验证</span>
+        <span style="color:#4f46e5">个人备注 ✎</span>
+        <span>操作</span>
+      </div>
+
+      <div style="border-bottom:1px solid #f3f4f6">
+        <div style="display:grid;grid-template-columns:28px 90px 52px 58px 58px 1fr 80px;align-items:center;padding:8px 16px;background:white">
+          <span></span>
+          <span style="font-size:13px;font-weight:500">张三</span>
+          <span><span style="background:#dbeafe;color:#1d4ed8;padding:2px 6px;border-radius:999px;font-size:11px;font-weight:600">男</span></span>
+          <span style="font-size:13px;color:#374151">7.50</span>
+          <span><span style="background:#dcfce7;color:#166534;padding:2px 5px;border-radius:999px;font-size:11px;font-weight:600">已验证</span></span>
+          <input type="text" value="发球强，底线稳定，擅长正手" style="padding:4px 8px;border:1px solid #a5b4fc;border-radius:5px;font-size:12px;background:#fafafa;width:95%" />
+          <span style="font-size:12px;color:#9ca3af">—</span>
+        </div>
+      </div>
+
+      <div style="border-bottom:1px solid #f3f4f6">
+        <div style="display:grid;grid-template-columns:28px 90px 52px 58px 58px 1fr 80px;align-items:center;padding:8px 16px;background:white">
+          <span></span>
+          <span style="font-size:13px;font-weight:500">李四</span>
+          <span><span style="background:#dbeafe;color:#1d4ed8;padding:2px 6px;border-radius:999px;font-size:11px;font-weight:600">男</span></span>
+          <span style="font-size:13px;color:#374151">6.80</span>
+          <span><span style="background:#dcfce7;color:#166534;padding:2px 5px;border-radius:999px;font-size:11px;font-weight:600">已验证</span></span>
+          <input type="text" placeholder="暂无备注…" style="padding:4px 8px;border:1px solid #e5e7eb;border-radius:5px;font-size:12px;background:#fafafa;width:95%;color:#9ca3af" />
+          <span style="font-size:12px;color:#9ca3af">—</span>
+        </div>
+      </div>
+
+      <div style="border-bottom:1px solid #f3f4f6">
+        <div style="display:grid;grid-template-columns:28px 90px 52px 58px 58px 1fr 80px;align-items:center;padding:8px 16px;background:#fffbeb">
+          <span></span>
+          <span style="font-size:13px;font-weight:500">王五</span>
+          <span><span style="background:#fce7f3;color:#9d174d;padding:2px 6px;border-radius:999px;font-size:11px;font-weight:600">女</span></span>
+          <span style="font-size:13px;color:#374151">5.20</span>
+          <span><span style="background:#fef9c3;color:#854d0e;padding:2px 5px;border-radius:999px;font-size:11px;font-weight:600">未验证</span></span>
+          <input type="text" value="擅长网前，刚改的" style="padding:4px 8px;border:1px solid #fbbf24;border-radius:5px;font-size:12px;background:#fffbeb;width:95%" />
+          <span style="font-size:12px;color:#9ca3af">—</span>
+        </div>
+      </div>
+
+      <div style="padding:8px 16px;color:#9ca3af;font-size:12px;text-align:center">… 更多球员</div>
+    </div>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top:16px">这个方向对吗？有没有需要调整的细节？</p>

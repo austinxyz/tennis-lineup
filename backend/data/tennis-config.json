@@ -1,0 +1,20 @@
+{
+  "constraintPresets" : {
+    "team-6831134971900" : [ {
+      "id" : "preset-238807785710500",
+      "name" : "浙江队-1",
+      "createdAt" : "2026-03-20T03:06:23.950824800Z",
+      "excludePlayers" : [ "player-2546258876300", "player-3037728667300", "player-2582209443300", "player-6980272689200", "player-3107167122000", "player-3148795151700", "player-85525542634500", "player-67564998469100" ],
+      "includePlayers" : [ ],
+      "pinPlayers" : { }
+    } ],
+    "team-514037296790200" : [ {
+      "id" : "preset-516609696001900",
+      "name" : "浙江队-1",
+      "createdAt" : "2026-03-23T08:15:43.448848100Z",
+      "excludePlayers" : [ "player-515158514847100", "player-515158530857900", "player-515254085785600", "player-515158531841200", "player-515158540373200", "player-515288317382000", "player-515915372893200" ],
+      "includePlayers" : [ ],
+      "pinPlayers" : { }
+    } ]
+  }
+}

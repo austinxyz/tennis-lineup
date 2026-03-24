@@ -28,7 +28,7 @@ public class BatchImportService {
         this.playerService = playerService;
     }
 
-    public ImportResult importFromCSV(String csvContent) {
+    public ImportResult importFromCSV(String teamId, String csvContent) {
         List<Player> players = new ArrayList<>();
         List<String> errors = new ArrayList<>();
         int lineNum = 0;
@@ -51,10 +51,10 @@ public class BatchImportService {
             throw new RuntimeException("Failed to read CSV content", e);
         }
 
-        return importPlayers(players, errors);
+        return importPlayers(teamId, players, errors);
     }
 
-    public ImportResult importFromJSON(String jsonContent) {
+    public ImportResult importFromJSON(String teamId, String jsonContent) {
         List<Player> players;
         List<String> errors = new ArrayList<>();
 
@@ -65,7 +65,7 @@ public class BatchImportService {
             return new ImportResult(0, 0, errors);
         }
 
-        return importPlayers(players, errors);
+        return importPlayers(teamId, players, errors);
     }
 
     private Player parseCSVLine(String line) {
@@ -188,17 +188,13 @@ public class BatchImportService {
         return defaultValue;
     }
 
-    private ImportResult importPlayers(List<Player> players, List<String> initialErrors) {
-        TeamData teamData = jsonRepository.readData();
+    private ImportResult importPlayers(String teamId, List<Player> players, List<String> initialErrors) {
         List<String> errors = new ArrayList<>(initialErrors);
         int successCount = 0;
 
         for (Player player : players) {
             try {
-                // In a real implementation, you would assign players to teams
-                // For now, we'll just add them to a default team or create a new team
-                // This is a simplified implementation
-                playerService.addPlayer("team-1", player.getName(), player.getGender(),
+                playerService.addPlayer(teamId, player.getName(), player.getGender(),
                                     player.getUtr(), null, player.getVerified(), null, null);
                 successCount++;
             } catch (Exception e) {

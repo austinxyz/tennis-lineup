@@ -5,12 +5,12 @@ export function useBatchImport() {
   const { loading, error, post } = useApi()
   const importResult = ref(null)
 
-  const importFromCSV = async (file) => {
+  const importFromCSV = async (teamId, file) => {
     const formData = new FormData()
     formData.append('file', file)
 
     try {
-      importResult.value = await post('/api/teams/import', formData, {
+      importResult.value = await post(`/api/teams/${teamId}/import`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -22,12 +22,12 @@ export function useBatchImport() {
     }
   }
 
-  const importFromJSON = async (file) => {
+  const importFromJSON = async (teamId, file) => {
     const formData = new FormData()
     formData.append('file', file)
 
     try {
-      importResult.value = await post('/api/teams/import', formData, {
+      importResult.value = await post(`/api/teams/${teamId}/import`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },

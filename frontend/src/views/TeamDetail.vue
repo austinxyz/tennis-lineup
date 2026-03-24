@@ -97,17 +97,16 @@
             <tr>
               <th class="px-3 py-3 w-8"></th>
               <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">姓名</th>
-              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">性别</th>
               <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">UTR</th>
               <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">已验证</th>
-              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-40">个人备注</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">个人备注</th>
               <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">搭档笔记</th>
               <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
             <tr v-if="players.length === 0">
-              <td colspan="8" class="px-6 py-4 text-center text-gray-500">
+              <td colspan="7" class="px-6 py-4 text-center text-gray-500">
                 暂无球员，点击上方按钮添加
               </td>
             </tr>
@@ -125,17 +124,15 @@
                   >{{ expandedPlayerId === player.id ? '▼' : '▶' }}</button>
                 </td>
 
-                <!-- Name -->
+                <!-- Name + Gender -->
                 <td class="px-4 py-4 whitespace-nowrap">
-                  <div class="text-sm font-medium text-gray-900">{{ player.name }}</div>
-                </td>
-
-                <!-- Gender -->
-                <td class="px-4 py-4 whitespace-nowrap">
-                  <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
-                        :class="player.gender === 'male' ? 'bg-blue-100 text-blue-800' : 'bg-pink-100 text-pink-800'">
-                    {{ player.gender === 'male' ? '男' : '女' }}
-                  </span>
+                  <div class="flex items-center gap-2">
+                    <div class="text-sm font-medium text-gray-900">{{ player.name }}</div>
+                    <span class="px-1.5 inline-flex text-xs leading-5 font-semibold rounded-full"
+                          :class="player.gender === 'male' ? 'bg-blue-100 text-blue-800' : 'bg-pink-100 text-pink-800'">
+                      {{ player.gender === 'male' ? '男' : '女' }}
+                    </span>
+                  </div>
                 </td>
 
                 <!-- UTR -->
@@ -165,7 +162,7 @@
                 </td>
 
                 <!-- 个人备注 -->
-                <td class="px-4 py-4 w-40">
+                <td class="px-4 py-4">
                   <template v-if="bulkNotesMode">
                     <input
                       v-model="bulkNoteValues[player.id]"

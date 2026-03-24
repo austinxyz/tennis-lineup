@@ -254,10 +254,10 @@ class TeamControllerTest {
                         .getBytes());
 
         BatchImportService.ImportResult result = new BatchImportService.ImportResult(2, 0, List.of());
-        when(batchImportService.importFromCSV(any(String.class))).thenReturn(result);
+        when(batchImportService.importFromCSV(any(String.class), any(String.class))).thenReturn(result);
 
         // Act & Assert
-        mockMvc.perform(multipart("/api/teams/import")
+        mockMvc.perform(multipart("/api/teams/team-1/import")
                 .file(file))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.successCount").value(2))
@@ -274,11 +274,11 @@ class TeamControllerTest {
                 "text/csv",
                 "".getBytes());
 
-        when(batchImportService.importFromCSV(any(String.class)))
+        when(batchImportService.importFromCSV(any(String.class), any(String.class)))
                 .thenThrow(new RuntimeException("请选择要导入的文件"));
 
         // Act & Assert
-        mockMvc.perform(multipart("/api/teams/import")
+        mockMvc.perform(multipart("/api/teams/team-1/import")
                 .file(file))
                 .andExpect(status().isBadRequest());
     }
@@ -294,11 +294,11 @@ class TeamControllerTest {
                 "name,gender,utr,verified\nJohn Doe,male,1.5,true"
                         .getBytes());
 
-        when(batchImportService.importFromCSV(any(String.class)))
+        when(batchImportService.importFromCSV(any(String.class), any(String.class)))
                 .thenThrow(new RuntimeException("不支持的文件格式，请上传 CSV 或 JSON 文件"));
 
         // Act & Assert
-        mockMvc.perform(multipart("/api/teams/import")
+        mockMvc.perform(multipart("/api/teams/team-1/import")
                 .file(file))
                 .andExpect(status().isBadRequest());
     }
@@ -362,10 +362,10 @@ class TeamControllerTest {
         BatchImportService.ImportResult result = new BatchImportService.ImportResult(
                 0, 1, List.of("导入失败: 无效数据"));
 
-        when(batchImportService.importFromCSV(any(String.class))).thenReturn(result);
+        when(batchImportService.importFromCSV(any(String.class), any(String.class))).thenReturn(result);
 
         // Act & Assert
-        mockMvc.perform(multipart("/api/teams/import")
+        mockMvc.perform(multipart("/api/teams/team-1/import")
                 .file(file))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.successCount").value(0))
