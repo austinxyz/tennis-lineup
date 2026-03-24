@@ -30,6 +30,10 @@
             <span class="truncate">{{ player.name }}</span>
             <span class="text-xs text-gray-400 shrink-0">{{ player.utr }}</span>
             <span
+              v-if="player.actualUtr != null && player.actualUtr !== player.utr"
+              class="text-xs text-orange-500 shrink-0"
+            >实:{{ Number(player.actualUtr).toFixed(2) }}</span>
+            <span
               v-if="player.verified"
               class="shrink-0 px-1 py-0.5 bg-green-100 text-green-700 text-xs rounded"
             >认证</span>

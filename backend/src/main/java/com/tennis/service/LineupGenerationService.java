@@ -123,10 +123,10 @@ public class LineupGenerationService {
             }
         }
 
-        // Expand pool to up to 100 valid lineups for actualUtr re-ranking
+        // Expand pool if fewer than 100 candidates across more subsets for actualUtr re-ranking
         List<Lineup> allCandidates = filterCandidates(rawCandidates, effectiveInclude, pinPlayers, playersByPin);
-        if (allCandidates.size() < 100 && subsets.size() > Math.min(40, subsets.size())) {
-            for (int i = Math.min(40, subsets.size()); i < subsets.size() && allCandidates.size() < 100; i++) {
+        if (allCandidates.size() < 100 && subsets.size() > 40) {
+            for (int i = 40; i < subsets.size() && allCandidates.size() < 100; i++) {
                 backtrackSubset(subsets.get(i), pinPlayers, rawCandidates);
                 allCandidates = filterCandidates(rawCandidates, effectiveInclude, pinPlayers, playersByPin);
             }
@@ -136,11 +136,27 @@ public class LineupGenerationService {
             throw new IllegalArgumentException("无法生成满足位置约束的排阵");
         }
 
+        // Dedup by player set: keep one representative per unique 8-player combination.
+        // All pair arrangements of the same 8 players have the same actualUtrSum, so we
+        // keep only the first (which the backtracking naturally produces as the strongest pairing).
+        Set<String> seen = new HashSet<>();
+        List<Lineup> deduped = new ArrayList<>();
+        for (Lineup l : allCandidates) {
+            if (l.getPairs() == null) { deduped.add(l); continue; }
+            List<String> ids = l.getPairs().stream()
+                    .flatMap(p -> java.util.stream.Stream.of(p.getPlayer1Id(), p.getPlayer2Id()))
+                    .filter(java.util.Objects::nonNull)
+                    .sorted()
+                    .collect(Collectors.toList());
+            String key = String.join(",", ids);
+            if (seen.add(key)) deduped.add(l);
+        }
+
         // Re-rank by actualUtrSum descending; return top 6
-        allCandidates.sort(Comparator.comparingDouble(
+        deduped.sort(Comparator.comparingDouble(
                 (Lineup l) -> l.getActualUtrSum() != null ? l.getActualUtrSum() : l.getTotalUtr()
         ).reversed());
-        return allCandidates.subList(0, Math.min(6, allCandidates.size()));
+        return deduped.subList(0, Math.min(6, deduped.size()));
     }
 
     /**
