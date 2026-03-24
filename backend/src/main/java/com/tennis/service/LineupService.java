@@ -223,15 +223,18 @@ public class LineupService {
 
         for (Lineup lineup : lineups) {
             double lineupTotalUtr = 0;
+            double lineupActualUtrTotal = 0;
             for (Pair pair : lineup.getPairs()) {
                 Player p1 = playerMap.get(pair.getPlayer1Id());
                 Player p2 = playerMap.get(pair.getPlayer2Id());
                 if (p1 != null) {
                     pair.setPlayer1Utr(p1.getUtr()); // always reflect current UTR
+                    pair.setPlayer1ActualUtr(p1.getActualUtr()); // null if no override
                     if (pair.getPlayer1Gender() == null) pair.setPlayer1Gender(p1.getGender());
                 }
                 if (p2 != null) {
                     pair.setPlayer2Utr(p2.getUtr()); // always reflect current UTR
+                    pair.setPlayer2ActualUtr(p2.getActualUtr()); // null if no override
                     if (pair.getPlayer2Gender() == null) pair.setPlayer2Gender(p2.getGender());
                 }
                 // Recalculate combinedUtr from current values
@@ -239,8 +242,13 @@ public class LineupService {
                 double utr2 = pair.getPlayer2Utr() != null ? pair.getPlayer2Utr() : 0;
                 pair.setCombinedUtr(utr1 + utr2);
                 lineupTotalUtr += utr1 + utr2;
+                // Actual UTR uses override if set, otherwise falls back to official UTR
+                double actual1 = p1 != null ? p1.getEffectiveActualUtr() : utr1;
+                double actual2 = p2 != null ? p2.getEffectiveActualUtr() : utr2;
+                lineupActualUtrTotal += actual1 + actual2;
             }
             lineup.setTotalUtr(lineupTotalUtr);
+            lineup.setActualUtrSum(lineupActualUtrTotal);
         }
 
         // Re-validate each lineup against current player UTRs
