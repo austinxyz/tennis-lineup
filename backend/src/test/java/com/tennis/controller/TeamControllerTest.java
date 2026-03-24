@@ -198,7 +198,7 @@ class TeamControllerTest {
         playerRequest.setUtr(1.5);
         playerRequest.setVerified(true);
 
-        when(teamService.addPlayer(eq("team-1"), eq("John Doe"), eq("male"), eq(1.5), eq(null), eq(true), eq(null), eq(null)))
+        when(teamService.addPlayer(eq("team-1"), eq("John Doe"), eq("male"), eq(1.5), eq(null), eq(true), eq(null), eq(null), eq(null)))
                 .thenReturn(testPlayer);
 
         // Act & Assert
@@ -220,7 +220,7 @@ class TeamControllerTest {
         playerRequest.setUtr(2.0);
         playerRequest.setVerified(false);
 
-        when(teamService.updatePlayer(eq("team-1"), eq("player-1"), eq("Jane Smith"), eq("female"), eq(2.0), eq(null), eq(false), eq(null), eq(null)))
+        when(teamService.updatePlayer(eq("team-1"), eq("player-1"), eq("Jane Smith"), eq("female"), eq(2.0), eq(null), eq(false), eq(null), eq(null), eq(null)))
                 .thenReturn(testPlayer);
 
         // Act & Assert
@@ -323,7 +323,7 @@ class TeamControllerTest {
         playerRequest.setVerified(true);
         playerRequest.setProfileUrl(url);
 
-        when(teamService.addPlayer(eq("team-1"), eq("John Doe"), eq("male"), eq(1.5), eq(null), eq(true), eq(url), eq(null)))
+        when(teamService.addPlayer(eq("team-1"), eq("John Doe"), eq("male"), eq(1.5), eq(null), eq(true), eq(url), eq(null), eq(null)))
                 .thenReturn(playerWithUrl);
 
         // Act & Assert
@@ -346,6 +346,66 @@ class TeamControllerTest {
         mockMvc.perform(get("/api/teams/team-1/players"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].profileUrl").value(url));
+    }
+
+    @Test
+    @DisplayName("Should add player with actualUtr and return it in response")
+    void addPlayer_withActualUtr_returnsPlayerWithActualUtr() throws Exception {
+        // Arrange
+        Player playerWithActualUtr = new Player();
+        playerWithActualUtr.setId("player-1");
+        playerWithActualUtr.setName("John Doe");
+        playerWithActualUtr.setGender("male");
+        playerWithActualUtr.setUtr(5.0);
+        playerWithActualUtr.setVerified(true);
+        playerWithActualUtr.setActualUtr(7.5);
+
+        PlayerRequest playerRequest = new PlayerRequest();
+        playerRequest.setName("John Doe");
+        playerRequest.setGender("male");
+        playerRequest.setUtr(5.0);
+        playerRequest.setVerified(true);
+        playerRequest.setActualUtr(7.5);
+
+        when(teamService.addPlayer(eq("team-1"), eq("John Doe"), eq("male"), eq(5.0), eq(null), eq(true), eq(null), eq(null), eq(7.5)))
+                .thenReturn(playerWithActualUtr);
+
+        // Act & Assert
+        mockMvc.perform(post("/api/teams/team-1/players")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(playerRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.actualUtr").value(7.5));
+    }
+
+    @Test
+    @DisplayName("Should update player with actualUtr and return updated value in response")
+    void updatePlayer_withActualUtr_returnsUpdatedPlayer() throws Exception {
+        // Arrange
+        Player updatedPlayer = new Player();
+        updatedPlayer.setId("player-1");
+        updatedPlayer.setName("John Doe");
+        updatedPlayer.setGender("male");
+        updatedPlayer.setUtr(5.0);
+        updatedPlayer.setVerified(true);
+        updatedPlayer.setActualUtr(6.0);
+
+        PlayerRequest playerRequest = new PlayerRequest();
+        playerRequest.setName("John Doe");
+        playerRequest.setGender("male");
+        playerRequest.setUtr(5.0);
+        playerRequest.setVerified(true);
+        playerRequest.setActualUtr(6.0);
+
+        when(teamService.updatePlayer(eq("team-1"), eq("player-1"), eq("John Doe"), eq("male"), eq(5.0), eq(null), eq(true), eq(null), eq(null), eq(6.0)))
+                .thenReturn(updatedPlayer);
+
+        // Act & Assert
+        mockMvc.perform(put("/api/teams/team-1/players/player-1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(playerRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.actualUtr").value(6.0));
     }
 
     @Test

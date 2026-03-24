@@ -7,7 +7,10 @@
         <span v-if="lineup.aiUsed" class="ml-2 px-2 py-0.5 bg-purple-100 text-purple-700 text-xs rounded-full">AI 优选</span>
         <span v-else class="ml-2 px-2 py-0.5 bg-gray-100 text-gray-500 text-xs rounded-full">启发式</span>
       </div>
-      <span class="text-sm text-gray-500">总 UTR: <span class="font-semibold text-gray-800">{{ totalUtr }}</span></span>
+      <div class="text-right">
+        <span class="text-sm text-gray-500">总 UTR: <span class="font-semibold text-gray-800">{{ totalUtr }}</span></span>
+        <span v-if="showActualUtrSum" class="ml-3 text-sm text-orange-500">实际 UTR: <span class="font-semibold">{{ actualUtrSum }}</span></span>
+      </div>
     </div>
 
     <!-- Pairs -->
@@ -20,9 +23,9 @@
         <span class="w-8 text-xs font-bold text-green-600">{{ pair.position }}</span>
         <div class="flex-1 text-sm text-gray-800">
           <template v-if="showPlayerUtr">
-            <span v-if="pair.player1Gender" :class="pair.player1Gender === 'female' ? 'text-pink-500' : 'text-blue-500'" class="text-xs font-semibold mr-0.5">{{ pair.player1Gender === 'female' ? '女' : '男' }}</span>{{ pair.player1Name }} ({{ pair.player1Utr ?? '—' }})
+            <span v-if="pair.player1Gender" :class="pair.player1Gender === 'female' ? 'text-pink-500' : 'text-blue-500'" class="text-xs font-semibold mr-0.5">{{ pair.player1Gender === 'female' ? '女' : '男' }}</span>{{ pair.player1Name }} ({{ pair.player1Utr ?? '—' }}<template v-if="pair.player1ActualUtr != null"> <span class="text-orange-500 text-xs">实:{{ pair.player1ActualUtr.toFixed(2) }}</span></template>)
             /
-            <span v-if="pair.player2Gender" :class="pair.player2Gender === 'female' ? 'text-pink-500' : 'text-blue-500'" class="text-xs font-semibold mr-0.5">{{ pair.player2Gender === 'female' ? '女' : '男' }}</span>{{ pair.player2Name }} ({{ pair.player2Utr ?? '—' }})
+            <span v-if="pair.player2Gender" :class="pair.player2Gender === 'female' ? 'text-pink-500' : 'text-blue-500'" class="text-xs font-semibold mr-0.5">{{ pair.player2Gender === 'female' ? '女' : '男' }}</span>{{ pair.player2Name }} ({{ pair.player2Utr ?? '—' }}<template v-if="pair.player2ActualUtr != null"> <span class="text-orange-500 text-xs">实:{{ pair.player2ActualUtr.toFixed(2) }}</span></template>)
           </template>
           <template v-else>
             {{ pair.player1Name }} / {{ pair.player2Name }}
@@ -63,4 +66,12 @@ const sortedPairs = computed(() =>
 )
 
 const totalUtr = computed(() => props.lineup.totalUtr?.toFixed(2) ?? '—')
+
+const actualUtrSum = computed(() => props.lineup.actualUtrSum?.toFixed(2) ?? '—')
+
+const showActualUtrSum = computed(() => {
+  const actual = props.lineup.actualUtrSum
+  const total = props.lineup.totalUtr
+  return actual != null && total != null && Math.abs(actual - total) > 0.01
+})
 </script>

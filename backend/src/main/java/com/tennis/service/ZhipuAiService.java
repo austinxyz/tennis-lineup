@@ -94,6 +94,7 @@ public class ZhipuAiService {
         StringBuilder sb = new StringBuilder();
         sb.append("你是一位网球双打教练。请根据以下策略选出最合适的排阵编号（从1开始）。\n\n");
         sb.append("策略：").append(strategy).append("\n\n");
+        sb.append("重要说明：请主要参考实际UTR（actualUtr）进行分析。如果实际UTR与官方UTR不同，以实际UTR为准。同时结合个人备注和搭档笔记进行综合判断。\n\n");
         sb.append("候选排阵：\n");
         for (int i = 0; i < candidates.size(); i++) {
             appendLineup(sb, i + 1, candidates.get(i));
@@ -112,6 +113,7 @@ public class ZhipuAiService {
         StringBuilder sb = new StringBuilder();
         sb.append("你是一位网球双打教练。请根据对手排阵和策略，选出最合适的己方排阵编号（从1开始）。\n\n");
         sb.append("策略：").append(strategy).append("\n\n");
+        sb.append("重要说明：请主要参考实际UTR（actualUtr）进行分析。如果实际UTR与官方UTR不同，以实际UTR为准。同时结合个人备注和搭档笔记进行综合判断。\n\n");
         if (opponentLineup != null) {
             sb.append("对手排阵：\n");
             for (Pair pair : opponentLineup.getPairs()) {
@@ -158,12 +160,16 @@ public class ZhipuAiService {
     }
 
     private void appendLineup(StringBuilder sb, int num, Lineup lineup) {
-        sb.append(num).append(". 总UTR=").append(String.format("%.1f", lineup.getTotalUtr())).append("\n");
+        sb.append(num).append(". 总UTR=").append(String.format("%.1f", lineup.getTotalUtr()));
+        if (lineup.getActualUtrSum() != null && Math.abs(lineup.getActualUtrSum() - lineup.getTotalUtr()) > 0.01) {
+            sb.append(" (实际UTR=").append(String.format("%.1f", lineup.getActualUtrSum())).append(")");
+        }
+        sb.append("\n");
         for (Pair pair : lineup.getPairs()) {
             sb.append("   ").append(pair.getPosition()).append(": ")
-              .append(describePlayer(pair.getPlayer1Name(), pair.getPlayer1Utr(), pair.getPlayer1Notes()))
+              .append(describePlayer(pair.getPlayer1Name(), pair.getPlayer1Utr(), pair.getPlayer1ActualUtr(), pair.getPlayer1Notes()))
               .append(" + ")
-              .append(describePlayer(pair.getPlayer2Name(), pair.getPlayer2Utr(), pair.getPlayer2Notes()))
+              .append(describePlayer(pair.getPlayer2Name(), pair.getPlayer2Utr(), pair.getPlayer2ActualUtr(), pair.getPlayer2Notes()))
               .append(" (组合UTR=").append(String.format("%.1f", pair.getCombinedUtr())).append(")\n");
         }
     }
@@ -172,6 +178,21 @@ public class ZhipuAiService {
         StringBuilder sb = new StringBuilder(name);
         if (utr != null) {
             sb.append("(UTR ").append(String.format("%.1f", utr));
+            if (notes != null && !notes.isBlank()) {
+                sb.append(", 备注:").append(notes);
+            }
+            sb.append(")");
+        }
+        return sb.toString();
+    }
+
+    private String describePlayer(String name, Double utr, Double actualUtr, String notes) {
+        StringBuilder sb = new StringBuilder(name);
+        if (utr != null) {
+            sb.append("(UTR ").append(String.format("%.1f", utr));
+            if (actualUtr != null && Math.abs(actualUtr - utr) > 0.01) {
+                sb.append("/实际").append(String.format("%.1f", actualUtr));
+            }
             if (notes != null && !notes.isBlank()) {
                 sb.append(", 备注:").append(notes);
             }
@@ -294,13 +315,13 @@ public class ZhipuAiService {
                     ? own.getCombinedUtr() - opp.getCombinedUtr() : 0;
 
             sb.append(pos).append(": 己方 ")
-              .append(describePlayer(own.getPlayer1Name(), own.getPlayer1Utr(), own.getPlayer1Notes()))
+              .append(describePlayer(own.getPlayer1Name(), own.getPlayer1Utr(), own.getPlayer1ActualUtr(), own.getPlayer1Notes()))
               .append("+")
-              .append(describePlayer(own.getPlayer2Name(), own.getPlayer2Utr(), own.getPlayer2Notes()))
+              .append(describePlayer(own.getPlayer2Name(), own.getPlayer2Utr(), own.getPlayer2ActualUtr(), own.getPlayer2Notes()))
               .append(" vs 对手 ")
-              .append(describePlayer(opp.getPlayer1Name(), opp.getPlayer1Utr(), opp.getPlayer1Notes()))
+              .append(describePlayer(opp.getPlayer1Name(), opp.getPlayer1Utr(), opp.getPlayer1ActualUtr(), opp.getPlayer1Notes()))
               .append("+")
-              .append(describePlayer(opp.getPlayer2Name(), opp.getPlayer2Utr(), opp.getPlayer2Notes()))
+              .append(describePlayer(opp.getPlayer2Name(), opp.getPlayer2Utr(), opp.getPlayer2ActualUtr(), opp.getPlayer2Notes()))
               .append(String.format(" (delta=%+.1f)\n", delta));
         }
 

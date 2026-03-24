@@ -98,6 +98,7 @@
               <th class="px-3 py-3 w-8"></th>
               <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">姓名</th>
               <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">UTR</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">实际 UTR</th>
               <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">已验证</th>
               <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">个人备注</th>
               <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">搭档笔记</th>
@@ -106,7 +107,7 @@
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
             <tr v-if="players.length === 0">
-              <td colspan="7" class="px-6 py-4 text-center text-gray-500">
+              <td colspan="8" class="px-6 py-4 text-center text-gray-500">
                 暂无球员，点击上方按钮添加
               </td>
             </tr>
@@ -150,6 +151,24 @@
                     {{ Number(player.utr).toFixed(2) }}
                     <a v-if="player.profileUrl" :href="player.profileUrl" target="_blank" rel="noopener noreferrer"
                        class="ml-2 text-blue-500 hover:text-blue-700 text-xs underline">UTR主页</a>
+                  </template>
+                </td>
+
+                <!-- Actual UTR -->
+                <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <template v-if="bulkEditMode">
+                    <input
+                      type="number" step="0.01" min="0" max="16"
+                      v-model.number="bulkActualUtrValues[player.id]"
+                      placeholder="同UTR"
+                      :data-actualutr-player-id="player.id"
+                      :class="['w-24 px-2 py-1 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500',
+                               bulkActualUtrValues[player.id] !== (player.actualUtr ?? null) ? 'border-yellow-400 bg-yellow-50' : 'border-gray-300',
+                               bulkEditFailedIds.has(player.id) ? 'border-red-500' : '']" />
+                  </template>
+                  <template v-else>
+                    <span v-if="player.actualUtr != null" class="text-orange-600">{{ Number(player.actualUtr).toFixed(2) }}</span>
+                    <span v-else class="text-gray-300 text-xs">同UTR</span>
                   </template>
                 </td>
 
@@ -264,6 +283,12 @@
                 class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
             <div class="mb-4">
+              <label for="playerActualUtr" class="block text-sm font-medium text-gray-700 mb-2">实际 UTR</label>
+              <input type="number" id="playerActualUtr" v-model.number="playerForm.actualUtr" step="0.01" min="0" max="16"
+                placeholder="默认同UTR（选填）"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+            <div class="mb-4">
               <label for="playerVerified" class="block text-sm font-medium text-gray-700 mb-2">已验证</label>
               <input type="checkbox" id="playerVerified" v-model="playerForm.verified"
                 class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
@@ -316,6 +341,8 @@ const sortedPlayers = computed(() =>
 const bulkEditMode = ref(false)
 const bulkUtrValues = ref({})
 const bulkUtrOriginal = ref({})
+const bulkActualUtrValues = ref({})
+const bulkActualUtrOriginal = ref({})
 const bulkEditErrors = ref([])
 const bulkEditFailedIds = ref(new Set())
 
@@ -337,7 +364,7 @@ const expandedPlayerId = ref(null)
 // --- Modal ---
 const showAddPlayerModal = ref(false)
 const editingPlayer = ref(null)
-const playerForm = ref({ name: '', gender: 'male', utr: 1.0, verified: false, profileUrl: '' })
+const playerForm = ref({ name: '', gender: 'male', utr: 1.0, actualUtr: null, verified: false, profileUrl: '' })
 
 // --- Helpers ---
 const formatDate = (d) => new Date(d).toLocaleDateString('zh-CN')
@@ -383,9 +410,15 @@ function toggleExpand(playerId) {
 // --- UTR bulk edit ---
 const enterBulkEdit = () => {
   const values = {}
-  players.value.forEach(p => { values[p.id] = p.utr })
+  const actualValues = {}
+  players.value.forEach(p => {
+    values[p.id] = p.utr
+    actualValues[p.id] = p.actualUtr ?? null
+  })
   bulkUtrValues.value = values
   bulkUtrOriginal.value = { ...values }
+  bulkActualUtrValues.value = actualValues
+  bulkActualUtrOriginal.value = { ...actualValues }
   bulkEditErrors.value = []
   bulkEditFailedIds.value = new Set()
   bulkEditMode.value = true
@@ -393,15 +426,25 @@ const enterBulkEdit = () => {
 
 const cancelBulkEdit = () => {
   bulkUtrValues.value = { ...bulkUtrOriginal.value }
+  bulkActualUtrValues.value = { ...bulkActualUtrOriginal.value }
   bulkEditMode.value = false
   bulkEditErrors.value = []
   bulkEditFailedIds.value = new Set()
 }
 
+const normalizeActualUtr = (v) => (v === '' || v == null) ? null : v
+
 const saveBulkEdit = async () => {
   const changes = players.value
-    .filter(p => bulkUtrValues.value[p.id] !== p.utr)
-    .map(p => ({ playerId: p.id, utr: bulkUtrValues.value[p.id] }))
+    .filter(p =>
+      bulkUtrValues.value[p.id] !== p.utr ||
+      normalizeActualUtr(bulkActualUtrValues.value[p.id]) !== (p.actualUtr ?? null)
+    )
+    .map(p => ({
+      playerId: p.id,
+      utr: bulkUtrValues.value[p.id],
+      actualUtr: normalizeActualUtr(bulkActualUtrValues.value[p.id])
+    }))
   if (!changes.length) { bulkEditMode.value = false; return }
   const { failed } = await bulkUpdateUtrs(changes)
   bulkEditErrors.value = failed
@@ -471,7 +514,7 @@ const savePlayer = async () => {
 const cancelPlayerEdit = () => {
   editingPlayer.value = null
   showAddPlayerModal.value = false
-  playerForm.value = { name: '', gender: 'male', utr: 1.0, verified: false, profileUrl: '' }
+  playerForm.value = { name: '', gender: 'male', utr: 1.0, actualUtr: null, verified: false, profileUrl: '' }
 }
 
 const confirmDeletePlayer = async (player) => {
@@ -488,7 +531,10 @@ onMounted(async () => {
 
 onBeforeRouteLeave(() => {
   if (bulkEditMode.value) {
-    const hasChanges = players.value.some(p => bulkUtrValues.value[p.id] !== p.utr)
+    const hasChanges = players.value.some(p =>
+      bulkUtrValues.value[p.id] !== p.utr ||
+      normalizeActualUtr(bulkActualUtrValues.value[p.id]) !== (p.actualUtr ?? null)
+    )
     if (hasChanges) return confirm('有未保存的 UTR 修改，确定离开吗？')
   }
 })

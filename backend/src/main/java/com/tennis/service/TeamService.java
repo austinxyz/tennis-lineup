@@ -118,7 +118,7 @@ public class TeamService {
         return "player-" + System.nanoTime();
     }
 
-    public Player addPlayer(String teamId, String name, String gender, Double utr, Double verifiedDoublesUtr, Boolean verified, String profileUrl, String notes) {
+    public Player addPlayer(String teamId, String name, String gender, Double utr, Double verifiedDoublesUtr, Boolean verified, String profileUrl, String notes, Double actualUtr) {
         TeamData teamData = jsonRepository.readData();
 
         Team team = teamData.getTeams().stream()
@@ -154,6 +154,10 @@ public class TeamService {
         newPlayer.setVerified(verified);
         newPlayer.setProfileUrl(profileUrl != null && profileUrl.isBlank() ? null : profileUrl);
         newPlayer.setNotes(notes != null && notes.isBlank() ? null : notes);
+        if (actualUtr != null && (actualUtr < 0.0 || actualUtr > 16.0)) {
+            throw new IllegalArgumentException("实际UTR必须在0.0到16.0之间");
+        }
+        newPlayer.setActualUtr(actualUtr);
 
         team.getPlayers().add(newPlayer);
         jsonRepository.writeData(teamData);
@@ -162,7 +166,7 @@ public class TeamService {
         return newPlayer;
     }
 
-    public Player updatePlayer(String teamId, String playerId, String name, String gender, Double utr, Double verifiedDoublesUtr, Boolean verified, String profileUrl, String notes) {
+    public Player updatePlayer(String teamId, String playerId, String name, String gender, Double utr, Double verifiedDoublesUtr, Boolean verified, String profileUrl, String notes, Double actualUtr) {
         TeamData teamData = jsonRepository.readData();
 
         Team team = teamData.getTeams().stream()
@@ -208,6 +212,10 @@ public class TeamService {
         if (verified != null) playerToUpdate.setVerified(verified);
         if (profileUrl != null) playerToUpdate.setProfileUrl(profileUrl.isBlank() ? null : profileUrl);
         if (notes != null) playerToUpdate.setNotes(notes.isBlank() ? null : notes);
+        if (actualUtr != null && (actualUtr < 0.0 || actualUtr > 16.0)) {
+            throw new IllegalArgumentException("实际UTR必须在0.0到16.0之间");
+        }
+        playerToUpdate.setActualUtr(actualUtr);
 
         jsonRepository.writeData(teamData);
 

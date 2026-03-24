@@ -21,20 +21,23 @@
       "name" : "Mitch Hu",
       "gender" : "male",
       "utr" : 7.35,
-      "verified" : true
+      "verified" : true,
+      "actualUtr" : 7.35
     }, {
       "id" : "player-515158522181500",
       "name" : "Wei Jing",
       "gender" : "male",
       "utr" : 6.25,
-      "verified" : true
+      "verified" : true,
+      "actualUtr" : 6.5
     }, {
       "id" : "player-515158523251100",
       "name" : "Jinhao Li",
       "gender" : "male",
       "utr" : 6.23,
       "verified" : true,
-      "notes" : "还是单打选手，不稳定，好的时候上限很高，差的时候也失误频频，他现在左手受伤，反手只能削球，是一个弱点"
+      "notes" : "还是单打选手，不稳定，好的时候上限很高，差的时候也失误频频，他现在左手受伤，反手只能削球，是一个弱点",
+      "actualUtr" : 6.0
     }, {
       "id" : "player-515158524489500",
       "name" : "Kaining Mao",
@@ -48,7 +51,8 @@
       "gender" : "female",
       "utr" : 3.34,
       "verified" : true,
-      "notes" : "稳定的女4.0，UTR 3.34偏低"
+      "notes" : "稳定的女4.0，UTR 3.34偏低",
+      "actualUtr" : 4.0
     }, {
       "id" : "player-515158527741600",
       "name" : "May Wang",
@@ -100,7 +104,8 @@
       "gender" : "male",
       "utr" : 6.12,
       "verified" : true,
-      "notes" : "现在发球很好"
+      "notes" : "现在发球很好",
+      "actualUtr" : 6.0
     }, {
       "id" : "player-515158537061500",
       "name" : "Kristine Yuen",
@@ -133,7 +138,8 @@
       "gender" : "female",
       "utr" : 2.5,
       "verified" : false,
-      "notes" : "在东湾，单打选手，因为要带娃，出来队训不是很方便"
+      "notes" : "在东湾，单打选手，因为要带娃，出来队训不是很方便",
+      "actualUtr" : 3.0
     }, {
       "id" : "player-515288317382000",
       "name" : "Josh He",
@@ -166,7 +172,9 @@
         "player1Gender" : "male",
         "player2Gender" : "male",
         "player1Notes" : "还是单打选手，不稳定，好的时候上限很高，差的时候也失误频频，他现在左手受伤，反手只能削球，是一个弱点",
-        "player2Notes" : "底线很猛很转，发球也很猛"
+        "player2Notes" : "底线很猛很转，发球也很猛",
+        "player1ActualUtr" : null,
+        "player2ActualUtr" : null
       }, {
         "position" : "D2",
         "player1Id" : "player-515158527741600",
@@ -179,7 +187,9 @@
         "player1Gender" : "female",
         "player2Gender" : "male",
         "player1Notes" : "稳定的女5.0，各个技术全面，没啥破绽",
-        "player2Notes" : "网前贴网，一般网前球可以处理，但是thomas那种猛的，他就不太行，总的来说他UTR应该比5.1高"
+        "player2Notes" : "网前贴网，一般网前球可以处理，但是thomas那种猛的，他就不太行，总的来说他UTR应该比5.1高",
+        "player1ActualUtr" : null,
+        "player2ActualUtr" : null
       }, {
         "position" : "D3",
         "player1Id" : "player-515158520114700",
@@ -192,7 +202,9 @@
         "player1Gender" : "male",
         "player2Gender" : "female",
         "player1Notes" : "非常稳定，就是要给他配一个好的搭档，搭档不好他态度比较不好，该finish的球可以稳定finish",
-        "player2Notes" : null
+        "player2Notes" : null,
+        "player1ActualUtr" : null,
+        "player2ActualUtr" : null
       }, {
         "position" : "D4",
         "player1Id" : "player-515158522181500",
@@ -205,13 +217,16 @@
         "player1Gender" : "male",
         "player2Gender" : "female",
         "player1Notes" : null,
-        "player2Notes" : "稳定的女4.0，UTR 3.34偏低"
+        "player2Notes" : "稳定的女4.0，UTR 3.34偏低",
+        "player1ActualUtr" : null,
+        "player2ActualUtr" : null
       } ],
       "totalUtr" : 40.36,
       "valid" : true,
       "violationMessages" : [ ],
       "currentValid" : true,
-      "currentViolations" : [ ]
+      "currentViolations" : [ ],
+      "actualUtrSum" : null
     }, {
       "id" : "lineup-516700780429200",
       "createdAt" : "2026-03-23T08:17:14.533618100Z",
@@ -229,7 +244,9 @@
         "player1Gender" : "male",
         "player2Gender" : "female",
         "player1Notes" : null,
-        "player2Notes" : null
+        "player2Notes" : null,
+        "player1ActualUtr" : null,
+        "player2ActualUtr" : null
       }, {
         "position" : "D2",
         "player1Id" : "player-515158527741600",
@@ -242,7 +259,9 @@
         "player1Gender" : "female",
         "player2Gender" : "male",
         "player1Notes" : "稳定的女5.0，各个技术全面，没啥破绽",
-        "player2Notes" : "网前贴网，一般网前球可以处理，但是thomas那种猛的，他就不太行，总的来说他UTR应该比5.1高"
+        "player2Notes" : "网前贴网，一般网前球可以处理，但是thomas那种猛的，他就不太行，总的来说他UTR应该比5.1高",
+        "player1ActualUtr" : null,
+        "player2ActualUtr" : null
       }, {
         "position" : "D3",
         "player1Id" : "player-515158520114700",
@@ -255,7 +274,9 @@
         "player1Gender" : "male",
         "player2Gender" : "female",
         "player1Notes" : "非常稳定，就是要给他配一个好的搭档，搭档不好他态度比较不好，该finish的球可以稳定finish",
-        "player2Notes" : "稳定的女4.0，UTR 3.34偏低"
+        "player2Notes" : "稳定的女4.0，UTR 3.34偏低",
+        "player1ActualUtr" : null,
+        "player2ActualUtr" : null
       }, {
         "position" : "D4",
         "player1Id" : "player-515158528863600",
@@ -268,13 +289,16 @@
         "player1Gender" : "male",
         "player2Gender" : "female",
         "player1Notes" : null,
-        "player2Notes" : null
+        "player2Notes" : null,
+        "player1ActualUtr" : null,
+        "player2ActualUtr" : null
       } ],
       "totalUtr" : 40.480000000000004,
       "valid" : true,
       "violationMessages" : [ ],
       "currentValid" : true,
-      "currentViolations" : [ ]
+      "currentViolations" : [ ],
+      "actualUtrSum" : null
     }, {
       "id" : "lineup-516700780428500",
       "createdAt" : "2026-03-23T08:17:14.533618100Z",
@@ -292,7 +316,9 @@
         "player1Gender" : "male",
         "player2Gender" : "male",
         "player1Notes" : null,
-        "player2Notes" : "网前贴网，一般网前球可以处理，但是thomas那种猛的，他就不太行，总的来说他UTR应该比5.1高"
+        "player2Notes" : "网前贴网，一般网前球可以处理，但是thomas那种猛的，他就不太行，总的来说他UTR应该比5.1高",
+        "player1ActualUtr" : null,
+        "player2ActualUtr" : null
       }, {
         "position" : "D2",
         "player1Id" : "player-515158523251100",
@@ -305,7 +331,9 @@
         "player1Gender" : "male",
         "player2Gender" : "male",
         "player1Notes" : "还是单打选手，不稳定，好的时候上限很高，差的时候也失误频频，他现在左手受伤，反手只能削球，是一个弱点",
-        "player2Notes" : "底线很猛很转，发球也很猛"
+        "player2Notes" : "底线很猛很转，发球也很猛",
+        "player1ActualUtr" : null,
+        "player2ActualUtr" : null
       }, {
         "position" : "D3",
         "player1Id" : "player-515158520114700",
@@ -318,7 +346,9 @@
         "player1Gender" : "male",
         "player2Gender" : "female",
         "player1Notes" : "非常稳定，就是要给他配一个好的搭档，搭档不好他态度比较不好，该finish的球可以稳定finish",
-        "player2Notes" : null
+        "player2Notes" : null,
+        "player1ActualUtr" : null,
+        "player2ActualUtr" : null
       }, {
         "position" : "D4",
         "player1Id" : "player-515158528863600",
@@ -331,13 +361,16 @@
         "player1Gender" : "male",
         "player2Gender" : "female",
         "player1Notes" : null,
-        "player2Notes" : null
+        "player2Notes" : null,
+        "player1ActualUtr" : null,
+        "player2ActualUtr" : null
       } ],
       "totalUtr" : 40.49,
       "valid" : true,
       "violationMessages" : [ ],
       "currentValid" : true,
-      "currentViolations" : [ ]
+      "currentViolations" : [ ],
+      "actualUtrSum" : null
     }, {
       "id" : "lineup-516769908191200",
       "createdAt" : "2026-03-23T08:18:23.661025700Z",
@@ -355,7 +388,9 @@
         "player1Gender" : "male",
         "player2Gender" : "male",
         "player1Notes" : null,
-        "player2Notes" : "网前贴网，一般网前球可以处理，但是thomas那种猛的，他就不太行，总的来说他UTR应该比5.1高"
+        "player2Notes" : "网前贴网，一般网前球可以处理，但是thomas那种猛的，他就不太行，总的来说他UTR应该比5.1高",
+        "player1ActualUtr" : null,
+        "player2ActualUtr" : null
       }, {
         "position" : "D2",
         "player1Id" : "player-515158520114700",
@@ -368,7 +403,9 @@
         "player1Gender" : "male",
         "player2Gender" : "female",
         "player1Notes" : "非常稳定，就是要给他配一个好的搭档，搭档不好他态度比较不好，该finish的球可以稳定finish",
-        "player2Notes" : "稳定的女4.0，UTR 3.34偏低"
+        "player2Notes" : "稳定的女4.0，UTR 3.34偏低",
+        "player1ActualUtr" : null,
+        "player2ActualUtr" : null
       }, {
         "position" : "D3",
         "player1Id" : "player-515158522181500",
@@ -381,7 +418,9 @@
         "player1Gender" : "male",
         "player2Gender" : "female",
         "player1Notes" : null,
-        "player2Notes" : null
+        "player2Notes" : null,
+        "player1ActualUtr" : null,
+        "player2ActualUtr" : null
       }, {
         "position" : "D4",
         "player1Id" : "player-515158528863600",
@@ -394,13 +433,16 @@
         "player1Gender" : "male",
         "player2Gender" : "female",
         "player1Notes" : null,
-        "player2Notes" : null
+        "player2Notes" : null,
+        "player1ActualUtr" : null,
+        "player2ActualUtr" : null
       } ],
       "totalUtr" : 40.47,
       "valid" : true,
       "violationMessages" : [ ],
       "currentValid" : true,
-      "currentViolations" : [ ]
+      "currentViolations" : [ ],
+      "actualUtrSum" : null
     }, {
       "id" : "lineup-517014963297700",
       "createdAt" : "2026-03-23T08:22:28.715790900Z",
@@ -418,7 +460,9 @@
         "player1Gender" : "male",
         "player2Gender" : "female",
         "player1Notes" : null,
-        "player2Notes" : "稳定的女5.0，各个技术全面，没啥破绽"
+        "player2Notes" : "稳定的女5.0，各个技术全面，没啥破绽",
+        "player1ActualUtr" : null,
+        "player2ActualUtr" : null
       }, {
         "position" : "D2",
         "player1Id" : "player-515158520114700",
@@ -431,7 +475,9 @@
         "player1Gender" : "male",
         "player2Gender" : "female",
         "player1Notes" : "非常稳定，就是要给他配一个好的搭档，搭档不好他态度比较不好，该finish的球可以稳定finish",
-        "player2Notes" : null
+        "player2Notes" : null,
+        "player1ActualUtr" : null,
+        "player2ActualUtr" : null
       }, {
         "position" : "D3",
         "player1Id" : "player-515158532857700",
@@ -444,7 +490,9 @@
         "player1Gender" : "male",
         "player2Gender" : "female",
         "player1Notes" : "底线很稳定，可以连续多拍不失误，去年USTA 混双6.0打到national，是主力",
-        "player2Notes" : "稳定的女4.0，UTR 3.34偏低"
+        "player2Notes" : "稳定的女4.0，UTR 3.34偏低",
+        "player1ActualUtr" : null,
+        "player2ActualUtr" : null
       }, {
         "position" : "D4",
         "player1Id" : "player-515158528863600",
@@ -457,13 +505,16 @@
         "player1Gender" : "male",
         "player2Gender" : "female",
         "player1Notes" : null,
-        "player2Notes" : null
+        "player2Notes" : null,
+        "player1ActualUtr" : null,
+        "player2ActualUtr" : null
       } ],
       "totalUtr" : 40.42,
       "valid" : true,
       "violationMessages" : [ ],
       "currentValid" : true,
-      "currentViolations" : [ ]
+      "currentViolations" : [ ],
+      "actualUtrSum" : null
     }, {
       "id" : "lineup-517138317271000",
       "createdAt" : "2026-03-23T08:24:32.070138200Z",
@@ -481,7 +532,9 @@
         "player1Gender" : "male",
         "player2Gender" : "male",
         "player1Notes" : null,
-        "player2Notes" : "网前贴网，一般网前球可以处理，但是thomas那种猛的，他就不太行，总的来说他UTR应该比5.1高"
+        "player2Notes" : "网前贴网，一般网前球可以处理，但是thomas那种猛的，他就不太行，总的来说他UTR应该比5.1高",
+        "player1ActualUtr" : null,
+        "player2ActualUtr" : null
       }, {
         "position" : "D2",
         "player1Id" : "player-515158532857700",
@@ -494,7 +547,9 @@
         "player1Gender" : "male",
         "player2Gender" : "female",
         "player1Notes" : "底线很稳定，可以连续多拍不失误，去年USTA 混双6.0打到national，是主力",
-        "player2Notes" : "稳定的女5.0，各个技术全面，没啥破绽"
+        "player2Notes" : "稳定的女5.0，各个技术全面，没啥破绽",
+        "player1ActualUtr" : null,
+        "player2ActualUtr" : null
       }, {
         "position" : "D3",
         "player1Id" : "player-515158522181500",
@@ -507,7 +562,9 @@
         "player1Gender" : "male",
         "player2Gender" : "male",
         "player1Notes" : null,
-        "player2Notes" : "底线很猛很转，发球也很猛"
+        "player2Notes" : "底线很猛很转，发球也很猛",
+        "player1ActualUtr" : null,
+        "player2ActualUtr" : null
       }, {
         "position" : "D4",
         "player1Id" : "player-515158529871300",
@@ -520,13 +577,16 @@
         "player1Gender" : "female",
         "player2Gender" : "female",
         "player1Notes" : "去年usta 2.5的national主力",
-        "player2Notes" : null
+        "player2Notes" : null,
+        "player1ActualUtr" : null,
+        "player2ActualUtr" : null
       } ],
       "totalUtr" : 39.67999999999999,
       "valid" : true,
       "violationMessages" : [ ],
       "currentValid" : true,
-      "currentViolations" : [ ]
+      "currentViolations" : [ ],
+      "actualUtrSum" : null
     }, {
       "id" : "lineup-517297373378000",
       "createdAt" : "2026-03-23T08:27:11.125797Z",
@@ -544,7 +604,9 @@
         "player1Gender" : "male",
         "player2Gender" : "male",
         "player1Notes" : "非常稳定，就是要给他配一个好的搭档，搭档不好他态度比较不好，该finish的球可以稳定finish",
-        "player2Notes" : null
+        "player2Notes" : null,
+        "player1ActualUtr" : null,
+        "player2ActualUtr" : null
       }, {
         "position" : "D2",
         "player1Id" : "player-515158520114700",
@@ -557,7 +619,9 @@
         "player1Gender" : "male",
         "player2Gender" : "male",
         "player1Notes" : null,
-        "player2Notes" : "网前贴网，一般网前球可以处理，但是thomas那种猛的，他就不太行，总的来说他UTR应该比5.1高"
+        "player2Notes" : "网前贴网，一般网前球可以处理，但是thomas那种猛的，他就不太行，总的来说他UTR应该比5.1高",
+        "player1ActualUtr" : null,
+        "player2ActualUtr" : null
       }, {
         "position" : "D3",
         "player1Id" : "player-515158524489500",
@@ -570,7 +634,9 @@
         "player1Gender" : "male",
         "player2Gender" : "male",
         "player1Notes" : "底线很猛很转，发球也很猛",
-        "player2Notes" : "底线很稳定，可以连续多拍不失误，去年USTA 混双6.0打到national，是主力"
+        "player2Notes" : "底线很稳定，可以连续多拍不失误，去年USTA 混双6.0打到national，是主力",
+        "player1ActualUtr" : null,
+        "player2ActualUtr" : null
       }, {
         "position" : "D4",
         "player1Id" : "player-515158529871300",
@@ -583,13 +649,16 @@
         "player1Gender" : "female",
         "player2Gender" : "female",
         "player1Notes" : "去年usta 2.5的national主力",
-        "player2Notes" : null
+        "player2Notes" : null,
+        "player1ActualUtr" : null,
+        "player2ActualUtr" : null
       } ],
       "totalUtr" : 39.42,
       "valid" : true,
       "violationMessages" : [ ],
       "currentValid" : true,
-      "currentViolations" : [ ]
+      "currentViolations" : [ ],
+      "actualUtrSum" : null
     }, {
       "id" : "lineup-517399919510300",
       "createdAt" : "2026-03-23T08:28:53.672184Z",
@@ -607,7 +676,9 @@
         "player1Gender" : "male",
         "player2Gender" : "male",
         "player1Notes" : null,
-        "player2Notes" : "网前贴网，一般网前球可以处理，但是thomas那种猛的，他就不太行，总的来说他UTR应该比5.1高"
+        "player2Notes" : "网前贴网，一般网前球可以处理，但是thomas那种猛的，他就不太行，总的来说他UTR应该比5.1高",
+        "player1ActualUtr" : null,
+        "player2ActualUtr" : null
       }, {
         "position" : "D2",
         "player1Id" : "player-515158522181500",
@@ -620,7 +691,9 @@
         "player1Gender" : "male",
         "player2Gender" : "male",
         "player1Notes" : "底线很稳定，可以连续多拍不失误，去年USTA 混双6.0打到national，是主力",
-        "player2Notes" : null
+        "player2Notes" : null,
+        "player1ActualUtr" : null,
+        "player2ActualUtr" : null
       }, {
         "position" : "D3",
         "player1Id" : "player-515158532857700",
@@ -633,7 +706,9 @@
         "player1Gender" : "male",
         "player2Gender" : "male",
         "player1Notes" : null,
-        "player2Notes" : "底线很猛很转，发球也很猛"
+        "player2Notes" : "底线很猛很转，发球也很猛",
+        "player1ActualUtr" : null,
+        "player2ActualUtr" : null
       }, {
         "position" : "D4",
         "player1Id" : "player-515158537061500",
@@ -646,13 +721,16 @@
         "player1Gender" : "female",
         "player2Gender" : "female",
         "player1Notes" : null,
-        "player2Notes" : "去年usta 2.5的national主力"
+        "player2Notes" : "去年usta 2.5的national主力",
+        "player1ActualUtr" : null,
+        "player2ActualUtr" : null
       } ],
       "totalUtr" : 40.290000000000006,
       "valid" : true,
       "violationMessages" : [ ],
       "currentValid" : true,
-      "currentViolations" : [ ]
+      "currentViolations" : [ ],
+      "actualUtrSum" : null
     } ],
     "partnerNotes" : [ {
       "id" : "pn-515485025238300",
@@ -795,7 +873,9 @@
         "player1Gender" : "male",
         "player2Gender" : "female",
         "player1Notes" : null,
-        "player2Notes" : null
+        "player2Notes" : null,
+        "player1ActualUtr" : null,
+        "player2ActualUtr" : null
       }, {
         "position" : "D2",
         "player1Id" : "player-517733111420800",
@@ -808,7 +888,9 @@
         "player1Gender" : "male",
         "player2Gender" : "male",
         "player1Notes" : null,
-        "player2Notes" : null
+        "player2Notes" : null,
+        "player1ActualUtr" : null,
+        "player2ActualUtr" : null
       }, {
         "position" : "D3",
         "player1Id" : "player-517645407118500",
@@ -821,7 +903,9 @@
         "player1Gender" : "male",
         "player2Gender" : "female",
         "player1Notes" : null,
-        "player2Notes" : null
+        "player2Notes" : null,
+        "player1ActualUtr" : null,
+        "player2ActualUtr" : null
       }, {
         "position" : "D4",
         "player1Id" : "player-517660937773500",
@@ -834,13 +918,16 @@
         "player1Gender" : "male",
         "player2Gender" : "female",
         "player1Notes" : null,
-        "player2Notes" : null
+        "player2Notes" : null,
+        "player1ActualUtr" : null,
+        "player2ActualUtr" : null
       } ],
       "totalUtr" : 40.480000000000004,
       "valid" : true,
       "violationMessages" : [ ],
       "currentValid" : true,
-      "currentViolations" : [ ]
+      "currentViolations" : [ ],
+      "actualUtrSum" : null
     }, {
       "id" : "lineup-518246470444500",
       "createdAt" : "2026-03-23T08:43:00.223353Z",
@@ -858,7 +945,9 @@
         "player1Gender" : "male",
         "player2Gender" : "male",
         "player1Notes" : null,
-        "player2Notes" : null
+        "player2Notes" : null,
+        "player1ActualUtr" : null,
+        "player2ActualUtr" : null
       }, {
         "position" : "D2",
         "player1Id" : "player-517660937773500",
@@ -871,7 +960,9 @@
         "player1Gender" : "male",
         "player2Gender" : "female",
         "player1Notes" : null,
-        "player2Notes" : null
+        "player2Notes" : null,
+        "player1ActualUtr" : null,
+        "player2ActualUtr" : null
       }, {
         "position" : "D3",
         "player1Id" : "player-517645407118500",
@@ -884,7 +975,9 @@
         "player1Gender" : "male",
         "player2Gender" : "female",
         "player1Notes" : null,
-        "player2Notes" : null
+        "player2Notes" : null,
+        "player1ActualUtr" : null,
+        "player2ActualUtr" : null
       }, {
         "position" : "D4",
         "player1Id" : "player-517710295482500",
@@ -897,14 +990,24 @@
         "player1Gender" : "male",
         "player2Gender" : "female",
         "player1Notes" : null,
-        "player2Notes" : null
+        "player2Notes" : null,
+        "player1ActualUtr" : null,
+        "player2ActualUtr" : null
       } ],
       "totalUtr" : 40.35000000000001,
       "valid" : true,
       "violationMessages" : [ ],
       "currentValid" : true,
-      "currentViolations" : [ ]
+      "currentViolations" : [ ],
+      "actualUtrSum" : null
     } ],
+    "partnerNotes" : [ ]
+  }, {
+    "id" : "team-601062365758500",
+    "name" : "????",
+    "createdAt" : "2026-03-24T07:43:00.588058600Z",
+    "players" : [ ],
+    "lineups" : [ ],
     "partnerNotes" : [ ]
   } ]
 }

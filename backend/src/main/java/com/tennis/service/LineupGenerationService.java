@@ -114,7 +114,7 @@ public class LineupGenerationService {
             backtrackSubset(subsets.get(i), pinPlayers, rawCandidates);
         }
 
-        // Extend to top-40 if fewer than 6 results satisfy pin constraints
+        // Extend to top-40 if pin constraints and fewer than 6 pinned results
         List<Lineup> filtered = filterCandidates(rawCandidates, effectiveInclude, pinPlayers, playersByPin);
         if (subsets.size() > firstEnd && filtered.size() < 6) {
             int secondEnd = Math.min(40, subsets.size());
@@ -123,14 +123,24 @@ public class LineupGenerationService {
             }
         }
 
-        // Final filter: include players + pin constraints
+        // Expand pool to up to 100 valid lineups for actualUtr re-ranking
         List<Lineup> allCandidates = filterCandidates(rawCandidates, effectiveInclude, pinPlayers, playersByPin);
+        if (allCandidates.size() < 100 && subsets.size() > Math.min(40, subsets.size())) {
+            for (int i = Math.min(40, subsets.size()); i < subsets.size() && allCandidates.size() < 100; i++) {
+                backtrackSubset(subsets.get(i), pinPlayers, rawCandidates);
+                allCandidates = filterCandidates(rawCandidates, effectiveInclude, pinPlayers, playersByPin);
+            }
+        }
 
         if (allCandidates.isEmpty() && !pinPlayers.isEmpty()) {
             throw new IllegalArgumentException("无法生成满足位置约束的排阵");
         }
 
-        return allCandidates;
+        // Re-rank by actualUtrSum descending; return top 6
+        allCandidates.sort(Comparator.comparingDouble(
+                (Lineup l) -> l.getActualUtrSum() != null ? l.getActualUtrSum() : l.getTotalUtr()
+        ).reversed());
+        return allCandidates.subList(0, Math.min(6, allCandidates.size()));
     }
 
     /**
@@ -333,12 +343,14 @@ public class LineupGenerationService {
         String[] positions = {"D1", "D2", "D3", "D4"};
         List<Pair> pairs = new ArrayList<>();
         double total = 0;
+        double actualUtrTotal = 0;
 
         for (int i = 0; i < sorted.size(); i++) {
             Player p1 = roster.get(sorted.get(i)[0]);
             Player p2 = roster.get(sorted.get(i)[1]);
             double combined = p1.getUtr() + p2.getUtr();
             total += combined;
+            actualUtrTotal += getEffectiveActualUtr(p1) + getEffectiveActualUtr(p2);
 
             Pair pair = new Pair();
             pair.setPosition(positions[i]);
@@ -347,11 +359,13 @@ public class LineupGenerationService {
             pair.setPlayer1Utr(p1.getUtr());
             pair.setPlayer1Gender(p1.getGender());
             pair.setPlayer1Notes(p1.getNotes());
+            pair.setPlayer1ActualUtr(p1.getActualUtr());
             pair.setPlayer2Id(p2.getId());
             pair.setPlayer2Name(p2.getName());
             pair.setPlayer2Utr(p2.getUtr());
             pair.setPlayer2Gender(p2.getGender());
             pair.setPlayer2Notes(p2.getNotes());
+            pair.setPlayer2ActualUtr(p2.getActualUtr());
             pair.setCombinedUtr(combined);
             pairs.add(pair);
         }
@@ -359,9 +373,14 @@ public class LineupGenerationService {
         Lineup lineup = new Lineup();
         lineup.setPairs(pairs);
         lineup.setTotalUtr(total);
+        lineup.setActualUtrSum(actualUtrTotal);
         lineup.setValid(true);
         lineup.setViolationMessages(new ArrayList<>());
         return lineup;
+    }
+
+    private double getEffectiveActualUtr(Player player) {
+        return player.getActualUtr() != null ? player.getActualUtr() : player.getUtr();
     }
 
     /**

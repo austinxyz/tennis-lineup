@@ -36,4 +36,12 @@ public class Player {
 
     @JsonProperty("notes")
     private String notes; // player characteristics notes, optional
+
+    @JsonProperty("actualUtr")
+    private Double actualUtr; // override for actual UTR used in lineup logic, optional
+
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    public Double getEffectiveActualUtr() {
+        return actualUtr != null ? actualUtr : utr;
+    }
 }

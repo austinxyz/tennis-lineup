@@ -45,4 +45,7 @@ public class Lineup {
 
     @JsonProperty(value = "currentViolations", access = READ_ONLY)
     private List<String> currentViolations = new ArrayList<>();
+
+    @JsonProperty(value = "actualUtrSum", access = READ_ONLY)
+    private Double actualUtrSum;
 }

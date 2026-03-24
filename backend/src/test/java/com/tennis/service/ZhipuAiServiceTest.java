@@ -291,7 +291,7 @@ class ZhipuAiServiceTest {
                 List.of(lineup), "均衡", null,
                 List.of(), null);
 
-        assertFalse(prompt.contains("搭档笔记"), "prompt should not contain 搭档笔记 section when no notes");
+        assertFalse(prompt.contains("搭档笔记："), "prompt should not contain 搭档笔记 data section when no notes");
     }
 
     @Test

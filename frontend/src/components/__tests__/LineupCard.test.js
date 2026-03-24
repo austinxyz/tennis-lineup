@@ -120,6 +120,30 @@ describe('LineupCard', () => {
     })
   })
 
+  describe('actualUtr 显示', () => {
+    it('shows actualUtr per player when non-null', () => {
+      const pairsWithActualUtr = [
+        { position: 'D1', player1Name: '张三', player1Utr: 8.0, player1Gender: 'male', player1ActualUtr: 7.0, player2Name: '李四', player2Utr: 7.5, player2Gender: 'female', player2ActualUtr: null, combinedUtr: 15.5 },
+        { position: 'D2', player1Name: '王五', player1Utr: 4.5, player1Gender: 'male', player1ActualUtr: null, player2Name: '赵六', player2Utr: 3.5, player2Gender: 'male', player2ActualUtr: null, combinedUtr: 8.0 },
+        { position: 'D3', player1Name: '孙七', player1Utr: 2.5, player1Gender: 'female', player1ActualUtr: null, player2Name: '周八', player2Utr: 2.0, player2Gender: 'male', player2ActualUtr: null, combinedUtr: 4.5 },
+        { position: 'D4', player1Name: '吴九', player1Utr: 1.5, player1Gender: 'male', player1ActualUtr: null, player2Name: '郑十', player2Utr: 1.0, player2Gender: 'male', player2ActualUtr: null, combinedUtr: 2.5 },
+      ]
+      const wrapper = mount(LineupCard, { props: { lineup: buildLineup({ pairs: pairsWithActualUtr }) } })
+      expect(wrapper.text()).toContain('实:7.00')
+    })
+
+    it('shows actualUtrSum in header when differs from totalUtr', () => {
+      const wrapper = mount(LineupCard, { props: { lineup: buildLineup({ totalUtr: 38.5, actualUtrSum: 41.0 }) } })
+      expect(wrapper.text()).toContain('实际 UTR: 41.00')
+    })
+
+    it('hides actualUtr display when all null', () => {
+      const wrapper = mount(LineupCard, { props: { lineup: buildLineup() } })
+      // Default buildLineup() pairs have no player1ActualUtr/player2ActualUtr set (undefined → treated as null)
+      expect(wrapper.text()).not.toContain('实:')
+    })
+  })
+
   describe('位置排序', () => {
     it('pairs 按 D1 D2 D3 D4 顺序渲染，不管传入顺序', () => {
       const reversedPairs = [

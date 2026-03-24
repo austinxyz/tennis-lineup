@@ -162,6 +162,69 @@ class OpponentAnalysisServiceTest {
         assertThat(aiRec.getLineup()).isEqualTo(response.getUtrRecommendation().getLineup());
     }
 
+    // --- Task 4.5 — effectiveActualUtr in computeLineAnalysis ---
+
+    @Test
+    void computeLineAnalysis_usesEffectiveActualUtr() {
+        // D1 pair: player1 has actualUtr=8.0, player2 has actualUtr=8.0 → ownUtr = 16.0
+        // Opponent D1 combinedUtr = 9.0 → delta = 7.0 → winProb = 0.8
+        Pair ownPair = new Pair();
+        ownPair.setPosition("D1");
+        ownPair.setPlayer1Utr(6.0);
+        ownPair.setPlayer1ActualUtr(8.0);
+        ownPair.setPlayer2Utr(6.0);
+        ownPair.setPlayer2ActualUtr(8.0);
+        ownPair.setCombinedUtr(12.0); // based on utr, not actualUtr
+        ownPair.setPlayer1Id("own-p1");
+        ownPair.setPlayer2Id("own-p2");
+
+        Lineup ownLineup = new Lineup();
+        ownLineup.setId("own-lineup");
+        ownLineup.setPairs(List.of(ownPair));
+        ownLineup.setViolationMessages(new ArrayList<>());
+
+        Map<String, Double> opponentUtrByPosition = Map.of("D1", 9.0);
+
+        List<LineAnalysis> analysis = service.computeLineAnalysis(ownLineup, opponentUtrByPosition);
+
+        assertThat(analysis).hasSize(1);
+        LineAnalysis d1 = analysis.get(0);
+        // ownCombinedUtr should use actualUtr values: 8.0 + 8.0 = 16.0
+        assertThat(d1.getOwnCombinedUtr()).isEqualTo(16.0);
+        // delta = 16.0 - 9.0 = 7.0 → winProbability = 0.8
+        assertThat(d1.getWinProbability()).isEqualTo(0.8);
+    }
+
+    @Test
+    void computeLineAnalysis_withNullActualUtr_fallsBackToUtr() {
+        // D1 pair: player1 has actualUtr=null → falls back to utr=6.0
+        Pair ownPair = new Pair();
+        ownPair.setPosition("D1");
+        ownPair.setPlayer1Utr(6.0);
+        ownPair.setPlayer1ActualUtr(null);
+        ownPair.setPlayer2Utr(6.0);
+        ownPair.setPlayer2ActualUtr(null);
+        ownPair.setCombinedUtr(12.0);
+        ownPair.setPlayer1Id("own-p1");
+        ownPair.setPlayer2Id("own-p2");
+
+        Lineup ownLineup = new Lineup();
+        ownLineup.setId("own-lineup");
+        ownLineup.setPairs(List.of(ownPair));
+        ownLineup.setViolationMessages(new ArrayList<>());
+
+        Map<String, Double> opponentUtrByPosition = Map.of("D1", 9.0);
+
+        List<LineAnalysis> analysis = service.computeLineAnalysis(ownLineup, opponentUtrByPosition);
+
+        assertThat(analysis).hasSize(1);
+        LineAnalysis d1 = analysis.get(0);
+        // ownCombinedUtr falls back to utr: 6.0 + 6.0 = 12.0
+        assertThat(d1.getOwnCombinedUtr()).isEqualTo(12.0);
+        // delta = 12.0 - 9.0 = 3.0 → winProbability = 0.8
+        assertThat(d1.getWinProbability()).isEqualTo(0.8);
+    }
+
     // --- Helpers ---
 
     private OpponentAnalysisRequest buildRequest(String teamId, String opponentTeamId, String opponentLineupId) {

@@ -51,6 +51,21 @@
 
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-1">
+          实际 UTR
+        </label>
+        <input
+          type="number"
+          v-model.number="formData.actualUtr"
+          step="0.01"
+          min="0"
+          max="16"
+          placeholder="默认同UTR（选填）"
+          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        <p class="mt-1 text-xs text-gray-500">队长评估的实际水平，留空则默认同官方 UTR</p>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">
           已验证
         </label>
         <input
@@ -114,6 +129,7 @@ const props = defineProps({
       name: '',
       gender: '',
       utr: null,
+      actualUtr: null,
       verified: false,
       profileUrl: '',
       notes: '',
@@ -121,7 +137,7 @@ const props = defineProps({
   }
 })
 
-const formData = ref({ ...props.initialData })
+const formData = ref({ actualUtr: null, ...props.initialData })
 const errors = ref({})
 
 const validateField = (field) => {

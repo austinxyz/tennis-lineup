@@ -74,7 +74,8 @@ public class TeamController {
             playerRequest.getVerifiedDoublesUtr(),
             playerRequest.getVerified(),
             playerRequest.getProfileUrl(),
-            playerRequest.getNotes());
+            playerRequest.getNotes(),
+            playerRequest.getActualUtr());
         return ResponseEntity.ok(player);
     }
 
@@ -87,7 +88,8 @@ public class TeamController {
             playerRequest.getVerifiedDoublesUtr(),
             playerRequest.getVerified(),
             playerRequest.getProfileUrl(),
-            playerRequest.getNotes());
+            playerRequest.getNotes(),
+            playerRequest.getActualUtr());
         return ResponseEntity.ok(player);
     }
 

@@ -54,12 +54,12 @@ export function usePlayers(teamId) {
   }
 
   const bulkUpdateUtrs = async (changes) => {
-    // changes: [{ playerId, utr }] — only changed players
+    // changes: [{ playerId, utr, actualUtr }] — only changed players
     if (!changes.length) return { succeeded: [], failed: [] }
 
     const results = await Promise.allSettled(
-      changes.map(({ playerId, utr }) =>
-        put(`/api/teams/${teamId}/players/${playerId}`, { utr })
+      changes.map(({ playerId, utr, actualUtr }) =>
+        put(`/api/teams/${teamId}/players/${playerId}`, { utr, actualUtr: actualUtr ?? null })
           .then(updated => ({ playerId, updated }))
       )
     )
@@ -70,7 +70,7 @@ export function usePlayers(teamId) {
       if (result.status === 'fulfilled') {
         const { playerId, updated } = result.value
         const index = players.value.findIndex(p => p.id === playerId)
-        if (index !== -1) players.value[index] = { ...players.value[index], ...updated }
+        if (index !== -1) players.value[index] = { ...players.value[index], ...updated, actualUtr: updated.actualUtr ?? null }
         succeeded.push(playerId)
       } else {
         failed.push({ playerId: changes[i].playerId, message: result.reason?.message || '更新失败' })

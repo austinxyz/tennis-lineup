@@ -261,6 +261,34 @@ describe('usePlayers', () => {
       expect(players.value[0].utr).toBe(8.50)
       expect(players.value[1].utr).toBe(7.0) // unchanged
     })
+
+    it('bulkUpdateUtrs includes actualUtr in request payload', async () => {
+      const fetchMock = makeFetchOk({ id: '1', utr: 5.0, actualUtr: 7.5 })
+      vi.stubGlobal('fetch', fetchMock)
+      const { bulkUpdateUtrs } = usePlayers(TEAM_ID)
+      await bulkUpdateUtrs([{ playerId: '1', utr: 5.0, actualUtr: 7.5 }])
+      expect(fetchMock).toHaveBeenCalledWith(
+        `/api/teams/${TEAM_ID}/players/1`,
+        expect.objectContaining({
+          method: 'PUT',
+          body: JSON.stringify({ utr: 5.0, actualUtr: 7.5 }),
+        })
+      )
+    })
+
+    it('bulkUpdateUtrs sends null when actualUtr not provided', async () => {
+      const fetchMock = makeFetchOk({ id: '1', utr: 5.0, actualUtr: null })
+      vi.stubGlobal('fetch', fetchMock)
+      const { bulkUpdateUtrs } = usePlayers(TEAM_ID)
+      await bulkUpdateUtrs([{ playerId: '1', utr: 5.0, actualUtr: null }])
+      expect(fetchMock).toHaveBeenCalledWith(
+        `/api/teams/${TEAM_ID}/players/1`,
+        expect.objectContaining({
+          method: 'PUT',
+          body: JSON.stringify({ utr: 5.0, actualUtr: null }),
+        })
+      )
+    })
   })
 
   describe('loading state', () => {

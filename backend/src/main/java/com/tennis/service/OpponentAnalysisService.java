@@ -107,6 +107,8 @@ public class OpponentAnalysisService {
             double utr1 = p1 != null ? p1.getUtr() : (pair.getPlayer1Utr() != null ? pair.getPlayer1Utr() : 0);
             double utr2 = p2 != null ? p2.getUtr() : (pair.getPlayer2Utr() != null ? pair.getPlayer2Utr() : 0);
             pair.setCombinedUtr(utr1 + utr2);
+            if (p1 != null) pair.setPlayer1ActualUtr(p1.getActualUtr());
+            if (p2 != null) pair.setPlayer2ActualUtr(p2.getActualUtr());
         }
 
         return lineup;
@@ -146,7 +148,9 @@ public class OpponentAnalysisService {
         List<LineAnalysis> result = new ArrayList<>();
         for (Pair pair : candidate.getPairs()) {
             String position = pair.getPosition();
-            double ownUtr = pair.getCombinedUtr() != null ? pair.getCombinedUtr() : 0;
+            double p1Actual = pair.getPlayer1ActualUtr() != null ? pair.getPlayer1ActualUtr() : (pair.getPlayer1Utr() != null ? pair.getPlayer1Utr() : 0);
+            double p2Actual = pair.getPlayer2ActualUtr() != null ? pair.getPlayer2ActualUtr() : (pair.getPlayer2Utr() != null ? pair.getPlayer2Utr() : 0);
+            double ownUtr = p1Actual + p2Actual;
             double oppUtr = opponentUtrByPosition.getOrDefault(position, 0.0);
             double delta = ownUtr - oppUtr;
             double winProb = winProbability(delta);

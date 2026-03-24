@@ -172,6 +172,7 @@ public class LineupMatchupService {
     private Lineup enrichLineup(Lineup lineup, Map<String, Player> playerMap) {
         List<Pair> enrichedPairs = new ArrayList<>();
         double totalUtr = 0;
+        double actualUtrTotal = 0;
         for (Pair pair : lineup.getPairs()) {
             Pair p = copyPair(pair);
             Player p1 = playerMap.get(pair.getPlayer1Id());
@@ -180,8 +181,13 @@ public class LineupMatchupService {
             double utr2 = p2 != null ? p2.getUtr() : (pair.getPlayer2Utr() != null ? pair.getPlayer2Utr() : 0);
             p.setPlayer1Utr(utr1);
             p.setPlayer2Utr(utr2);
+            if (p1 != null) p.setPlayer1ActualUtr(p1.getActualUtr());
+            if (p2 != null) p.setPlayer2ActualUtr(p2.getActualUtr());
             p.setCombinedUtr(utr1 + utr2);
             totalUtr += utr1 + utr2;
+            double a1 = (p1 != null && p1.getActualUtr() != null) ? p1.getActualUtr() : utr1;
+            double a2 = (p2 != null && p2.getActualUtr() != null) ? p2.getActualUtr() : utr2;
+            actualUtrTotal += a1 + a2;
             enrichedPairs.add(p);
         }
         Lineup copy = new Lineup();
@@ -191,6 +197,7 @@ public class LineupMatchupService {
         copy.setAiUsed(lineup.isAiUsed());
         copy.setPairs(enrichedPairs);
         copy.setTotalUtr(totalUtr);
+        copy.setActualUtrSum(actualUtrTotal);
         copy.setValid(lineup.isValid());
         copy.setViolationMessages(lineup.getViolationMessages());
         return copy;
@@ -202,11 +209,13 @@ public class LineupMatchupService {
         p.setPlayer1Id(src.getPlayer1Id());
         p.setPlayer1Name(src.getPlayer1Name());
         p.setPlayer1Utr(src.getPlayer1Utr());
+        p.setPlayer1ActualUtr(src.getPlayer1ActualUtr());
         p.setPlayer1Gender(src.getPlayer1Gender());
         p.setPlayer1Notes(src.getPlayer1Notes());
         p.setPlayer2Id(src.getPlayer2Id());
         p.setPlayer2Name(src.getPlayer2Name());
         p.setPlayer2Utr(src.getPlayer2Utr());
+        p.setPlayer2ActualUtr(src.getPlayer2ActualUtr());
         p.setPlayer2Gender(src.getPlayer2Gender());
         p.setPlayer2Notes(src.getPlayer2Notes());
         p.setCombinedUtr(src.getCombinedUtr());

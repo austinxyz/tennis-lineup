@@ -100,7 +100,6 @@ describe('TeamDetail', () => {
     mockPlayers.value = samplePlayers
     const wrapper = mountDetail()
     expect(wrapper.text()).toContain('姓名')
-    expect(wrapper.text()).toContain('性别')
     expect(wrapper.text()).toContain('UTR')
     expect(wrapper.text()).toContain('已验证')
     expect(wrapper.text()).toContain('操作')
@@ -335,7 +334,7 @@ describe('TeamDetail', () => {
     const wrapper = mountDetail()
     const bulkBtn = wrapper.findAll('button').find(b => b.text().includes('批量编辑 UTR'))
     await bulkBtn.trigger('click')
-    const utrInputs = wrapper.findAll('input[type="number"]').filter(i => i.attributes('step') === '0.01')
+    const utrInputs = wrapper.findAll('input[data-player-id]')
     expect(utrInputs.length).toBe(samplePlayers.length)
   })
 
@@ -385,6 +384,42 @@ describe('TeamDetail', () => {
 
     expect(mockBulkUpdateUtrs).not.toHaveBeenCalled()
     expect(wrapper.findAll('button').some(b => b.text().includes('批量编辑 UTR'))).toBe(true)
+  })
+
+  it('bulk edit mode shows actualUtr column header', async () => {
+    mockTeam.value = sampleTeam
+    mockPlayers.value = samplePlayers
+    const wrapper = mountDetail()
+    const bulkBtn = wrapper.findAll('button').find(b => b.text().includes('批量编辑 UTR'))
+    await bulkBtn.trigger('click')
+    expect(wrapper.text()).toContain('实际 UTR')
+  })
+
+  it('bulk edit blank actualUtr sends null', async () => {
+    mockTeam.value = sampleTeam
+    // Give Alice a non-null actualUtr so clearing it triggers a change
+    mockPlayers.value = [
+      { id: 'p1', name: 'Alice', gender: 'female', utr: 8.5, actualUtr: 7.0, verified: true, profileUrl: null },
+      { id: 'p2', name: 'Bob', gender: 'male', utr: 7.0, actualUtr: null, verified: false, profileUrl: null },
+    ]
+    mockBulkUpdateUtrs.mockResolvedValue({ succeeded: ['p1'], failed: [] })
+    const wrapper = mountDetail()
+
+    const bulkBtn = wrapper.findAll('button').find(b => b.text().includes('批量编辑 UTR'))
+    await bulkBtn.trigger('click')
+
+    // Clear Alice's (p1) actualUtr input using data attribute for reliability
+    const aliceActualUtrInput = wrapper.find('input[data-actualutr-player-id="p1"]')
+    await aliceActualUtrInput.setValue('')
+
+    const saveBtn = wrapper.findAll('button').find(b => b.text() === '保存')
+    await saveBtn.trigger('click')
+
+    expect(mockBulkUpdateUtrs).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({ playerId: 'p1', actualUtr: null }),
+      ])
+    )
   })
 
   it('shows error list when some bulk updates fail', async () => {

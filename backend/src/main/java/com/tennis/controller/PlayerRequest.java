@@ -24,4 +24,7 @@ public class PlayerRequest {
     private String notes;
     public String getNotes() { return notes; }
     public void setNotes(String notes) { this.notes = notes; }
+    private Double actualUtr;
+    public Double getActualUtr() { return actualUtr; }
+    public void setActualUtr(Double actualUtr) { this.actualUtr = actualUtr; }
 }

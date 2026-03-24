@@ -44,4 +44,10 @@ public class Pair {
 
     @JsonProperty("player2Notes")
     private String player2Notes; // optional player characteristics
+
+    @JsonProperty("player1ActualUtr")
+    private Double player1ActualUtr; // null if same as utr
+
+    @JsonProperty("player2ActualUtr")
+    private Double player2ActualUtr; // null if same as utr
 }

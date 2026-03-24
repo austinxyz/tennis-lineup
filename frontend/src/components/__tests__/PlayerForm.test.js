@@ -257,6 +257,42 @@ describe('PlayerForm', () => {
     })
   })
 
+  // ── actualUtr 字段 ───────────────────────────────────────────────────────────
+
+  describe('actualUtr 字段', () => {
+    it('actualUtr input renders', () => {
+      const wrapper = mountForm()
+      const input = wrapper.find('input[placeholder="默认同UTR（选填）"]')
+      expect(input.exists()).toBe(true)
+    })
+
+    it('actualUtr pre-fills from initialData', () => {
+      const wrapper = mountForm({ actualUtr: 7.5 })
+      const input = wrapper.find('input[placeholder="默认同UTR（选填）"]')
+      expect(Number(input.element.value)).toBe(7.5)
+    })
+
+    it('actualUtr submits null when empty', async () => {
+      const wrapper = mountForm({ name: '张三', gender: 'male', utr: 8.5, verified: true })
+      const saveBtn = wrapper.findAll('button').find(b => b.text() === '保存')
+      await saveBtn.trigger('click')
+      const emitted = wrapper.emitted('submit')
+      expect(emitted).toBeTruthy()
+      expect(emitted[0][0].actualUtr).toBeNull()
+    })
+
+    it('actualUtr submits value when filled', async () => {
+      const wrapper = mountForm({ name: '张三', gender: 'male', utr: 8.5, verified: true })
+      const input = wrapper.find('input[placeholder="默认同UTR（选填）"]')
+      await input.setValue(8.0)
+      const saveBtn = wrapper.findAll('button').find(b => b.text() === '保存')
+      await saveBtn.trigger('click')
+      const emitted = wrapper.emitted('submit')
+      expect(emitted).toBeTruthy()
+      expect(emitted[0][0].actualUtr).toBe(8.0)
+    })
+  })
+
   // ── watch initialData ────────────────────────────────────────────────────────
 
   describe('监听 initialData 变化', () => {

@@ -17,17 +17,13 @@
 
 ---
 
-### Requirement: Team management player list sorting
-The team detail page SHALL display players sorted by gender first (males before females), then by UTR descending within each gender group.
+### Requirement: Team detail view includes notes access
+The team detail view SHALL include a "队员笔记" section that provides access to both personal notes and partner notes editors for that team.
 
-#### Scenario: Males appear before females in team player list
-- **WHEN** user views the player list on the team detail page
-- **THEN** all male players appear above all female players
+#### Scenario: Notes section visible in team detail
+- **WHEN** the user navigates to a team's detail page
+- **THEN** a "队员笔记" section or button is visible that opens the notes editor
 
-#### Scenario: Within each gender, higher UTR appears first
-- **WHEN** two players of the same gender are displayed
-- **THEN** the player with higher UTR appears first
-
-#### Scenario: Sort is display-only
-- **WHEN** the sort order is applied
-- **THEN** underlying storage order of players in `tennis-data.json` is NOT changed; only the rendered order is affected
+#### Scenario: Notes section shows two panels
+- **WHEN** the user opens the 队员笔记 section
+- **THEN** two panels are displayed: "个人笔记" (personal notes) and "搭档笔记" (partner notes)

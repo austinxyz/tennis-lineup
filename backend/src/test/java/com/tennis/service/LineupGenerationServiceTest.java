@@ -454,6 +454,65 @@ class LineupGenerationServiceTest {
         }
     }
 
+    // ---- Task 4.4 — actualUtr re-ranking test ----
+
+    @Test
+    @DisplayName("generateCandidates with actualUtr re-ranks lineups by actualUtrSum descending")
+    void generateLineups_withActualUtr_reranksBy_ActualUtrSum() {
+        // Build a valid 8-player roster. Assign actualUtr to some players so that
+        // one lineup combination has a higher actualUtrSum despite possibly similar totalUtr.
+        //
+        // To force two distinct lineups: use an 8-player roster where valid pairings can be
+        // arranged in multiple ways. Give two players high actualUtr overrides so that any
+        // lineup containing them both has a higher actualUtrSum than lineups without them.
+        //
+        // Players p1-p8 are designed to yield multiple valid lineups:
+        //   p1 (male,  6.0, actualUtr=10.0)  — high override
+        //   p2 (female,5.5, actualUtr=10.0)  — high override
+        //   p3 (male,  5.0, no override)
+        //   p4 (female,4.5, no override)
+        //   p5 (male,  4.5, no override)
+        //   p6 (female,4.0, no override)
+        //   p7 (male,  4.0, no override)
+        //   p8 (male,  3.5, no override)
+        //
+        // p1 and p2 have actualUtr=10.0, all others fall back to their regular utr.
+        // Any lineup including both p1 and p2 will have actualUtrSum ≥ 10+10+remaining utr,
+        // which exceeds lineups that don't include them — so the first result should include both.
+
+        Player p1 = player("p1", "male",   6.0, true);
+        p1.setActualUtr(10.0);
+        Player p2 = player("p2", "female", 5.5, true);
+        p2.setActualUtr(10.0);
+        Player p3 = player("p3", "male",   5.0, true);
+        Player p4 = player("p4", "female", 4.5, true);
+        Player p5 = player("p5", "male",   4.5, true);
+        Player p6 = player("p6", "female", 4.0, true);
+        Player p7 = player("p7", "male",   4.0, true);
+        Player p8 = player("p8", "male",   3.5, true);
+
+        List<Player> players = List.of(p1, p2, p3, p4, p5, p6, p7, p8);
+
+        List<Lineup> candidates = service.generateCandidates(players);
+        assertFalse(candidates.isEmpty(), "Should generate at least one valid lineup");
+
+        // The top-ranked lineup must have a higher or equal actualUtrSum than all subsequent ones
+        Lineup top = candidates.get(0);
+        assertNotNull(top.getActualUtrSum(), "actualUtrSum must be populated");
+        for (int i = 1; i < candidates.size(); i++) {
+            assertTrue(top.getActualUtrSum() >= candidates.get(i).getActualUtrSum(),
+                    "First lineup should have highest actualUtrSum; failed at index " + i);
+        }
+
+        // The top lineup must include both p1 and p2 (highest override players)
+        boolean topHasP1 = top.getPairs().stream().anyMatch(p ->
+                "p1".equals(p.getPlayer1Id()) || "p1".equals(p.getPlayer2Id()));
+        boolean topHasP2 = top.getPairs().stream().anyMatch(p ->
+                "p2".equals(p.getPlayer1Id()) || "p2".equals(p.getPlayer2Id()));
+        assertTrue(topHasP1 && topHasP2,
+                "Top lineup should include both players with high actualUtr overrides");
+    }
+
     @Test
     @DisplayName("greedy fallback: swaps last greedy player when initial pool yields no valid lineup")
     void testGreedyFallbackSwapsLastPlayerToFindValidLineup() {
