@@ -137,11 +137,10 @@ describe('LineupCard', () => {
       expect(wrapper.text()).toContain('实际 UTR: 41.00')
     })
 
-    it('always shows actualUtr per player using official UTR as fallback when no override set', () => {
+    it('hides per-player 实: when no actualUtr override set', () => {
       const wrapper = mount(LineupCard, { props: { lineup: buildLineup() } })
-      // No actualUtr overrides — official UTR is used as effective actual
-      expect(wrapper.text()).toContain('实:8.00')
-      expect(wrapper.text()).toContain('实:7.50')
+      // No actualUtr overrides — 实: should not appear per player
+      expect(wrapper.text()).not.toContain('实:')
     })
 
     it('always shows actualUtrSum in header', () => {

@@ -23,9 +23,9 @@
         <span class="w-8 text-xs font-bold text-green-600">{{ pair.position }}</span>
         <div class="flex-1 text-sm text-gray-800">
           <template v-if="showPlayerUtr">
-            <span v-if="pair.player1Gender" :class="pair.player1Gender === 'female' ? 'text-pink-500' : 'text-blue-500'" class="text-xs font-semibold mr-0.5">{{ pair.player1Gender === 'female' ? '女' : '男' }}</span>{{ pair.player1Name }} (<span class="text-gray-600">{{ pair.player1Utr ?? '—' }}</span> / <span class="text-orange-500 text-xs">实:{{ effectiveActualUtr(pair.player1ActualUtr, pair.player1Utr) }}</span>)
+            <span v-if="pair.player1Gender" :class="pair.player1Gender === 'female' ? 'text-pink-500' : 'text-blue-500'" class="text-xs font-semibold mr-0.5">{{ pair.player1Gender === 'female' ? '女' : '男' }}</span>{{ pair.player1Name }} ({{ pair.player1Utr ?? '—' }}<template v-if="pair.player1ActualUtr != null"> / <span class="text-orange-500 text-xs">实:{{ pair.player1ActualUtr.toFixed(2) }}</span></template>)
             /
-            <span v-if="pair.player2Gender" :class="pair.player2Gender === 'female' ? 'text-pink-500' : 'text-blue-500'" class="text-xs font-semibold mr-0.5">{{ pair.player2Gender === 'female' ? '女' : '男' }}</span>{{ pair.player2Name }} (<span class="text-gray-600">{{ pair.player2Utr ?? '—' }}</span> / <span class="text-orange-500 text-xs">实:{{ effectiveActualUtr(pair.player2ActualUtr, pair.player2Utr) }}</span>)
+            <span v-if="pair.player2Gender" :class="pair.player2Gender === 'female' ? 'text-pink-500' : 'text-blue-500'" class="text-xs font-semibold mr-0.5">{{ pair.player2Gender === 'female' ? '女' : '男' }}</span>{{ pair.player2Name }} ({{ pair.player2Utr ?? '—' }}<template v-if="pair.player2ActualUtr != null"> / <span class="text-orange-500 text-xs">实:{{ pair.player2ActualUtr.toFixed(2) }}</span></template>)
           </template>
           <template v-else>
             {{ pair.player1Name }} / {{ pair.player2Name }}
@@ -33,7 +33,7 @@
         </div>
         <div v-if="showPlayerUtr" class="text-right shrink-0">
           <div class="text-xs text-gray-500">{{ pair.combinedUtr.toFixed(2) }}</div>
-          <div class="text-xs text-orange-500">实:{{ pairActualUtr(pair) }}</div>
+          <div v-if="pair.player1ActualUtr != null || pair.player2ActualUtr != null" class="text-xs text-orange-500">实:{{ pairActualUtr(pair) }}</div>
         </div>
         <span v-else class="text-xs text-gray-500">{{ pair.combinedUtr.toFixed(2) }}</span>
       </div>
@@ -71,22 +71,9 @@ const sortedPairs = computed(() =>
 
 const totalUtr = computed(() => props.lineup.totalUtr?.toFixed(2) ?? '—')
 
-const actualUtrSum = computed(() => {
-  if (props.lineup.actualUtrSum != null) return props.lineup.actualUtrSum.toFixed(2)
-  // Fallback: compute from pairs when actualUtrSum not available
-  if (!props.lineup.pairs) return props.lineup.totalUtr?.toFixed(2) ?? '—'
-  const sum = props.lineup.pairs.reduce((acc, pair) => {
-    const a1 = pair.player1ActualUtr ?? pair.player1Utr ?? 0
-    const a2 = pair.player2ActualUtr ?? pair.player2Utr ?? 0
-    return acc + a1 + a2
-  }, 0)
-  return sum.toFixed(2)
-})
-
-function effectiveActualUtr(actualUtr, utr) {
-  const val = actualUtr ?? utr
-  return val != null ? Number(val).toFixed(2) : '—'
-}
+const actualUtrSum = computed(() =>
+  props.lineup.actualUtrSum?.toFixed(2) ?? props.lineup.totalUtr?.toFixed(2) ?? '—'
+)
 
 function pairActualUtr(pair) {
   const a1 = pair.player1ActualUtr ?? pair.player1Utr ?? 0
