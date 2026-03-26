@@ -220,7 +220,12 @@ describe('useOpponentMatchup', () => {
 
       await runCommentary('team-A', 'lineup-own', 'team-B', 'lineup-opp')
 
-      const [url, opts] = mockFetch.mock.calls[0]
+      // runCommentary now fetches partner notes first (2 GETs), then POSTs commentary
+      const postCall = mockFetch.mock.calls.find(([url, opts]) =>
+        url.includes('/api/lineups/matchup-commentary') && opts?.method === 'POST'
+      )
+      expect(postCall).toBeDefined()
+      const [url, opts] = postCall
       expect(url).toContain('/api/lineups/matchup-commentary')
       const body = JSON.parse(opts.body)
       expect(body.teamId).toBe('team-A')

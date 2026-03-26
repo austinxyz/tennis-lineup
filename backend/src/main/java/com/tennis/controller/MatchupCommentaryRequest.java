@@ -5,6 +5,8 @@ public class MatchupCommentaryRequest {
     private String ownLineupId;
     private String opponentTeamId;
     private String opponentLineupId;
+    private java.util.List<LineupMatchupRequest.PartnerNoteDto> ownPartnerNotes;
+    private java.util.List<LineupMatchupRequest.PartnerNoteDto> opponentPartnerNotes;
 
     public String getTeamId() { return teamId; }
     public void setTeamId(String teamId) { this.teamId = teamId; }
@@ -17,4 +19,10 @@ public class MatchupCommentaryRequest {
 
     public String getOpponentLineupId() { return opponentLineupId; }
     public void setOpponentLineupId(String opponentLineupId) { this.opponentLineupId = opponentLineupId; }
+
+    public java.util.List<LineupMatchupRequest.PartnerNoteDto> getOwnPartnerNotes() { return ownPartnerNotes; }
+    public void setOwnPartnerNotes(java.util.List<LineupMatchupRequest.PartnerNoteDto> ownPartnerNotes) { this.ownPartnerNotes = ownPartnerNotes; }
+
+    public java.util.List<LineupMatchupRequest.PartnerNoteDto> getOpponentPartnerNotes() { return opponentPartnerNotes; }
+    public void setOpponentPartnerNotes(java.util.List<LineupMatchupRequest.PartnerNoteDto> opponentPartnerNotes) { this.opponentPartnerNotes = opponentPartnerNotes; }
 }

@@ -239,8 +239,8 @@ test.describe('对手策略分析', () => {
 
     await page.locator('label:has-text("对手排阵") + select').selectOption({ index: 1 })
 
-    // Preview should show D1 with player names (gray text below the dropdown)
-    await expect(page.locator('text=D1: 乙一 + 乙二')).toBeVisible()
+    // Preview should show D1 with player names (gray text below the dropdown, format: "D1: 乙一(UTR) + 乙二(UTR)")
+    await expect(page.locator('div').filter({ hasText: /^D1:.*乙一.*乙二/ }).first()).toBeVisible()
   })
 
   // --- 新功能: 最佳三阵 AI 推荐 ---

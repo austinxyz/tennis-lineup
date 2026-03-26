@@ -212,9 +212,8 @@ test.describe('实际UTR — 排阵卡片显示', () => {
     await lineupPage.waitForResults()
     await lineupPage.waitForLineupCard()
 
-    // The header "实际 UTR: X.XX" appears only when actualUtrSum != totalUtr (delta > 0.01)
-    // Since we set actualUtr lower for two players, the sums will differ
-    const headerActualUtr = page.locator('span.text-orange-500').filter({ hasText: /实际 UTR:/ })
+    // The header "实际 UTR: X.XX" is shown in the lineup card header (orange div)
+    const headerActualUtr = page.locator('div.text-orange-500').filter({ hasText: /实际 UTR:/ })
     await expect(headerActualUtr.first()).toBeVisible({ timeout: 5000 })
   })
 })

@@ -109,22 +109,28 @@ public class OpponentAnalysisService {
             pair.setCombinedUtr(utr1 + utr2);
             if (p1 != null) pair.setPlayer1ActualUtr(p1.getActualUtr());
             if (p2 != null) pair.setPlayer2ActualUtr(p2.getActualUtr());
+            double a1 = (p1 != null && p1.getActualUtr() != null) ? p1.getActualUtr() : utr1;
+            double a2 = (p2 != null && p2.getActualUtr() != null) ? p2.getActualUtr() : utr2;
+            pair.setCombinedActualUtr(a1 + a2);
         }
 
         return lineup;
     }
 
     UtrRecommendation computeUtrRecommendation(List<Lineup> candidates, Lineup opponentLineup) {
-        // Build position→combinedUtr map for opponent
+        // Build position→combinedUtr and combinedActualUtr maps for opponent
         Map<String, Double> opponentUtrByPosition = opponentLineup.getPairs().stream()
                 .collect(Collectors.toMap(Pair::getPosition, Pair::getCombinedUtr));
+        Map<String, Double> opponentActualUtrByPosition = opponentLineup.getPairs().stream()
+                .collect(Collectors.toMap(Pair::getPosition,
+                        p -> p.getCombinedActualUtr() != null ? p.getCombinedActualUtr() : p.getCombinedUtr()));
 
         Lineup bestLineup = null;
         List<LineAnalysis> bestAnalysis = null;
         double bestExpectedScore = -1;
 
         for (Lineup candidate : candidates) {
-            List<LineAnalysis> analysis = computeLineAnalysis(candidate, opponentUtrByPosition);
+            List<LineAnalysis> analysis = computeLineAnalysis(candidate, opponentUtrByPosition, opponentActualUtrByPosition);
             double expectedScore = analysis.stream()
                     .mapToDouble(a -> POSITION_POINTS.getOrDefault(a.getPosition(), 0) * a.getWinProbability())
                     .sum();
@@ -144,19 +150,33 @@ public class OpponentAnalysisService {
                 Math.round(opponentExpectedScore * 10.0) / 10.0);
     }
 
+    /** Backward-compatible 2-arg overload: uses opponentUtrByPosition as fallback for actual UTR. */
     List<LineAnalysis> computeLineAnalysis(Lineup candidate, Map<String, Double> opponentUtrByPosition) {
+        return computeLineAnalysis(candidate, opponentUtrByPosition, opponentUtrByPosition);
+    }
+
+    List<LineAnalysis> computeLineAnalysis(Lineup candidate,
+                                            Map<String, Double> opponentUtrByPosition,
+                                            Map<String, Double> opponentActualUtrByPosition) {
         List<LineAnalysis> result = new ArrayList<>();
         for (Pair pair : candidate.getPairs()) {
             String position = pair.getPosition();
-            double p1Actual = pair.getPlayer1ActualUtr() != null ? pair.getPlayer1ActualUtr() : (pair.getPlayer1Utr() != null ? pair.getPlayer1Utr() : 0);
-            double p2Actual = pair.getPlayer2ActualUtr() != null ? pair.getPlayer2ActualUtr() : (pair.getPlayer2Utr() != null ? pair.getPlayer2Utr() : 0);
-            double ownUtr = p1Actual + p2Actual;
-            double oppUtr = opponentUtrByPosition.getOrDefault(position, 0.0);
-            double delta = ownUtr - oppUtr;
+            double p1Utr = pair.getPlayer1Utr() != null ? pair.getPlayer1Utr() : 0;
+            double p2Utr = pair.getPlayer2Utr() != null ? pair.getPlayer2Utr() : 0;
+            double ownRegularUtr = p1Utr + p2Utr;
+            double p1Actual = pair.getPlayer1ActualUtr() != null ? pair.getPlayer1ActualUtr() : p1Utr;
+            double p2Actual = pair.getPlayer2ActualUtr() != null ? pair.getPlayer2ActualUtr() : p2Utr;
+            double ownActualUtr = p1Actual + p2Actual;
+            double oppRegularUtr = opponentUtrByPosition.getOrDefault(position, 0.0);
+            double oppActualUtr = opponentActualUtrByPosition.getOrDefault(position, oppRegularUtr);
+            double delta = ownActualUtr - oppActualUtr;
             double winProb = winProbability(delta);
             String label = winLabel(winProb);
-            result.add(new LineAnalysis(position, ownUtr, oppUtr,
-                    Math.round(delta * 100.0) / 100.0, winProb, label));
+            LineAnalysis la = new LineAnalysis(position, ownActualUtr, oppRegularUtr,
+                    Math.round(delta * 100.0) / 100.0, winProb, label);
+            la.setOwnCombinedRegularUtr(ownRegularUtr);
+            la.setOpponentCombinedActualUtr(oppActualUtr);
+            result.add(la);
         }
         return result;
     }
@@ -194,7 +214,10 @@ public class OpponentAnalysisService {
             Lineup aiLineup = aiCandidates.get(aiIndex);
             Map<String, Double> oppUtrByPos = opponentLineup.getPairs().stream()
                     .collect(Collectors.toMap(Pair::getPosition, Pair::getCombinedUtr));
-            List<LineAnalysis> aiLineAnalysis = computeLineAnalysis(aiLineup, oppUtrByPos);
+            Map<String, Double> oppActualUtrByPos = opponentLineup.getPairs().stream()
+                    .collect(Collectors.toMap(Pair::getPosition,
+                            p -> p.getCombinedActualUtr() != null ? p.getCombinedActualUtr() : p.getCombinedUtr()));
+            List<LineAnalysis> aiLineAnalysis = computeLineAnalysis(aiLineup, oppUtrByPos, oppActualUtrByPos);
             double aiExpected = aiLineAnalysis.stream()
                     .mapToDouble(a -> POSITION_POINTS.getOrDefault(a.getPosition(), 0) * a.getWinProbability())
                     .sum();

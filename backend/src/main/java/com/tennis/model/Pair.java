@@ -50,4 +50,7 @@ public class Pair {
 
     @JsonProperty("player2ActualUtr")
     private Double player2ActualUtr; // null if same as utr
+
+    @JsonProperty("combinedActualUtr")
+    private Double combinedActualUtr; // sum of actual UTRs (falls back to utr when actualUtr is null)
 }

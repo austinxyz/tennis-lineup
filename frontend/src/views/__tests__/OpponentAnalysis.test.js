@@ -193,7 +193,10 @@ describe('OpponentAnalysis', () => {
       await wrapper.findAll('select')[2].setValue('opp-lineup-1')
       await flushPromises()
 
-      expect(wrapper.text()).toContain('D1: 甲一 + 甲二')
+      // Preview now shows UTR alongside player names
+      expect(wrapper.text()).toContain('D1:')
+      expect(wrapper.text()).toContain('甲一')
+      expect(wrapper.text()).toContain('甲二')
     })
 
     it('shows own lineup preview in 逐线对比 mode after selecting own lineup', async () => {

@@ -71,7 +71,7 @@
           <!-- Opponent lineup preview -->
           <div v-if="opponentLineupPreviewPairs.length > 0" class="mt-2 text-xs text-gray-400 space-y-0.5">
             <div v-for="pair in opponentLineupPreviewPairs" :key="pair.position">
-              {{ pair.position }}: {{ pair.player1Name }} + {{ pair.player2Name }}
+              {{ pair.position }}: {{ pairPreviewText(pair) }}
             </div>
           </div>
         </div>
@@ -171,7 +171,7 @@
               <span class="w-8 text-xs font-bold text-green-600">{{ line.position }}</span>
               <div class="text-sm text-gray-800 min-w-0">
                 {{ pairText(res.lineup, line.position) }}
-                <span class="text-xs text-gray-400 ml-1">({{ line.ownCombinedUtr.toFixed(1) }})</span>
+                <span class="text-xs text-gray-400 ml-1">{{ dualUtrLabel(line.ownCombinedRegularUtr, line.ownCombinedUtr) }}</span>
               </div>
               <div class="flex flex-col items-center gap-1 px-2">
                 <span class="text-xs font-medium" :class="line.delta > 0 ? 'text-green-600' : line.delta < 0 ? 'text-red-500' : 'text-gray-400'">
@@ -183,7 +183,7 @@
               </div>
               <div class="text-sm text-gray-500 min-w-0 text-right">
                 {{ pairText(opponentLineupObj, line.position) }}
-                <span class="text-xs text-gray-400 ml-1">({{ line.opponentCombinedUtr.toFixed(1) }})</span>
+                <span class="text-xs text-gray-400 ml-1">{{ dualUtrLabel(line.opponentCombinedUtr, line.opponentCombinedActualUtr) }}</span>
               </div>
             </div>
           </div>
@@ -240,7 +240,7 @@
               <span class="w-8 text-xs font-bold text-green-600">{{ line.position }}</span>
               <div class="text-sm text-gray-800 min-w-0">
                 {{ pairText(aiResult.lineup, line.position) }}
-                <span class="text-xs text-gray-400 ml-1">({{ line.ownCombinedUtr.toFixed(1) }})</span>
+                <span class="text-xs text-gray-400 ml-1">{{ dualUtrLabel(line.ownCombinedRegularUtr, line.ownCombinedUtr) }}</span>
               </div>
               <div class="flex flex-col items-center gap-1 px-2">
                 <span class="text-xs font-medium" :class="line.delta > 0 ? 'text-green-600' : line.delta < 0 ? 'text-red-500' : 'text-gray-400'">
@@ -252,7 +252,7 @@
               </div>
               <div class="text-sm text-gray-500 min-w-0 text-right">
                 {{ pairText(aiResult.opponentLineup, line.position) }}
-                <span class="text-xs text-gray-400 ml-1">({{ line.opponentCombinedUtr.toFixed(1) }})</span>
+                <span class="text-xs text-gray-400 ml-1">{{ dualUtrLabel(line.opponentCombinedUtr, line.opponentCombinedActualUtr) }}</span>
               </div>
             </div>
           </div>
@@ -287,7 +287,7 @@
             <span class="w-8 text-xs font-bold text-green-600">{{ line.position }}</span>
             <div class="text-sm text-gray-800 min-w-0">
               {{ pairText(headToHeadResult.lineup, line.position) }}
-              <span class="text-xs text-gray-400 ml-1">({{ line.ownCombinedUtr.toFixed(1) }})</span>
+              <span class="text-xs text-gray-400 ml-1">{{ dualUtrLabel(line.ownCombinedRegularUtr, line.ownCombinedUtr) }}</span>
             </div>
             <div class="flex flex-col items-center gap-1 px-2">
               <span class="text-xs font-medium" :class="line.delta > 0 ? 'text-green-600' : line.delta < 0 ? 'text-red-500' : 'text-gray-400'">
@@ -299,7 +299,7 @@
             </div>
             <div class="text-sm text-gray-500 min-w-0 text-right">
               {{ pairText(opponentLineupObj, line.position) }}
-              <span class="text-xs text-gray-400 ml-1">({{ line.opponentCombinedUtr.toFixed(1) }})</span>
+              <span class="text-xs text-gray-400 ml-1">{{ dualUtrLabel(line.opponentCombinedUtr, line.opponentCombinedActualUtr) }}</span>
             </div>
           </div>
         </div>
@@ -497,9 +497,32 @@ function pairText(lineup, position) {
   if (!pair) return '—'
   const g1 = pair.player1Gender === 'female' ? '女' : pair.player1Gender === 'male' ? '男' : ''
   const g2 = pair.player2Gender === 'female' ? '女' : pair.player2Gender === 'male' ? '男' : ''
-  const u1 = pair.player1Utr != null ? pair.player1Utr : '—'
-  const u2 = pair.player2Utr != null ? pair.player2Utr : '—'
-  return `${g1}${pair.player1Name}(${u1}) / ${g2}${pair.player2Name}(${u2})`
+  const p1 = playerUtrLabel(pair.player1Utr, pair.player1ActualUtr)
+  const p2 = playerUtrLabel(pair.player2Utr, pair.player2ActualUtr)
+  return `${g1}${pair.player1Name}(${p1}) / ${g2}${pair.player2Name}(${p2})`
+}
+
+function playerUtrLabel(utr, actualUtr) {
+  if (utr == null) return '—'
+  if (actualUtr != null && Math.abs(actualUtr - utr) >= 0.05) {
+    return `${utr}/实${actualUtr}`
+  }
+  return `${utr}`
+}
+
+function pairPreviewText(pair) {
+  const p1 = playerUtrLabel(pair.player1Utr, pair.player1ActualUtr)
+  const p2 = playerUtrLabel(pair.player2Utr, pair.player2ActualUtr)
+  return `${pair.player1Name}(${p1}) + ${pair.player2Name}(${p2})`
+}
+
+function dualUtrLabel(regularUtr, actualUtr) {
+  if (regularUtr == null && actualUtr == null) return ''
+  const base = actualUtr != null ? actualUtr : regularUtr
+  if (regularUtr != null && actualUtr != null && Math.abs(actualUtr - regularUtr) >= 0.05) {
+    return `(${regularUtr.toFixed(1)}/实${actualUtr.toFixed(1)})`
+  }
+  return `(${base.toFixed(1)})`
 }
 
 function verdictClass(verdict) {

@@ -89,9 +89,9 @@ class LineupMatchupServiceTest {
         List<LineAnalysis> highAnalysis = buildAnalysis(0.8, 0.8, 0.8, 0.8);
 
         when(opponentAnalysisService.computeLineAnalysis(
-                argMatchingId("own-1"), anyMap())).thenReturn(lowAnalysis);
+                argMatchingId("own-1"), anyMap(), anyMap())).thenReturn(lowAnalysis);
         when(opponentAnalysisService.computeLineAnalysis(
-                argMatchingId("own-2"), anyMap())).thenReturn(highAnalysis);
+                argMatchingId("own-2"), anyMap(), anyMap())).thenReturn(highAnalysis);
 
         LineupMatchupResponse response = service.matchup(buildRequest("own-team", "opp-team", "opp-lineup-1"));
 
@@ -106,7 +106,7 @@ class LineupMatchupServiceTest {
     void matchup_withOwnLineupId_returnsSingleResult() {
         stubRepository();
         when(opponentAnalysisService.computeLineAnalysis(
-                argMatchingId("own-2"), anyMap())).thenReturn(buildAnalysis(0.8, 0.8, 0.8, 0.8));
+                argMatchingId("own-2"), anyMap(), anyMap())).thenReturn(buildAnalysis(0.8, 0.8, 0.8, 0.8));
 
         LineupMatchupRequest req = buildRequest("own-team", "opp-team", "opp-lineup-1");
         req.setOwnLineupId("own-2");
@@ -132,7 +132,7 @@ class LineupMatchupServiceTest {
     void matchup_includeAi_callsAiServiceAndPopulatesRecommendation() {
         stubRepository();
         List<LineAnalysis> analysis = buildAnalysis(0.8, 0.8, 0.8, 0.8);
-        when(opponentAnalysisService.computeLineAnalysis(any(), anyMap())).thenReturn(analysis);
+        when(opponentAnalysisService.computeLineAnalysis(any(), anyMap(), anyMap())).thenReturn(analysis);
         when(aiService.selectBestWithResult(any(), any(), any(), any(), any()))
                 .thenReturn(new ZhipuAiService.AiResult(0, "D1组合UTR优势明显"));
 
@@ -152,7 +152,7 @@ class LineupMatchupServiceTest {
     void matchup_includeAiWithOwnLineupId_aiNotCalled_aiRecNull() {
         stubRepository();
         when(opponentAnalysisService.computeLineAnalysis(
-                argMatchingId("own-1"), anyMap())).thenReturn(buildAnalysis(0.5, 0.5, 0.5, 0.5));
+                argMatchingId("own-1"), anyMap(), anyMap())).thenReturn(buildAnalysis(0.5, 0.5, 0.5, 0.5));
 
         LineupMatchupRequest req = buildRequest("own-team", "opp-team", "opp-lineup-1");
         req.setOwnLineupId("own-1");

@@ -1,13 +1,11 @@
 package com.tennis.model;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Data
 @NoArgsConstructor
-@AllArgsConstructor
 public class LineAnalysis {
 
     @JsonProperty("position")
@@ -27,4 +25,22 @@ public class LineAnalysis {
 
     @JsonProperty("label")
     private String label;
+
+    /** Sum of official (non-actual) UTRs for own pair — for display alongside ownCombinedUtr (actual). */
+    @JsonProperty("ownCombinedRegularUtr")
+    private Double ownCombinedRegularUtr;
+
+    /** Sum of actual UTRs for opponent pair — for display and win probability computation. */
+    @JsonProperty("opponentCombinedActualUtr")
+    private Double opponentCombinedActualUtr;
+
+    public LineAnalysis(String position, double ownCombinedUtr, double opponentCombinedUtr,
+                        double delta, double winProbability, String label) {
+        this.position = position;
+        this.ownCombinedUtr = ownCombinedUtr;
+        this.opponentCombinedUtr = opponentCombinedUtr;
+        this.delta = delta;
+        this.winProbability = winProbability;
+        this.label = label;
+    }
 }

@@ -88,11 +88,17 @@ export function useOpponentMatchup() {
     loading.value = true
     error.value = ''
     try {
+      const [ownPartnerNotes, opponentPartnerNotes] = await Promise.all([
+        fetchPartnerNotesForAi(ownTeamId, get),
+        fetchPartnerNotesForAi(opponentTeamId, get),
+      ])
       const res = await post('/api/lineups/matchup-commentary', {
         teamId: ownTeamId,
         ownLineupId,
         opponentTeamId,
         opponentLineupId,
+        ownPartnerNotes: ownPartnerNotes.length > 0 ? ownPartnerNotes : undefined,
+        opponentPartnerNotes: opponentPartnerNotes.length > 0 ? opponentPartnerNotes : undefined,
       })
       return res
     } catch (err) {

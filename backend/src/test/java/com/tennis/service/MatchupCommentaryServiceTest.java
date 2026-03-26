@@ -94,7 +94,7 @@ class MatchupCommentaryServiceTest {
     @DisplayName("AI 成功时返回 AI 评析文字")
     void shouldReturnAiCommentaryWhenAiSucceeds() {
         when(jsonRepository.readData()).thenReturn(teamData);
-        when(aiService.getCommentary(any(), any())).thenReturn(Map.of(
+        when(aiService.getCommentary(any(), any(), any(), any())).thenReturn(Map.of(
                 "D1", "己方UTR优势明显，建议主动进攻",
                 "D2", "势均力敌，发挥稳定",
                 "D3", "己方略占优势",
@@ -120,7 +120,7 @@ class MatchupCommentaryServiceTest {
         ownLineup.getPairs().get(3).setCombinedUtr(9.0); // D4: 9 vs 11 => delta -2
 
         when(jsonRepository.readData()).thenReturn(teamData);
-        when(aiService.getCommentary(any(), any())).thenReturn(Map.of());
+        when(aiService.getCommentary(any(), any(), any(), any())).thenReturn(Map.of());
 
         MatchupCommentaryResponse result = service.getCommentary(buildRequest());
 

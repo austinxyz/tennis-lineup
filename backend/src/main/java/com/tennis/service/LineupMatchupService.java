@@ -80,14 +80,17 @@ public class LineupMatchupService {
                 ? ownTeam.getPlayers().stream().collect(Collectors.toMap(Player::getId, p -> p))
                 : Map.of();
 
-        // Build opponent position → combinedUtr map
+        // Build opponent position → combinedUtr and combinedActualUtr maps
         Map<String, Double> opponentUtrByPosition = opponentLineup.getPairs().stream()
                 .collect(Collectors.toMap(Pair::getPosition, Pair::getCombinedUtr));
+        Map<String, Double> opponentActualUtrByPosition = opponentLineup.getPairs().stream()
+                .collect(Collectors.toMap(Pair::getPosition,
+                        p -> p.getCombinedActualUtr() != null ? p.getCombinedActualUtr() : p.getCombinedUtr()));
 
         List<MatchupResult> results = new ArrayList<>();
         for (Lineup ownLineup : ownLineups) {
             Lineup enriched = enrichLineup(ownLineup, ownPlayerMap);
-            List<LineAnalysis> analysis = opponentAnalysisService.computeLineAnalysis(enriched, opponentUtrByPosition);
+            List<LineAnalysis> analysis = opponentAnalysisService.computeLineAnalysis(enriched, opponentUtrByPosition, opponentActualUtrByPosition);
             double expectedScore = analysis.stream()
                     .mapToDouble(a -> POSITION_POINTS.getOrDefault(a.getPosition(), 0) * a.getWinProbability())
                     .sum();
@@ -103,7 +106,7 @@ public class LineupMatchupService {
         AiRecommendation aiRec = null;
         if (request.isIncludeAi() && (request.getOwnLineupId() == null || request.getOwnLineupId().isBlank())) {
             aiRec = computeAiRecommendation(results, opponentLineup, opponentUtrByPosition,
-                    request.getOwnPartnerNotes(), request.getOpponentPartnerNotes());
+                    opponentActualUtrByPosition, request.getOwnPartnerNotes(), request.getOpponentPartnerNotes());
         }
 
         return new LineupMatchupResponse(results, aiRec);
@@ -112,6 +115,7 @@ public class LineupMatchupService {
     private AiRecommendation computeAiRecommendation(List<MatchupResult> sortedResults,
                                                       Lineup opponentLineup,
                                                       Map<String, Double> opponentUtrByPosition,
+                                                      Map<String, Double> opponentActualUtrByPosition,
                                                       List<LineupMatchupRequest.PartnerNoteDto> ownPartnerNotes,
                                                       List<LineupMatchupRequest.PartnerNoteDto> opponentPartnerNotes) {
         // Take top-5 by expected score for AI to evaluate
@@ -141,7 +145,7 @@ public class LineupMatchupService {
             aiUsed = false;
         }
 
-        List<LineAnalysis> lineAnalysis = opponentAnalysisService.computeLineAnalysis(aiLineup, opponentUtrByPosition);
+        List<LineAnalysis> lineAnalysis = opponentAnalysisService.computeLineAnalysis(aiLineup, opponentUtrByPosition, opponentActualUtrByPosition);
         double expectedScore = lineAnalysis.stream()
                 .mapToDouble(a -> POSITION_POINTS.getOrDefault(a.getPosition(), 0) * a.getWinProbability())
                 .sum();
@@ -188,6 +192,7 @@ public class LineupMatchupService {
             double a1 = (p1 != null && p1.getActualUtr() != null) ? p1.getActualUtr() : utr1;
             double a2 = (p2 != null && p2.getActualUtr() != null) ? p2.getActualUtr() : utr2;
             actualUtrTotal += a1 + a2;
+            p.setCombinedActualUtr(a1 + a2);
             enrichedPairs.add(p);
         }
         Lineup copy = new Lineup();

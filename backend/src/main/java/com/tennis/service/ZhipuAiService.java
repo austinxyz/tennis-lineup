@@ -118,10 +118,16 @@ public class ZhipuAiService {
             sb.append("对手排阵：\n");
             for (Pair pair : opponentLineup.getPairs()) {
                 sb.append("   ").append(pair.getPosition()).append(": ")
-                  .append(describePlayer(pair.getPlayer1Name(), pair.getPlayer1Utr(), pair.getPlayer1Notes()))
+                  .append(describePlayer(pair.getPlayer1Name(), pair.getPlayer1Utr(), pair.getPlayer1ActualUtr(), pair.getPlayer1Notes()))
                   .append(" + ")
-                  .append(describePlayer(pair.getPlayer2Name(), pair.getPlayer2Utr(), pair.getPlayer2Notes()))
-                  .append(" (组合UTR=").append(String.format("%.1f", pair.getCombinedUtr())).append(")\n");
+                  .append(describePlayer(pair.getPlayer2Name(), pair.getPlayer2Utr(), pair.getPlayer2ActualUtr(), pair.getPlayer2Notes()));
+                if (pair.getCombinedActualUtr() != null && Math.abs(pair.getCombinedActualUtr() - pair.getCombinedUtr()) > 0.01) {
+                    sb.append(" (组合UTR=").append(String.format("%.1f", pair.getCombinedUtr()))
+                      .append("/实际=").append(String.format("%.1f", pair.getCombinedActualUtr())).append(")");
+                } else {
+                    sb.append(" (组合UTR=").append(String.format("%.1f", pair.getCombinedUtr())).append(")");
+                }
+                sb.append("\n");
             }
             sb.append("\n");
         }
@@ -300,8 +306,15 @@ public class ZhipuAiService {
      * Expected AI response format: "D1\t评析\nD2\t评析\n..."
      */
     String buildCommentaryPrompt(Lineup ownLineup, Lineup oppLineup) {
+        return buildCommentaryPrompt(ownLineup, oppLineup, null, null);
+    }
+
+    String buildCommentaryPrompt(Lineup ownLineup, Lineup oppLineup,
+            List<LineupMatchupRequest.PartnerNoteDto> ownPartnerNotes,
+            List<LineupMatchupRequest.PartnerNoteDto> opponentPartnerNotes) {
         StringBuilder sb = new StringBuilder();
         sb.append("你是一位网球双打教练，请对以下己方与对手的逐线对比给出简短评析（每线一句话）。\n\n");
+        sb.append("重要说明：请主要参考实际UTR（actualUtr）进行分析，并结合搭档笔记综合判断。\n\n");
 
         Map<String, Pair> ownByPos = pairsByPosition(ownLineup);
         Map<String, Pair> oppByPos = pairsByPosition(oppLineup);
@@ -311,8 +324,10 @@ public class ZhipuAiService {
             Pair opp = oppByPos.get(pos);
             if (own == null || opp == null) continue;
 
-            double delta = own.getCombinedUtr() != null && opp.getCombinedUtr() != null
-                    ? own.getCombinedUtr() - opp.getCombinedUtr() : 0;
+            // Use actual UTR for delta when available
+            double ownActual = effectiveActualCombinedUtr(own);
+            double oppActual = effectiveActualCombinedUtr(opp);
+            double delta = ownActual - oppActual;
 
             sb.append(pos).append(": 己方 ")
               .append(describePlayer(own.getPlayer1Name(), own.getPlayer1Utr(), own.getPlayer1ActualUtr(), own.getPlayer1Notes()))
@@ -322,11 +337,21 @@ public class ZhipuAiService {
               .append(describePlayer(opp.getPlayer1Name(), opp.getPlayer1Utr(), opp.getPlayer1ActualUtr(), opp.getPlayer1Notes()))
               .append("+")
               .append(describePlayer(opp.getPlayer2Name(), opp.getPlayer2Utr(), opp.getPlayer2ActualUtr(), opp.getPlayer2Notes()))
-              .append(String.format(" (delta=%+.1f)\n", delta));
+              .append(String.format(" (实际delta=%+.1f)\n", delta));
         }
 
+        appendPartnerNotesSection(sb, ownPartnerNotes, opponentPartnerNotes);
         sb.append("\n请按以下格式回复（不得包含其他内容）：\nD1\t评析\nD2\t评析\nD3\t评析\nD4\t评析");
         return sb.toString();
+    }
+
+    private double effectiveActualCombinedUtr(Pair pair) {
+        if (pair.getCombinedActualUtr() != null) return pair.getCombinedActualUtr();
+        double u1 = pair.getPlayer1ActualUtr() != null ? pair.getPlayer1ActualUtr()
+                : (pair.getPlayer1Utr() != null ? pair.getPlayer1Utr() : 0);
+        double u2 = pair.getPlayer2ActualUtr() != null ? pair.getPlayer2ActualUtr()
+                : (pair.getPlayer2Utr() != null ? pair.getPlayer2Utr() : 0);
+        return u1 + u2;
     }
 
     private Map<String, Pair> pairsByPosition(Lineup lineup) {
@@ -363,11 +388,21 @@ public class ZhipuAiService {
      * Calls AI to get line-by-line commentary. Returns empty Map if AI unavailable.
      */
     public Map<String, String> getCommentary(Lineup ownLineup, Lineup oppLineup) {
+        return getCommentary(ownLineup, oppLineup, null, null);
+    }
+
+    /**
+     * Calls AI to get line-by-line commentary with optional partner notes context.
+     * Returns empty Map if AI unavailable.
+     */
+    public Map<String, String> getCommentary(Lineup ownLineup, Lineup oppLineup,
+            List<LineupMatchupRequest.PartnerNoteDto> ownPartnerNotes,
+            List<LineupMatchupRequest.PartnerNoteDto> opponentPartnerNotes) {
         if (apiKey == null || apiKey.isBlank()) {
             log.info("Zhipu AI API key not configured, skipping commentary");
             return Map.of();
         }
-        String prompt = buildCommentaryPrompt(ownLineup, oppLineup);
+        String prompt = buildCommentaryPrompt(ownLineup, oppLineup, ownPartnerNotes, opponentPartnerNotes);
         try {
             CompletableFuture<String> future = CompletableFuture.supplyAsync(
                     () -> callHttpApiForCommentary(prompt));
