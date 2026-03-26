@@ -1,0 +1,33 @@
+app = "tennis-lineup"
+primary_region = "hkg"
+
+[build]
+
+[env]
+  DATA_FILE_PATH    = "/data/tennis-data.json"
+  CONFIG_FILE_PATH  = "/data/tennis-config.json"
+  SERVER_PORT       = "8080"
+  JAVA_TOOL_OPTIONS = "-Dfile.encoding=UTF-8"
+
+[http_service]
+  internal_port = 8080
+  force_https   = true
+  auto_stop_machines  = true
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [[http_service.checks]]
+    grace_period  = "30s"
+    interval      = "15s"
+    method        = "GET"
+    path          = "/api/teams"
+    timeout       = "10s"
+
+[[vm]]
+  memory   = "256mb"
+  cpu_kind = "shared"
+  cpus     = 1
+
+[[mounts]]
+  source      = "tennis_data"
+  destination = "/data"

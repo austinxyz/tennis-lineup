@@ -3,7 +3,7 @@ terraform {
   required_providers {
     fly = {
       source  = "fly-apps/fly"
-      version = "~> 0.1"
+      version = ">= 0.0.1"
     }
   }
 }
@@ -44,16 +44,12 @@ resource "fly_volume" "data" {
 }
 
 # ── Machine（应用实例）───────────────────────────────────────
-# 注意：fly-apps/fly v0.1.x 的 mounts/services/checks 使用 HCL block 语法，
-#       不是 list-of-map 字面量。
 resource "fly_machine" "app" {
   app    = fly_app.tennis.name
   region = var.fly_region
   name   = "${var.fly_app_name}-app"
 
-  # 镜像在首次部署时由 docker push + flyctl deploy 推送
-  image = "registry.fly.io/${var.fly_app_name}:latest"
-
+  image    = "registry.fly.io/${var.fly_app_name}:latest"
   cpus     = 1
   memorymb = var.memory_mb
 
@@ -65,32 +61,38 @@ resource "fly_machine" "app" {
     JAVA_TOOL_OPTIONS = "-Dfile.encoding=UTF-8"
   }
 
-  # block 语法（非 = [...] 赋值）
-  mounts {
-    volume = fly_volume.data.id
-    path   = "/data"
-  }
+  mounts = [
+    {
+      volume = fly_volume.data.id
+      path   = "/data"
+    }
+  ]
 
-  services {
-    ports {
-      port     = 443
-      handlers = ["tls", "http"]
+  services = [
+    {
+      ports = [
+        {
+          port     = 443
+          handlers = ["tls", "http"]
+        },
+        {
+          port     = 80
+          handlers = ["http"]
+        }
+      ]
+      protocol      = "tcp"
+      internal_port = 8080
+      checks = [
+        {
+          type     = "http"
+          interval = "15s"
+          timeout  = "10s"
+          path     = "/api/teams"
+          method   = "GET"
+        }
+      ]
     }
-    ports {
-      port     = 80
-      handlers = ["http"]
-    }
-    protocol      = "tcp"
-    internal_port = 8080
-
-    checks {
-      type     = "http"
-      interval = "15s"
-      timeout  = "10s"
-      path     = "/api/teams"
-      method   = "GET"
-    }
-  }
+  ]
 
   depends_on = [fly_volume.data, fly_app.tennis]
 }
