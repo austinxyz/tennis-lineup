@@ -1,0 +1,21 @@
+# 开发环境本地配置（含硬编码密钥，绝对不能进镜像）
+backend/src/main/resources/application-local.yml
+
+# 构建产物和依赖
+frontend/node_modules
+frontend/dist
+backend/target
+
+# 数据和运行时文件
+data
+
+# 版本控制
+.git
+.gitignore
+
+# 文档和规格
+*.md
+terraform
+docs
+openspec
+scripts
