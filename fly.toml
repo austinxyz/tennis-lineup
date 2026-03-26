@@ -1,5 +1,5 @@
 app = "tennis-lineup"
-primary_region = "hkg"
+primary_region = "nrt"
 
 [build]
 
