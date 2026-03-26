@@ -1,5 +1,5 @@
 server:
-  port: 8080
+  port: ${SERVER_PORT:8080}
   servlet:
     encoding:
       charset: UTF-8
@@ -9,12 +9,12 @@ spring:
   application:
     name: tennis-lineup-app
   mandatory-file-encoding: UTF-8
-  profiles:
-    include: local
+  # 注意：移除了 profiles.include: local
+  # 本地开发请通过 IDE 或命令行设置 spring.profiles.active=local
 
 storage:
-  data-file: ./data/tennis-data.json
-  config-file: ./data/tennis-config.json
+  data-file: ${DATA_FILE_PATH:./data/tennis-data.json}
+  config-file: ${CONFIG_FILE_PATH:./data/tennis-config.json}
 
 zhipu:
   api:
