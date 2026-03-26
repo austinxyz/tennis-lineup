@@ -35,6 +35,9 @@ Thumbs.db
 frontend/test-results/
 backend/src/main/resources/application-local.yml
 
+# Backups
+backups/
+
 # Terraform
 terraform/terraform.tfvars
 terraform/.terraform/
