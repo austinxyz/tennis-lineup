@@ -1,0 +1,9 @@
+# 用户密钥，绝对不提交
+terraform.tfvars
+
+# Terraform 运行时文件
+.terraform/
+*.tfstate
+*.tfstate.backup
+
+# 注意：.terraform.lock.hcl 故意不排除，应提交以锁定 provider 版本

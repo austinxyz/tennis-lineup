@@ -34,3 +34,9 @@ Thumbs.db
 *.env.local
 frontend/test-results/
 backend/src/main/resources/application-local.yml
+
+# Terraform
+terraform/terraform.tfvars
+terraform/.terraform/
+terraform/*.tfstate
+terraform/*.tfstate.backup
