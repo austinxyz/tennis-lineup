@@ -30,7 +30,9 @@ export function useLineupHistory() {
     const a = document.createElement('a')
     a.href = `/api/teams/${teamId}/lineups/export`
     a.download = filename
+    document.body.appendChild(a)
     a.click()
+    document.body.removeChild(a)
   }
 
   const importLineups = async (teamId, file) => {

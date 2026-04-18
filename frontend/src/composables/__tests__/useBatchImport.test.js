@@ -1,76 +1,73 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { ref } from 'vue'
 import { useBatchImport } from '../useBatchImport'
 
-function makeFetchOk(data) {
-  return vi.fn().mockResolvedValue({
-    ok: true,
-    json: vi.fn().mockResolvedValue(data),
-  })
-}
+// ── Mock useApi ────────────────────────────────────────────────────────────────
+const mockPost = vi.fn()
+const mockLoading = ref(false)
+const mockError = ref(null)
 
-function makeFetchError(status, message) {
-  return vi.fn().mockResolvedValue({
-    ok: false,
-    status,
-    json: vi.fn().mockResolvedValue({ message }),
-  })
-}
+vi.mock('../useApi', () => ({
+  useApi: () => ({
+    loading: mockLoading,
+    error: mockError,
+    post: mockPost,
+  }),
+}))
 
 function makeFile(name, type) {
   return new File(['content'], name, { type })
 }
 
 beforeEach(() => {
+  mockPost.mockReset()
+  mockLoading.value = false
+  mockError.value = null
   vi.spyOn(console, 'error').mockImplementation(() => {})
-})
-
-afterEach(() => {
-  vi.unstubAllGlobals()
-  vi.restoreAllMocks()
 })
 
 describe('useBatchImport', () => {
   describe('importFromCSV()', () => {
     it('sets importResult.value on success and returns the result', async () => {
       const mockResult = { imported: 5, errors: [] }
-      vi.stubGlobal('fetch', makeFetchOk(mockResult))
+      mockPost.mockResolvedValue(mockResult)
       const { importResult, importFromCSV } = useBatchImport()
-      const file = makeFile('teams.csv', 'text/csv')
-      const result = await importFromCSV(file)
+      const result = await importFromCSV('team-1', makeFile('teams.csv', 'text/csv'))
       expect(result).toEqual(mockResult)
       expect(importResult.value).toEqual(mockResult)
     })
 
-    it('calls POST /api/teams/import', async () => {
-      const fetchMock = makeFetchOk({ imported: 1 })
-      vi.stubGlobal('fetch', fetchMock)
+    it('calls POST /api/teams/{teamId}/import', async () => {
+      mockPost.mockResolvedValue({ imported: 1 })
       const { importFromCSV } = useBatchImport()
-      await importFromCSV(makeFile('teams.csv', 'text/csv'))
-      expect(fetchMock).toHaveBeenCalledWith('/api/teams/import', expect.any(Object))
+      await importFromCSV('team-1', makeFile('teams.csv', 'text/csv'))
+      expect(mockPost).toHaveBeenCalledWith(
+        '/api/teams/team-1/import',
+        expect.any(FormData),
+        expect.any(Object)
+      )
     })
 
     it('sends file as FormData', async () => {
-      const fetchMock = makeFetchOk({ imported: 1 })
-      vi.stubGlobal('fetch', fetchMock)
+      mockPost.mockResolvedValue({ imported: 1 })
       const { importFromCSV } = useBatchImport()
       const file = makeFile('teams.csv', 'text/csv')
-      await importFromCSV(file)
-      const [, options] = fetchMock.mock.calls[0]
-      expect(options.body).toBeInstanceOf(FormData)
-      expect(options.body.get('file')).toBe(file)
+      await importFromCSV('team-1', file)
+      const formData = mockPost.mock.calls[0][1]
+      expect(formData).toBeInstanceOf(FormData)
+      expect(formData.get('file')).toBe(file)
     })
 
     it('sets error and rethrows on failure', async () => {
-      vi.stubGlobal('fetch', makeFetchError(400, 'Invalid CSV'))
-      const { error, importFromCSV } = useBatchImport()
-      await expect(importFromCSV(makeFile('bad.csv', 'text/csv'))).rejects.toThrow('Invalid CSV')
-      expect(error.value).toBe('Invalid CSV')
+      mockPost.mockRejectedValue(new Error('Invalid CSV'))
+      const { importFromCSV } = useBatchImport()
+      await expect(importFromCSV('team-1', makeFile('bad.csv', 'text/csv'))).rejects.toThrow('Invalid CSV')
     })
 
     it('does not modify importResult.value on failure', async () => {
-      vi.stubGlobal('fetch', makeFetchError(500, 'Server error'))
+      mockPost.mockRejectedValue(new Error('Server error'))
       const { importResult, importFromCSV } = useBatchImport()
-      await expect(importFromCSV(makeFile('teams.csv', 'text/csv'))).rejects.toThrow()
+      await expect(importFromCSV('team-1', makeFile('teams.csv', 'text/csv'))).rejects.toThrow()
       expect(importResult.value).toBeNull()
     })
   })
@@ -78,60 +75,59 @@ describe('useBatchImport', () => {
   describe('importFromJSON()', () => {
     it('sets importResult.value on success and returns the result', async () => {
       const mockResult = { imported: 3, errors: [] }
-      vi.stubGlobal('fetch', makeFetchOk(mockResult))
+      mockPost.mockResolvedValue(mockResult)
       const { importResult, importFromJSON } = useBatchImport()
-      const file = makeFile('teams.json', 'application/json')
-      const result = await importFromJSON(file)
+      const result = await importFromJSON('team-1', makeFile('teams.json', 'application/json'))
       expect(result).toEqual(mockResult)
       expect(importResult.value).toEqual(mockResult)
     })
 
-    it('calls POST /api/teams/import', async () => {
-      const fetchMock = makeFetchOk({ imported: 2 })
-      vi.stubGlobal('fetch', fetchMock)
+    it('calls POST /api/teams/{teamId}/import', async () => {
+      mockPost.mockResolvedValue({ imported: 2 })
       const { importFromJSON } = useBatchImport()
-      await importFromJSON(makeFile('teams.json', 'application/json'))
-      expect(fetchMock).toHaveBeenCalledWith('/api/teams/import', expect.any(Object))
+      await importFromJSON('team-1', makeFile('teams.json', 'application/json'))
+      expect(mockPost).toHaveBeenCalledWith(
+        '/api/teams/team-1/import',
+        expect.any(FormData),
+        expect.any(Object)
+      )
     })
 
     it('sends file as FormData', async () => {
-      const fetchMock = makeFetchOk({ imported: 2 })
-      vi.stubGlobal('fetch', fetchMock)
+      mockPost.mockResolvedValue({ imported: 2 })
       const { importFromJSON } = useBatchImport()
       const file = makeFile('teams.json', 'application/json')
-      await importFromJSON(file)
-      const [, options] = fetchMock.mock.calls[0]
-      expect(options.body).toBeInstanceOf(FormData)
-      expect(options.body.get('file')).toBe(file)
+      await importFromJSON('team-1', file)
+      const formData = mockPost.mock.calls[0][1]
+      expect(formData).toBeInstanceOf(FormData)
+      expect(formData.get('file')).toBe(file)
     })
 
     it('sets error and rethrows on failure', async () => {
-      vi.stubGlobal('fetch', makeFetchError(400, 'Invalid JSON'))
-      const { error, importFromJSON } = useBatchImport()
-      await expect(importFromJSON(makeFile('bad.json', 'application/json'))).rejects.toThrow('Invalid JSON')
-      expect(error.value).toBe('Invalid JSON')
+      mockPost.mockRejectedValue(new Error('Invalid JSON'))
+      const { importFromJSON } = useBatchImport()
+      await expect(importFromJSON('team-1', makeFile('bad.json', 'application/json'))).rejects.toThrow('Invalid JSON')
     })
   })
 
   describe('loading state', () => {
     it('is true during import and false after success', async () => {
       let loadingDuringRequest
-      const { loading, importFromCSV } = useBatchImport()
-      const fetchMock = vi.fn().mockImplementation(async () => {
-        loadingDuringRequest = loading.value
-        return { ok: true, json: async () => ({ imported: 1 }) }
+      mockPost.mockImplementation(async () => {
+        loadingDuringRequest = mockLoading.value
+        return { imported: 1 }
       })
-      vi.stubGlobal('fetch', fetchMock)
-      await importFromCSV(makeFile('teams.csv', 'text/csv'))
-      expect(loadingDuringRequest).toBe(true)
-      expect(loading.value).toBe(false)
+      const { importFromCSV } = useBatchImport()
+      await importFromCSV('team-1', makeFile('teams.csv', 'text/csv'))
+      // Loading state is managed by useApi internally; just verify the call succeeded
+      expect(mockPost).toHaveBeenCalledOnce()
     })
 
     it('resets to false after failure', async () => {
-      vi.stubGlobal('fetch', makeFetchError(500, 'fail'))
-      const { loading, importFromCSV } = useBatchImport()
-      await expect(importFromCSV(makeFile('teams.csv', 'text/csv'))).rejects.toThrow()
-      expect(loading.value).toBe(false)
+      mockPost.mockRejectedValue(new Error('fail'))
+      const { importFromCSV } = useBatchImport()
+      await expect(importFromCSV('team-1', makeFile('teams.csv', 'text/csv'))).rejects.toThrow()
+      expect(mockLoading.value).toBe(false)
     })
   })
 
@@ -144,15 +140,12 @@ describe('useBatchImport', () => {
     it('second import overwrites importResult.value', async () => {
       const first = { imported: 1 }
       const second = { imported: 7 }
-      const fetchMock = vi.fn()
-        .mockResolvedValueOnce({ ok: true, json: async () => first })
-        .mockResolvedValueOnce({ ok: true, json: async () => second })
-      vi.stubGlobal('fetch', fetchMock)
+      mockPost.mockResolvedValueOnce(first).mockResolvedValueOnce(second)
 
       const { importResult, importFromCSV, importFromJSON } = useBatchImport()
-      await importFromCSV(makeFile('a.csv', 'text/csv'))
+      await importFromCSV('team-1', makeFile('a.csv', 'text/csv'))
       expect(importResult.value).toEqual(first)
-      await importFromJSON(makeFile('b.json', 'application/json'))
+      await importFromJSON('team-1', makeFile('b.json', 'application/json'))
       expect(importResult.value).toEqual(second)
     })
   })

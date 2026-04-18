@@ -16,7 +16,7 @@
       </div>
     </div>
 
-    <div v-if="importResult" class="mb-4 px-3 py-2 rounded-lg text-sm" :class="importResult.error ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'">
+    <div v-if="importResult" data-testid="import-result" class="mb-4 px-3 py-2 rounded-lg text-sm" :class="importResult.error ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'">
       {{ importResult.message }}
     </div>
 
