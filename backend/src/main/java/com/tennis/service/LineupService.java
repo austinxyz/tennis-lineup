@@ -15,10 +15,13 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Service
 @Slf4j
@@ -262,6 +265,72 @@ public class LineupService {
         return lineups.stream()
                 .sorted(Comparator.comparing(Lineup::getCreatedAt).reversed())
                 .toList();
+    }
+
+    public Map<String, Object> exportLineups(String teamId) {
+        TeamData teamData = jsonRepository.readData();
+        Team team = teamData.getTeams().stream()
+                .filter(t -> t.getId().equals(teamId))
+                .findFirst()
+                .orElseThrow(() -> new NotFoundException("队伍不存在"));
+
+        List<Lineup> lineups = team.getLineups() != null ? team.getLineups() : List.of();
+
+        Map<String, Object> envelope = new LinkedHashMap<>();
+        envelope.put("exportedAt", Instant.now().toString());
+        envelope.put("teamId", team.getId());
+        envelope.put("teamName", team.getName());
+        envelope.put("lineups", lineups);
+        return envelope;
+    }
+
+    public Map<String, Integer> importLineups(String teamId, List<Lineup> incoming) {
+        if (incoming == null) incoming = List.of();
+
+        TeamData teamData = jsonRepository.readData();
+        Team team = teamData.getTeams().stream()
+                .filter(t -> t.getId().equals(teamId))
+                .findFirst()
+                .orElseThrow(() -> new NotFoundException("队伍不存在"));
+
+        if (team.getLineups() == null) team.setLineups(new ArrayList<>());
+
+        Set<String> existingNameKeys = team.getLineups().stream()
+                .map(this::buildPlayerNameKey)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        int imported = 0;
+        int skipped = 0;
+
+        for (Lineup lineup : incoming) {
+            if (lineup.getPairs() == null) { skipped++; continue; }
+            String key = buildPlayerNameKey(lineup);
+            if (key != null && existingNameKeys.contains(key)) {
+                skipped++;
+                continue;
+            }
+            lineup.setId(generateLineupId());
+            lineup.setCreatedAt(Instant.now());
+            team.getLineups().add(lineup);
+            if (key != null) existingNameKeys.add(key);
+            imported++;
+        }
+
+        if (imported > 0) jsonRepository.writeData(teamData);
+        log.info("Imported {} lineups for team {}, skipped {}", imported, teamId, skipped);
+        return Map.of("imported", imported, "skipped", skipped);
+    }
+
+    private String buildPlayerNameKey(Lineup lineup) {
+        if (lineup.getPairs() == null) return null;
+        List<String> names = lineup.getPairs().stream()
+                .flatMap(p -> Stream.of(p.getPlayer1Name(), p.getPlayer2Name()))
+                .filter(Objects::nonNull)
+                .sorted()
+                .collect(Collectors.toList());
+        if (names.isEmpty()) return null;
+        return String.join(",", names);
     }
 
     public void deleteLineup(String lineupId) {

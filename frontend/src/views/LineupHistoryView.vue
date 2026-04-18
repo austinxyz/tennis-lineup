@@ -1,6 +1,24 @@
 <template>
   <div class="p-6">
-    <h2 class="text-2xl font-bold text-gray-900 mb-6">已保存排阵</h2>
+    <div class="flex items-center justify-between mb-6">
+      <h2 class="text-2xl font-bold text-gray-900">已保存排阵</h2>
+      <div class="flex items-center gap-2">
+        <button
+          @click="handleExport"
+          class="px-3 py-1.5 text-xs rounded-lg border border-green-300 text-green-700 hover:bg-green-50 transition-colors"
+        >导出排阵</button>
+        <button
+          @click="$refs.importInput.click()"
+          :disabled="importing"
+          class="px-3 py-1.5 text-xs rounded-lg border border-blue-300 text-blue-600 hover:bg-blue-50 transition-colors disabled:opacity-50"
+        >{{ importing ? '导入中...' : '导入排阵' }}</button>
+        <input ref="importInput" type="file" accept=".json" class="hidden" @change="handleImport" />
+      </div>
+    </div>
+
+    <div v-if="importResult" class="mb-4 px-3 py-2 rounded-lg text-sm" :class="importResult.error ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'">
+      {{ importResult.message }}
+    </div>
 
     <div v-if="loading" class="flex justify-center items-center h-40">
       <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-gray-900"></div>
@@ -55,20 +73,48 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import LineupCard from '../components/LineupCard.vue'
 import { useLineupHistory } from '../composables/useLineupHistory'
+import { useTeams } from '../composables/useTeams'
 
 const route = useRoute()
 const teamId = route.params.id
 
-const { loading, lineups, fetchLineups, deleteLineup } = useLineupHistory()
+const { loading, lineups, fetchLineups, deleteLineup, exportLineups, importLineups } = useLineupHistory()
+const { teams, fetchTeams } = useTeams()
 const deleteError = ref(null)
+const importing = ref(false)
+const importResult = ref(null)
 
 onMounted(async () => {
-  await fetchLineups(teamId)
+  await Promise.all([fetchLineups(teamId), fetchTeams()])
 })
+
+const currentTeam = computed(() => teams.value.find(t => t.id === teamId))
+
+function handleExport() {
+  const teamName = currentTeam.value?.name || teamId
+  exportLineups(teamId, teamName)
+}
+
+async function handleImport(event) {
+  const file = event.target.files[0]
+  if (!file) return
+  importing.value = true
+  importResult.value = null
+  try {
+    const result = await importLineups(teamId, file)
+    importResult.value = { message: `导入成功：${result.imported} 条，跳过：${result.skipped} 条`, error: false }
+    await fetchLineups(teamId)
+  } catch (err) {
+    importResult.value = { message: err.message || '导入失败，请重试', error: true }
+  } finally {
+    importing.value = false
+    event.target.value = ''
+  }
+}
 
 async function handleDelete(lineupId) {
   if (!confirm('确定要删除这个排阵吗？此操作不可撤销。')) return

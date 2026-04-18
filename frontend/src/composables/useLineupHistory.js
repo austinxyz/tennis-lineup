@@ -2,7 +2,7 @@ import { ref } from 'vue'
 import { useApi } from './useApi'
 
 export function useLineupHistory() {
-  const { loading, error, get, del } = useApi()
+  const { loading, error, get, del, post } = useApi()
   const lineups = ref([])
 
   const fetchLineups = async (teamId) => {
@@ -24,11 +24,28 @@ export function useLineupHistory() {
     }
   }
 
+  const exportLineups = (teamId, teamName) => {
+    const date = new Date().toISOString().slice(0, 10)
+    const filename = `lineups-${teamName}-${date}.json`
+    const a = document.createElement('a')
+    a.href = `/api/teams/${teamId}/lineups/export`
+    a.download = filename
+    a.click()
+  }
+
+  const importLineups = async (teamId, file) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    return await post(`/api/teams/${teamId}/lineups/import`, formData)
+  }
+
   return {
     loading,
     error,
     lineups,
     fetchLineups,
     deleteLineup,
+    exportLineups,
+    importLineups,
   }
 }

@@ -1,5 +1,7 @@
 package com.tennis.controller;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tennis.model.Lineup;
 import com.tennis.model.LineupMatchupResponse;
 import com.tennis.model.OpponentAnalysisResponse;
@@ -10,8 +12,14 @@ import com.tennis.service.OpponentAnalysisService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 public class LineupController {
@@ -20,16 +28,19 @@ public class LineupController {
     private final OpponentAnalysisService opponentAnalysisService;
     private final LineupMatchupService lineupMatchupService;
     private final MatchupCommentaryService matchupCommentaryService;
+    private final ObjectMapper objectMapper;
 
     @Autowired
     public LineupController(LineupService lineupService,
                             OpponentAnalysisService opponentAnalysisService,
                             LineupMatchupService lineupMatchupService,
-                            MatchupCommentaryService matchupCommentaryService) {
+                            MatchupCommentaryService matchupCommentaryService,
+                            ObjectMapper objectMapper) {
         this.lineupService = lineupService;
         this.opponentAnalysisService = opponentAnalysisService;
         this.lineupMatchupService = lineupMatchupService;
         this.matchupCommentaryService = matchupCommentaryService;
+        this.objectMapper = objectMapper;
     }
 
     @PostMapping("/api/lineups/generate")
@@ -75,6 +86,44 @@ public class LineupController {
     public ResponseEntity<List<Lineup>> getLineupHistory(@PathVariable String id) {
         List<Lineup> lineups = lineupService.getLineupsByTeam(id);
         return ResponseEntity.ok(lineups);
+    }
+
+    @GetMapping("/api/teams/{teamId}/lineups/export")
+    public ResponseEntity<Map<String, Object>> exportLineups(@PathVariable String teamId) {
+        Map<String, Object> envelope = lineupService.exportLineups(teamId);
+        String teamName = envelope.get("teamName").toString().replaceAll("[^\\w\\u4e00-\\u9fff-]", "_");
+        String date = Instant.now().toString().substring(0, 10);
+        String filename = "lineups-" + teamName + "-" + date + ".json";
+        return ResponseEntity.ok()
+                .header("Content-Disposition", "attachment; filename=\"" + filename + "\"")
+                .header("Content-Type", "application/json; charset=UTF-8")
+                .body(envelope);
+    }
+
+    @PostMapping("/api/teams/{teamId}/lineups/import")
+    public ResponseEntity<Map<String, Integer>> importLineups(
+            @PathVariable String teamId,
+            @RequestParam("file") MultipartFile file) throws IOException {
+        String content = new String(file.getBytes(), StandardCharsets.UTF_8);
+        JsonNode root;
+        try {
+            root = objectMapper.readTree(content);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("文件格式非法：不是有效的 JSON");
+        }
+        JsonNode lineupsNode = root.get("lineups");
+        if (lineupsNode == null || !lineupsNode.isArray()) {
+            throw new IllegalArgumentException("文件格式非法：缺少 lineups 数组");
+        }
+        List<Lineup> lineups = new ArrayList<>();
+        for (JsonNode node : lineupsNode) {
+            try {
+                lineups.add(objectMapper.treeToValue(node, Lineup.class));
+            } catch (Exception ignored) {
+            }
+        }
+        Map<String, Integer> result = lineupService.importLineups(teamId, lineups);
+        return ResponseEntity.ok(result);
     }
 
     @DeleteMapping("/api/lineups/{id}")

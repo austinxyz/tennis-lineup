@@ -25,7 +25,11 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.mock.web.MockMultipartFile;
+
+import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -280,5 +284,120 @@ class LineupControllerTest {
 
         mockMvc.perform(delete("/api/lineups/nonexistent"))
                 .andExpect(status().isNotFound());
+    }
+
+    // --- Export tests ---
+
+    @Test
+    @DisplayName("GET /api/teams/{teamId}/lineups/export returns 200 with attachment header")
+    void testExportLineupsSuccess() throws Exception {
+        Map<String, Object> envelope = Map.of(
+                "exportedAt", "2026-04-18T10:00:00Z",
+                "teamId", "team-1",
+                "teamName", "浙江队",
+                "lineups", List.of(testLineup)
+        );
+        when(lineupService.exportLineups("team-1")).thenReturn(envelope);
+
+        mockMvc.perform(get("/api/teams/team-1/lineups/export"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Disposition", containsString("attachment")))
+                .andExpect(jsonPath("$.teamId").value("team-1"))
+                .andExpect(jsonPath("$.teamName").value("浙江队"))
+                .andExpect(jsonPath("$.lineups").isArray());
+    }
+
+    @Test
+    @DisplayName("GET /api/teams/{teamId}/lineups/export returns 404 for unknown team")
+    void testExportLineupsTeamNotFound() throws Exception {
+        when(lineupService.exportLineups("unknown")).thenThrow(new NotFoundException("队伍不存在"));
+
+        mockMvc.perform(get("/api/teams/unknown/lineups/export"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("GET /api/teams/{teamId}/lineups/export returns empty lineups array when no lineups")
+    void testExportLineupsEmpty() throws Exception {
+        Map<String, Object> envelope = Map.of(
+                "exportedAt", "2026-04-18T10:00:00Z",
+                "teamId", "team-1",
+                "teamName", "浙江队",
+                "lineups", List.of()
+        );
+        when(lineupService.exportLineups("team-1")).thenReturn(envelope);
+
+        mockMvc.perform(get("/api/teams/team-1/lineups/export"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.lineups").isArray())
+                .andExpect(jsonPath("$.lineups.length()").value(0));
+    }
+
+    // --- Import tests ---
+
+    @Test
+    @DisplayName("POST /api/teams/{teamId}/lineups/import returns imported and skipped counts")
+    void testImportLineupsSuccess() throws Exception {
+        when(lineupService.importLineups(eq("team-1"), anyList()))
+                .thenReturn(Map.of("imported", 2, "skipped", 0));
+
+        String json = "{\"lineups\":[" + objectMapper.writeValueAsString(testLineup) + "]}";
+        MockMultipartFile file = new MockMultipartFile("file", "lineups.json",
+                "application/json", json.getBytes());
+
+        mockMvc.perform(multipart("/api/teams/team-1/lineups/import").file(file))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.imported").value(2))
+                .andExpect(jsonPath("$.skipped").value(0));
+    }
+
+    @Test
+    @DisplayName("POST /api/teams/{teamId}/lineups/import skips duplicate lineups by player name")
+    void testImportLineupsDuplicatesSkipped() throws Exception {
+        when(lineupService.importLineups(eq("team-1"), anyList()))
+                .thenReturn(Map.of("imported", 0, "skipped", 1));
+
+        String json = "{\"lineups\":[" + objectMapper.writeValueAsString(testLineup) + "]}";
+        MockMultipartFile file = new MockMultipartFile("file", "lineups.json",
+                "application/json", json.getBytes());
+
+        mockMvc.perform(multipart("/api/teams/team-1/lineups/import").file(file))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.imported").value(0))
+                .andExpect(jsonPath("$.skipped").value(1));
+    }
+
+    @Test
+    @DisplayName("POST /api/teams/{teamId}/lineups/import returns 404 for unknown team")
+    void testImportLineupsTeamNotFound() throws Exception {
+        when(lineupService.importLineups(eq("unknown"), anyList()))
+                .thenThrow(new NotFoundException("队伍不存在"));
+
+        String json = "{\"lineups\":[]}";
+        MockMultipartFile file = new MockMultipartFile("file", "lineups.json",
+                "application/json", json.getBytes());
+
+        mockMvc.perform(multipart("/api/teams/unknown/lineups/import").file(file))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("POST /api/teams/{teamId}/lineups/import returns 400 for invalid JSON")
+    void testImportLineupsInvalidJson() throws Exception {
+        MockMultipartFile file = new MockMultipartFile("file", "lineups.json",
+                "application/json", "not-valid-json".getBytes());
+
+        mockMvc.perform(multipart("/api/teams/team-1/lineups/import").file(file))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("POST /api/teams/{teamId}/lineups/import returns 400 when lineups field missing")
+    void testImportLineupsMissingLineupsField() throws Exception {
+        MockMultipartFile file = new MockMultipartFile("file", "lineups.json",
+                "application/json", "{\"teamId\":\"team-1\"}".getBytes());
+
+        mockMvc.perform(multipart("/api/teams/team-1/lineups/import").file(file))
+                .andExpect(status().isBadRequest());
     }
 }

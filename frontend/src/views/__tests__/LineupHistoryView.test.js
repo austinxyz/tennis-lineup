@@ -5,9 +5,12 @@ import LineupHistoryView from '../LineupHistoryView.vue'
 
 // ── Mock state ─────────────────────────────────────────────────────────────────
 const mockLineups = ref([])
+const mockTeams = ref([{ id: 'team-1', name: '浙江队' }])
 const mockLoading = ref(false)
 const mockFetchLineups = vi.fn()
 const mockDeleteLineup = vi.fn()
+const mockExportLineups = vi.fn()
+const mockImportLineups = vi.fn()
 
 // ── Module mocks ───────────────────────────────────────────────────────────────
 vi.mock('vue-router', () => ({
@@ -20,6 +23,15 @@ vi.mock('../../composables/useLineupHistory', () => ({
     lineups: mockLineups,
     fetchLineups: mockFetchLineups,
     deleteLineup: mockDeleteLineup,
+    exportLineups: mockExportLineups,
+    importLineups: mockImportLineups,
+  })),
+}))
+
+vi.mock('../../composables/useTeams', () => ({
+  useTeams: vi.fn(() => ({
+    teams: mockTeams,
+    fetchTeams: vi.fn().mockResolvedValue(),
   })),
 }))
 
@@ -94,8 +106,8 @@ describe('LineupHistoryView', () => {
     const wrapper = mountView()
     await flushPromises()
 
-    const deleteButtons = wrapper.findAll('button')
-    await deleteButtons[0].trigger('click')
+    const deleteBtn = wrapper.findAll('button').find(b => b.text() === '删除')
+    await deleteBtn.trigger('click')
     await flushPromises()
 
     expect(mockDeleteLineup).toHaveBeenCalledWith('lineup-1')
@@ -107,7 +119,7 @@ describe('LineupHistoryView', () => {
     const wrapper = mountView()
     await flushPromises()
 
-    const deleteBtn = wrapper.find('button')
+    const deleteBtn = wrapper.findAll('button').find(b => b.text() === '删除')
     await deleteBtn.trigger('click')
     await flushPromises()
 
@@ -120,7 +132,7 @@ describe('LineupHistoryView', () => {
     const wrapper = mountView()
     await flushPromises()
 
-    const deleteBtn = wrapper.find('button')
+    const deleteBtn = wrapper.findAll('button').find(b => b.text() === '删除')
     await deleteBtn.trigger('click')
     await flushPromises()
 
