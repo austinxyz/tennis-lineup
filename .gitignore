@@ -28,6 +28,12 @@ Thumbs.db
 # Logs
 *.log
 
+# Test coverage
+frontend/coverage/
+
+# Runtime data at project root (backend reads from backend/data/)
+/tennis-data.json
+
 # Environment
 .env
 *.env.local

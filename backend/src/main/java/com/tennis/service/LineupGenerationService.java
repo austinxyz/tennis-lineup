@@ -22,6 +22,14 @@ public class LineupGenerationService {
     private static final double UTR_CAP = 40.5;
     private static final Set<String> VALID_POSITIONS = new HashSet<>(Arrays.asList("D1", "D2", "D3", "D4"));
 
+    // Memory guard: cap optional player pool to prevent C(n,8) combinatorial explosion.
+    // C(18,8)=43,758 subsets is manageable; C(30,8)=5.8M would OOM on 256MB.
+    private static final int MAX_OPTIONAL_POOL = 18;
+    // After sorting subsets by UTR, we only ever need the top candidates.
+    private static final int MAX_SUBSETS = 150;
+    // Cap raw lineup candidates accumulated across all subsets.
+    private static final int MAX_RAW_CANDIDATES = 300;
+
     private final ConstraintService constraintService;
 
     @Autowired
@@ -168,6 +176,7 @@ public class LineupGenerationService {
      * every slot to avoid missing pinned-pair combinations that may rank below position 20.
      */
     private void backtrackSubset(List<Player> subset, Map<String, String> pinPlayers, List<Lineup> result) {
+        if (result.size() >= MAX_RAW_CANDIDATES) return;
         List<int[]> allPairs = generateValidPairs(subset);
         // With pin constraints: use all pairs every round so pinned combinations are never missed.
         // Without pin constraints: top-20 pairs for D1/D2 rounds (performance optimization).
@@ -191,10 +200,17 @@ public class LineupGenerationService {
                 .collect(Collectors.toList());
         List<Player> optional = eligible.stream()
                 .filter(p -> !mustInclude.contains(p.getId()))
+                .sorted(Comparator.comparingDouble(Player::getUtr).reversed())
                 .collect(Collectors.toList());
 
         if (required.size() > size) {
             return List.of();
+        }
+
+        // Limit optional pool: highest-UTR players produce the best subsets.
+        // Prevents C(n,8) explosion (e.g. C(30,8)=5.8M) on large rosters.
+        if (optional.size() > MAX_OPTIONAL_POOL) {
+            optional = optional.subList(0, MAX_OPTIONAL_POOL);
         }
 
         int remaining = size - required.size();
@@ -209,6 +225,11 @@ public class LineupGenerationService {
             if (validA != validB) return validA ? -1 : 1;
             return Double.compare(utrB, utrA);
         });
+
+        // Only keep the top subsets we'll ever process.
+        if (subsets.size() > MAX_SUBSETS) {
+            subsets = subsets.subList(0, MAX_SUBSETS);
+        }
 
         return subsets;
     }
@@ -261,6 +282,7 @@ public class LineupGenerationService {
      */
     private void backtrackWithPairs(List<Player> pool, List<int[]> top20Pairs, List<int[]> allPairs,
                                     List<int[]> currentPairs, boolean[] used, List<Lineup> result) {
+        if (result.size() >= MAX_RAW_CANDIDATES) return;
         int pairCount = currentPairs.size();
         if (pairCount == 4) {
             Lineup lineup = buildLineup(pool, currentPairs);
