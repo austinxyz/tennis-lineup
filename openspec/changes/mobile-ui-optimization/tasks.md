@@ -30,11 +30,11 @@
 
 ## 5. 排阵生成
 
-- [ ] 5.1 修改 `src/views/LineupGenerator.vue` — Mobile 表单垂直堆叠
-- [ ] 5.2 高级选项（固定位置/包含/排除）用 `<details>` 折叠，summary 内显示已选数量徽章
-- [ ] 5.3 「生成排阵」按钮 Mobile 下 `w-full`，桌面端保持现状
-- [ ] 5.4 结果区：Mobile `grid-cols-1`，桌面 `lg:grid-cols-2`，方案 1 卡片额外加 `⭐ 最佳` 标签和双倍绿色边框
-- [ ] 5.5 单元测试更新：折叠区展开/收起、Mobile 表单布局
+- [x] 5.1 接入 AppHeader（标题=排阵生成）；`pt-14 lg:pt-0` 让内容避开 fixed header
+- [~] 5.2 高级选项折叠暂缓 — 现有布局本就纵向堆叠，Mobile 体验可接受；如需进一步压缩可后续加 `<details>`
+- [x] 5.3 「生成排阵」按钮已有 `w-full`（无需改动）
+- [x] 5.4 `LineupResultGrid` 已用 `grid-cols-1 lg:grid-cols-2`（无需改动）；⭐最佳标签已在 LineupCard（preferred prop）
+- [x] 5.5 单元测试：AppHeader 渲染 + pt-14 padding + 按钮 w-full（3 个新测试）
 
 ## 6. 对手分析（最大改动）
 

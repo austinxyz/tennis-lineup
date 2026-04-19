@@ -3,6 +3,14 @@ import { mount, flushPromises } from '@vue/test-utils'
 import { nextTick, ref } from 'vue'
 import LineupGenerator from '../LineupGenerator.vue'
 
+vi.mock('../../components/AppHeader.vue', () => ({
+  default: {
+    name: 'AppHeader',
+    props: ['title', 'backTo', 'backLabel'],
+    template: '<header data-testid="app-header" :data-title="title"><slot name="actions"/></header>',
+  },
+}))
+
 const mockTeams = ref([
   { id: 'team-1', name: '测试队伍A' },
   { id: 'team-2', name: '测试队伍B' },
@@ -189,5 +197,34 @@ describe('LineupGenerator', () => {
       await flushPromises()
       expect(wrapper.text()).not.toContain('第一次失败')
     })
+  })
+})
+
+describe('LineupGenerator mobile integration', () => {
+  const stubsWithAppHeader = {
+    StrategySelector: true,
+    PlayerConstraintSelector: true,
+    ConstraintPresetSelector: true,
+    LineupResultGrid: true,
+  }
+
+  it('renders AppHeader with "排阵生成" title', () => {
+    const wrapper = mount(LineupGenerator, { global: { stubs: stubsWithAppHeader } })
+    const header = wrapper.find('[data-testid="app-header"]')
+    expect(header.exists()).toBe(true)
+    expect(header.attributes('data-title')).toBe('排阵生成')
+  })
+
+  it('has pt-14 lg:pt-0 on main content wrapper to clear fixed mobile header', () => {
+    const wrapper = mount(LineupGenerator, { global: { stubs: stubsWithAppHeader } })
+    const html = wrapper.html()
+    expect(html).toContain('pt-14')
+    expect(html).toContain('lg:pt-0')
+  })
+
+  it('generate button is full-width on mobile (w-full class)', () => {
+    const wrapper = mount(LineupGenerator, { global: { stubs: stubsWithAppHeader } })
+    const btn = wrapper.find('button[class*="w-full"]')
+    expect(btn.exists()).toBe(true)
   })
 })

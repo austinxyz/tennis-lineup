@@ -1,6 +1,8 @@
 <template>
-  <div class="p-6">
-    <h2 class="text-2xl font-bold text-gray-900 mb-6">排阵生成</h2>
+  <div>
+    <AppHeader title="排阵生成" />
+    <div class="p-6 pt-14 lg:pt-0">
+    <h2 class="hidden lg:block text-2xl font-bold text-gray-900 mb-6">排阵生成</h2>
 
     <div class="flex flex-col lg:flex-row gap-6">
       <!-- Left column: controls -->
@@ -84,6 +86,7 @@
         <LineupResultGrid :lineups="lineups" :team-id="selectedTeamId" />
       </div>
     </div>
+    </div>
   </div>
 </template>
 
@@ -93,6 +96,7 @@ import { useTeams } from '../composables/useTeams'
 import { useLineup } from '../composables/useLineup'
 import { usePlayers } from '../composables/usePlayers'
 import { useConstraintPresets } from '../composables/useConstraintPresets'
+import AppHeader from '../components/AppHeader.vue'
 import StrategySelector from '../components/StrategySelector.vue'
 import PlayerConstraintSelector from '../components/PlayerConstraintSelector.vue'
 import ConstraintPresetSelector from '../components/ConstraintPresetSelector.vue'
