@@ -145,19 +145,14 @@ public class LineupService {
             team.setLineups(new ArrayList<>());
         }
 
-        // Dedup: reject if same player set already saved
+        // Dedup: reject if same pairing combination already saved
+        // (same 8 players in different pairings = different lineup, allowed)
         if (lineup.getPairs() != null && !lineup.getPairs().isEmpty()) {
-            Set<String> incomingPlayerIds = lineup.getPairs().stream()
-                    .flatMap(p -> java.util.stream.Stream.of(p.getPlayer1Id(), p.getPlayer2Id()))
-                    .filter(java.util.Objects::nonNull)
-                    .collect(Collectors.toSet());
+            String incomingPairKey = buildPairingKeyByIds(lineup.getPairs());
             boolean duplicate = team.getLineups().stream().anyMatch(existing -> {
                 if (existing.getPairs() == null || existing.getPairs().isEmpty()) return false;
-                Set<String> existingPlayerIds = existing.getPairs().stream()
-                        .flatMap(p -> java.util.stream.Stream.of(p.getPlayer1Id(), p.getPlayer2Id()))
-                        .filter(java.util.Objects::nonNull)
-                        .collect(Collectors.toSet());
-                return incomingPlayerIds.equals(existingPlayerIds);
+                String existingKey = buildPairingKeyByIds(existing.getPairs());
+                return incomingPairKey != null && incomingPairKey.equals(existingKey);
             });
             if (duplicate) {
                 throw new IllegalArgumentException("该排阵已保存，请勿重复保存");
@@ -338,15 +333,32 @@ public class LineupService {
         return Map.of("imported", imported, "skipped", skipped);
     }
 
-    private String buildPlayerNameKey(Lineup lineup) {
-        if (lineup.getPairs() == null) return null;
-        List<String> names = lineup.getPairs().stream()
-                .flatMap(p -> Stream.of(p.getPlayer1Name(), p.getPlayer2Name()))
-                .filter(Objects::nonNull)
+    /**
+     * Build dedup key from pair combinations using player IDs (for saveLineup path).
+     */
+    private String buildPairingKeyByIds(List<Pair> pairs) {
+        if (pairs == null) return null;
+        List<String> pairKeys = pairs.stream()
+                .filter(p -> p.getPlayer1Id() != null && p.getPlayer2Id() != null)
+                .map(p -> {
+                    String a = p.getPlayer1Id();
+                    String b = p.getPlayer2Id();
+                    return a.compareTo(b) <= 0 ? a + "+" + b : b + "+" + a;
+                })
                 .sorted()
                 .collect(Collectors.toList());
-        if (names.isEmpty()) return null;
-        return String.join(",", names);
+        if (pairKeys.isEmpty()) return null;
+        return String.join(",", pairKeys);
+    }
+
+    /**
+     * Build a dedup key based on PAIRINGS (who is paired with whom), not just player set.
+     * Two lineups are considered duplicate only if they have the same pair combinations,
+     * regardless of position labels. Same 8 players in different pairings → different lineup.
+     */
+    private String buildPlayerNameKey(Lineup lineup) {
+        if (lineup.getPairs() == null) return null;
+        return buildPlayerNameKeyFromPairs(lineup.getPairs());
     }
 
     /**
@@ -411,27 +423,23 @@ public class LineupService {
                 .orElse(null);
         if (team == null || team.getLineups() == null) return;
 
+        // Both keys are now PAIRING-based (who is paired with whom),
+        // not player-set-based. Same players in different pairings = different lineup.
         String incomingNameKey = buildPlayerNameKeyFromPairs(pairs);
-        Set<String> incomingIds = pairs.stream()
-                .flatMap(p -> Stream.of(p.getPlayer1Id(), p.getPlayer2Id()))
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
+        String incomingIdKey = buildPairingKeyByIds(pairs);
 
         boolean duplicate = team.getLineups().stream()
                 .filter(l -> !lineupId.equals(l.getId()))
                 .anyMatch(other -> {
                     String otherNameKey = buildPlayerNameKey(other);
-                    // Use name-based dedup when BOTH sides have names (consistent strategy)
+                    // Use name-based pairing key when both sides have names
                     if (incomingNameKey != null && otherNameKey != null) {
                         return incomingNameKey.equals(otherNameKey);
                     }
-                    // Fall back to ID-based when either side lacks names
-                    if (!incomingIds.isEmpty() && other.getPairs() != null) {
-                        Set<String> otherIds = other.getPairs().stream()
-                                .flatMap(p -> Stream.of(p.getPlayer1Id(), p.getPlayer2Id()))
-                                .filter(Objects::nonNull)
-                                .collect(Collectors.toSet());
-                        return incomingIds.equals(otherIds);
+                    // Fall back to ID-based pairing key
+                    String otherIdKey = other.getPairs() != null ? buildPairingKeyByIds(other.getPairs()) : null;
+                    if (incomingIdKey != null && otherIdKey != null) {
+                        return incomingIdKey.equals(otherIdKey);
                     }
                     return false;
                 });
@@ -440,15 +448,24 @@ public class LineupService {
         }
     }
 
+    /**
+     * Build dedup key from pair combinations. Each pair contributes "name1+name2"
+     * (with names sorted within the pair), and all pair keys are sorted and joined.
+     * Same 8 players paired differently → different keys → different lineup.
+     */
     private String buildPlayerNameKeyFromPairs(List<Pair> pairs) {
         if (pairs == null) return null;
-        List<String> names = pairs.stream()
-                .flatMap(p -> Stream.of(p.getPlayer1Name(), p.getPlayer2Name()))
-                .filter(Objects::nonNull)
+        List<String> pairKeys = pairs.stream()
+                .filter(p -> p.getPlayer1Name() != null && p.getPlayer2Name() != null)
+                .map(p -> {
+                    String a = p.getPlayer1Name();
+                    String b = p.getPlayer2Name();
+                    return a.compareTo(b) <= 0 ? a + "+" + b : b + "+" + a;
+                })
                 .sorted()
                 .collect(Collectors.toList());
-        if (names.isEmpty()) return null;
-        return String.join(",", names);
+        if (pairKeys.isEmpty()) return null;
+        return String.join(",", pairKeys);
     }
 
     public void deleteLineup(String lineupId) {

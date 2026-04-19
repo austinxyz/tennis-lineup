@@ -191,14 +191,21 @@
               </div>
 
               <!-- Violations -->
-              <ul v-if="replaceViolations.length" class="mt-2 space-y-0.5">
+              <ul v-if="replaceViolations.length" class="mt-2 space-y-0.5 bg-red-50 border border-red-200 rounded p-2">
                 <li
                   v-for="(v, i) in replaceViolations"
                   :key="i"
                   data-testid="replace-violation"
-                  class="text-xs text-red-600"
+                  class="text-xs text-red-700"
                 >⚠️ {{ v }}</li>
               </ul>
+
+              <!-- Inline save error (shown near the action buttons, not just at page bottom) -->
+              <div
+                v-if="updateError"
+                data-testid="replace-save-error"
+                class="mt-2 px-2 py-1 bg-red-50 border border-red-200 rounded text-xs text-red-700"
+              >{{ updateError }}</div>
 
               <!-- Replace action buttons -->
               <div class="mt-3 flex items-center gap-2">
@@ -213,6 +220,9 @@
                   @click="cancelReplace"
                   class="text-xs px-3 py-1 bg-white text-gray-600 rounded border border-gray-300 hover:bg-gray-100 transition-colors"
                 >取消</button>
+                <span v-if="replaceViolations.length" class="text-xs text-red-600">
+                  有 {{ replaceViolations.length }} 项约束违规，请先处理
+                </span>
               </div>
             </template>
           </div>

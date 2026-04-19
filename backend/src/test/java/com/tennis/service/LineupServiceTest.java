@@ -654,8 +654,9 @@ class LineupServiceTest {
     }
 
     @Test
-    @DisplayName("updateLineup: throws IllegalArgumentException when updated pairs duplicate another lineup")
+    @DisplayName("updateLineup: throws when updated pairs have SAME pairings as another lineup")
     void testUpdateLineupDuplicatePairsThrows() {
+        // lineup1 uses pairing p1+p2 for every position
         Lineup lineup1 = buildLineupWithFixedPlayers("dup-x1", "dup-x2");
         lineup1.setId("lineup-dup-a");
         lineup1.setCreatedAt(Instant.now());
@@ -663,19 +664,57 @@ class LineupServiceTest {
         lineup2.setId("lineup-dup-b");
         lineup2.setCreatedAt(Instant.now());
         team.setLineups(new ArrayList<>(Arrays.asList(lineup1, lineup2)));
-        when(jsonRepository.readData()).thenReturn(teamData); // for validatePairsNotDuplicate
+        when(jsonRepository.readData()).thenReturn(teamData);
 
-        Pair dupPair = new Pair();
-        dupPair.setPosition("D1");
-        dupPair.setPlayer1Id("dup-x1");
-        dupPair.setPlayer2Id("dup-x2");
-        dupPair.setCombinedUtr(8.0);
-
+        // Update lineup2 with the SAME pairing as lineup1 (4 identical pairs of dup-x1,dup-x2)
         com.tennis.controller.LineupUpdateRequest req = new com.tennis.controller.LineupUpdateRequest();
-        req.setPairs(List.of(dupPair));
+        req.setPairs(new ArrayList<>(lineup1.getPairs()));
 
         assertThrows(IllegalArgumentException.class, () ->
                 lineupService.updateLineup("team-1", "lineup-dup-b", req));
+    }
+
+    @Test
+    @DisplayName("updateLineup: allows same 8 players in different pairings (different lineup)")
+    void testUpdateLineupSamePlayersDifferentPairingsAllowed() {
+        // lineup1 has pairs: D1(p1,p2), D2(p3,p4)
+        Lineup lineup1 = new Lineup();
+        lineup1.setId("lineup-pairA");
+        lineup1.setCreatedAt(Instant.now());
+        lineup1.setStrategy("balanced");
+        lineup1.setValid(true);
+        lineup1.setTotalUtr(28.0);
+        lineup1.setViolationMessages(new ArrayList<>());
+        Pair p1a = new Pair(); p1a.setPosition("D1"); p1a.setPlayer1Id("p1"); p1a.setPlayer2Id("p2"); p1a.setCombinedUtr(10.0);
+        Pair p1b = new Pair(); p1b.setPosition("D2"); p1b.setPlayer1Id("p3"); p1b.setPlayer2Id("p4"); p1b.setCombinedUtr(8.0);
+        lineup1.setPairs(new ArrayList<>(Arrays.asList(p1a, p1b)));
+
+        // lineup2 will be updated with same 4 players but REGROUPED: D1(p1,p3), D2(p2,p4)
+        Lineup lineup2 = new Lineup();
+        lineup2.setId("lineup-pairB");
+        lineup2.setCreatedAt(Instant.now());
+        lineup2.setStrategy("balanced");
+        lineup2.setValid(true);
+        lineup2.setTotalUtr(28.0);
+        lineup2.setViolationMessages(new ArrayList<>());
+        Pair p2a = new Pair(); p2a.setPosition("D1"); p2a.setPlayer1Id("px"); p2a.setPlayer2Id("py"); p2a.setCombinedUtr(10.0);
+        lineup2.setPairs(new ArrayList<>(List.of(p2a)));
+
+        team.setLineups(new ArrayList<>(Arrays.asList(lineup1, lineup2)));
+        when(jsonRepository.readData()).thenReturn(teamData);
+        mockUpdateData();
+
+        // Update lineup2 with same 4 players but different pairings
+        Pair newPairA = new Pair();
+        newPairA.setPosition("D1"); newPairA.setPlayer1Id("p1"); newPairA.setPlayer2Id("p3"); newPairA.setCombinedUtr(9.0);
+        Pair newPairB = new Pair();
+        newPairB.setPosition("D2"); newPairB.setPlayer1Id("p2"); newPairB.setPlayer2Id("p4"); newPairB.setCombinedUtr(9.0);
+
+        com.tennis.controller.LineupUpdateRequest req = new com.tennis.controller.LineupUpdateRequest();
+        req.setPairs(List.of(newPairA, newPairB));
+
+        // Should succeed because pairings differ (p1+p3, p2+p4 vs lineup1's p1+p2, p3+p4)
+        assertDoesNotThrow(() -> lineupService.updateLineup("team-1", "lineup-pairB", req));
     }
 
     @Test
