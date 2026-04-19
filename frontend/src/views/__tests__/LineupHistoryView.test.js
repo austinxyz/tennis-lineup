@@ -45,7 +45,26 @@ vi.mock('../../components/LineupCard.vue', () => ({
   },
 }))
 
+vi.mock('../../components/LineupSwapPanel.vue', () => ({
+  default: {
+    name: 'LineupSwapPanel',
+    props: ['lineup'],
+    emits: ['update:lineup'],
+    template: `<div data-testid="swap-panel">
+      <button @click="$emit('update:lineup', { ...lineup, pairs: [{position:'D1',player1Id:'swapped'}] })">do-swap</button>
+    </div>`,
+  },
+}))
+
 // ── Helpers ────────────────────────────────────────────────────────────────────
+const TEAM_PLAYERS = [
+  { id: 'p1', name: 'Alice', utr: 6.0 },
+  { id: 'p2', name: 'Bob', utr: 5.5 },
+  { id: 'p3', name: 'Carol', utr: 5.0 },
+  { id: 'p4', name: 'Dave', utr: 4.5 },
+  { id: 'new-p', name: 'Eve', utr: 4.0 },
+]
+
 function buildLineup(id, overrides = {}) {
   return {
     id,
@@ -56,6 +75,16 @@ function buildLineup(id, overrides = {}) {
     sortOrder: 0,
     ...overrides,
   }
+}
+
+function buildLineupWithPairs(id, overrides = {}) {
+  return buildLineup(id, {
+    pairs: [
+      { position: 'D1', player1Id: 'p1', player2Id: 'p2', combinedUtr: 11.5 },
+      { position: 'D2', player1Id: 'p3', player2Id: 'p4', combinedUtr: 9.5 },
+    ],
+    ...overrides,
+  })
 }
 
 function mountView() {
@@ -73,6 +102,12 @@ beforeEach(() => {
   mockDeleteLineup.mockReset()
   mockUpdateLineup.mockReset().mockResolvedValue()
   vi.spyOn(window, 'confirm').mockReturnValue(true)
+  // Reset teams with players for replacement tests
+  mockTeams.value = [{
+    id: 'team-1',
+    name: '浙江队',
+    players: TEAM_PLAYERS,
+  }]
 })
 
 // ── Tests ──────────────────────────────────────────────────────────────────────
@@ -462,6 +497,291 @@ describe('LineupHistoryView', () => {
       await downBtns[1].trigger('click')
       await flushPromises()
       expect(mockUpdateLineup).not.toHaveBeenCalled()
+    })
+  })
+
+  // ── Task 6: Swap panel in lineup history ─────────────────────────────────────
+  describe('swap panel', () => {
+    it('renders a <details> with LineupSwapPanel for each lineup', async () => {
+      mockLineups.value = [
+        buildLineup('lineup-1'),
+        buildLineup('lineup-2'),
+      ]
+      const wrapper = mountView()
+      await flushPromises()
+      const swapPanels = wrapper.findAll('[data-testid="swap-panel"]')
+      expect(swapPanels).toHaveLength(2)
+    })
+
+    it('renders summary text "调整配对" inside <details>', async () => {
+      mockLineups.value = [buildLineup('lineup-1')]
+      const wrapper = mountView()
+      await flushPromises()
+      const details = wrapper.find('details')
+      expect(details.exists()).toBe(true)
+      expect(details.find('summary').text()).toContain('调整配对')
+    })
+
+    it('handleSwapUpdate calls updateLineup with new pairs when swap emits', async () => {
+      mockLineups.value = [buildLineup('lineup-1')]
+      const wrapper = mountView()
+      await flushPromises()
+      const swapBtn = wrapper.find('[data-testid="swap-panel"] button')
+      await swapBtn.trigger('click')
+      await flushPromises()
+      expect(mockUpdateLineup).toHaveBeenCalledWith(
+        'team-1',
+        'lineup-1',
+        { pairs: [{ position: 'D1', player1Id: 'swapped' }] },
+      )
+    })
+
+    it('handleSwapUpdate calls fetchLineups after successful update', async () => {
+      mockLineups.value = [buildLineup('lineup-1')]
+      mockFetchLineups.mockReset().mockResolvedValue()
+      const wrapper = mountView()
+      await flushPromises()
+      mockFetchLineups.mockReset().mockResolvedValue()
+      const swapBtn = wrapper.find('[data-testid="swap-panel"] button')
+      await swapBtn.trigger('click')
+      await flushPromises()
+      expect(mockFetchLineups).toHaveBeenCalledWith('team-1')
+    })
+
+    it('updateLineup error sets updateError and still calls fetchLineups', async () => {
+      mockUpdateLineup.mockRejectedValue(new Error('swap failed'))
+      mockLineups.value = [buildLineup('lineup-1')]
+      const wrapper = mountView()
+      await flushPromises()
+      mockFetchLineups.mockReset().mockResolvedValue()
+      const swapBtn = wrapper.find('[data-testid="swap-panel"] button')
+      await swapBtn.trigger('click')
+      await flushPromises()
+      expect(wrapper.find('[data-testid="update-error"]').exists()).toBe(true)
+      expect(mockFetchLineups).toHaveBeenCalledWith('team-1')
+    })
+  })
+
+  // ── Task 7: Player replacement in lineup history ──────────────────────────────
+  describe('player replacement', () => {
+    it('renders a "替换球员" button for each lineup', async () => {
+      mockLineups.value = [buildLineupWithPairs('lineup-1'), buildLineupWithPairs('lineup-2')]
+      const wrapper = mountView()
+      await flushPromises()
+      const btns = wrapper.findAll('[data-testid="start-replace-btn"]')
+      expect(btns).toHaveLength(2)
+    })
+
+    it('replacement UI is hidden before clicking "替换球员"', async () => {
+      mockLineups.value = [buildLineupWithPairs('lineup-1')]
+      const wrapper = mountView()
+      await flushPromises()
+      expect(wrapper.find('[data-testid="save-replace-btn"]').exists()).toBe(false)
+    })
+
+    it('clicking "替换球员" shows replacement UI with select elements', async () => {
+      mockLineups.value = [buildLineupWithPairs('lineup-1')]
+      const wrapper = mountView()
+      await flushPromises()
+      await wrapper.find('[data-testid="start-replace-btn"]').trigger('click')
+      await flushPromises()
+      const saves = wrapper.findAll('[data-testid="save-replace-btn"]')
+      expect(saves).toHaveLength(1)
+      // Each pair has 2 player slots = 4 selects total (2 pairs × 2 players)
+      const selects = wrapper.findAll('select')
+      expect(selects.length).toBeGreaterThanOrEqual(4)
+    })
+
+    it('player dropdown excludes players already used in other slots', async () => {
+      mockLineups.value = [buildLineupWithPairs('lineup-1')]
+      const wrapper = mountView()
+      await flushPromises()
+      await wrapper.find('[data-testid="start-replace-btn"]').trigger('click')
+      await flushPromises()
+      const selects = wrapper.findAll('select')
+      // First select is for D1 player1 (p1). Other taken slots: p2 (D1p2), p3 (D2p1), p4 (D2p2)
+      // So first select should only show p1 and new-p (Eve), NOT p2, p3, p4
+      const firstSelectOptions = selects[0].findAll('option')
+      const optionValues = firstSelectOptions.map(o => o.element.value)
+      expect(optionValues).toContain('p1')
+      expect(optionValues).toContain('new-p')
+      expect(optionValues).not.toContain('p2')
+      expect(optionValues).not.toContain('p3')
+      expect(optionValues).not.toContain('p4')
+    })
+
+    it('changing a player selection updates the pair and triggers validation', async () => {
+      // Make pairs with high UTR to trigger violation (>40.5 total)
+      const highUtrLineup = buildLineup('lineup-1', {
+        pairs: [
+          { position: 'D1', player1Id: 'p1', player2Id: 'p2', combinedUtr: 11.5 },
+          { position: 'D2', player1Id: 'p3', player2Id: 'p4', combinedUtr: 9.5 },
+        ],
+      })
+      // Use players with very high UTR to breach 40.5
+      mockTeams.value = [{
+        id: 'team-1',
+        name: '浙江队',
+        players: [
+          { id: 'p1', name: 'Alice', utr: 12.0 },
+          { id: 'p2', name: 'Bob', utr: 11.0 },
+          { id: 'p3', name: 'Carol', utr: 10.0 },
+          { id: 'p4', name: 'Dave', utr: 9.0 },
+          { id: 'new-p', name: 'Eve', utr: 8.0 },
+        ],
+      }]
+      mockLineups.value = [highUtrLineup]
+      const wrapper = mountView()
+      await flushPromises()
+      await wrapper.find('[data-testid="start-replace-btn"]').trigger('click')
+      await flushPromises()
+      // change any select to trigger validation with high utrs
+      const selects = wrapper.findAll('select')
+      await selects[0].setValue('p1')
+      await flushPromises()
+      // Violation list should appear (total UTR will be 12+11+10+9=42 > 40.5)
+      const violations = wrapper.findAll('[data-testid="replace-violation"]')
+      expect(violations.length).toBeGreaterThan(0)
+    })
+
+    it('shows total UTR violation message when sum > 40.5', async () => {
+      mockTeams.value = [{
+        id: 'team-1',
+        name: '浙江队',
+        players: [
+          { id: 'p1', name: 'Alice', utr: 12.0 },
+          { id: 'p2', name: 'Bob', utr: 11.0 },
+          { id: 'p3', name: 'Carol', utr: 10.0 },
+          { id: 'p4', name: 'Dave', utr: 9.0 },
+          { id: 'new-p', name: 'Eve', utr: 4.0 },
+        ],
+      }]
+      mockLineups.value = [buildLineup('lineup-1', {
+        pairs: [
+          { position: 'D1', player1Id: 'p1', player2Id: 'p2', combinedUtr: 23.0 },
+          { position: 'D2', player1Id: 'p3', player2Id: 'p4', combinedUtr: 19.0 },
+        ],
+      })]
+      const wrapper = mountView()
+      await flushPromises()
+      await wrapper.find('[data-testid="start-replace-btn"]').trigger('click')
+      await flushPromises()
+      // Trigger validation by selecting same player (no real change needed, just setValue)
+      const selects = wrapper.findAll('select')
+      await selects[0].setValue('p1')
+      await flushPromises()
+      expect(wrapper.text()).toContain('总UTR超出上限')
+    })
+
+    it('clicking "保存修改" calls updateLineup with pairs then fetchLineups', async () => {
+      mockLineups.value = [buildLineupWithPairs('lineup-1')]
+      const wrapper = mountView()
+      await flushPromises()
+      await wrapper.find('[data-testid="start-replace-btn"]').trigger('click')
+      await flushPromises()
+      await wrapper.find('[data-testid="save-replace-btn"]').trigger('click')
+      await flushPromises()
+      expect(mockUpdateLineup).toHaveBeenCalledWith(
+        'team-1',
+        'lineup-1',
+        expect.objectContaining({ pairs: expect.any(Array) }),
+      )
+      expect(mockFetchLineups).toHaveBeenCalledWith('team-1')
+    })
+
+    it('clicking "取消" hides replacement UI', async () => {
+      mockLineups.value = [buildLineupWithPairs('lineup-1')]
+      const wrapper = mountView()
+      await flushPromises()
+      await wrapper.find('[data-testid="start-replace-btn"]').trigger('click')
+      await flushPromises()
+      expect(wrapper.find('[data-testid="save-replace-btn"]').exists()).toBe(true)
+      await wrapper.find('[data-testid="cancel-replace-btn"]').trigger('click')
+      await flushPromises()
+      expect(wrapper.find('[data-testid="save-replace-btn"]').exists()).toBe(false)
+    })
+
+    it('updateLineup error during save shows updateError and keeps UI open', async () => {
+      mockUpdateLineup.mockRejectedValue(new Error('save failed'))
+      mockLineups.value = [buildLineupWithPairs('lineup-1')]
+      const wrapper = mountView()
+      await flushPromises()
+      await wrapper.find('[data-testid="start-replace-btn"]').trigger('click')
+      await flushPromises()
+      await wrapper.find('[data-testid="save-replace-btn"]').trigger('click')
+      await flushPromises()
+      expect(wrapper.find('[data-testid="update-error"]').exists()).toBe(true)
+      // Replacement UI should still be visible
+      expect(wrapper.find('[data-testid="save-replace-btn"]').exists()).toBe(true)
+    })
+
+    it('only one lineup replacement UI is open at a time when clicking another start-replace-btn', async () => {
+      mockLineups.value = [
+        buildLineupWithPairs('lineup-1'),
+        buildLineupWithPairs('lineup-2'),
+      ]
+      const wrapper = mountView()
+      await flushPromises()
+      const startBtns = wrapper.findAll('[data-testid="start-replace-btn"]')
+      await startBtns[0].trigger('click')
+      await flushPromises()
+      expect(wrapper.findAll('[data-testid="save-replace-btn"]')).toHaveLength(1)
+      await startBtns[1].trigger('click')
+      await flushPromises()
+      // Still only one open (the second one now)
+      expect(wrapper.findAll('[data-testid="save-replace-btn"]')).toHaveLength(1)
+    })
+
+    it('position labels D1/D2 are shown in replacement UI', async () => {
+      mockLineups.value = [buildLineupWithPairs('lineup-1')]
+      const wrapper = mountView()
+      await flushPromises()
+      await wrapper.find('[data-testid="start-replace-btn"]').trigger('click')
+      await flushPromises()
+      expect(wrapper.text()).toContain('D1')
+      expect(wrapper.text()).toContain('D2')
+    })
+
+    it('save is blocked when constraint violations exist', async () => {
+      // Build lineup where all players have high UTR → total > 40.5
+      const highUtrPairs = [
+        { position: 'D1', player1Id: 'p1', player2Id: 'p2', combinedUtr: 11.5 },
+        { position: 'D2', player1Id: 'p3', player2Id: 'p4', combinedUtr: 9.5 },
+        { position: 'D3', player1Id: 'p1', player2Id: 'p3', combinedUtr: 11.0 },
+        { position: 'D4', player1Id: 'p2', player2Id: 'p4', combinedUtr: 10.0 },
+      ]
+      mockTeams.value = [{
+        id: 'team-1', name: '浙江队',
+        players: [
+          { id: 'p1', name: 'Alice', utr: 12.0 },
+          { id: 'p2', name: 'Bob', utr: 11.0 },
+          { id: 'p3', name: 'Carol', utr: 10.0 },
+          { id: 'p4', name: 'Dave', utr: 9.0 },
+        ],
+      }]
+      mockLineups.value = [buildLineup('lineup-1', { pairs: highUtrPairs, totalUtr: 42.0 })]
+      const wrapper = mountView()
+      await flushPromises()
+      await wrapper.find('[data-testid="start-replace-btn"]').trigger('click')
+      await flushPromises()
+      // Violations shown on open
+      expect(wrapper.find('[data-testid="replace-violation"]').exists()).toBe(true)
+      // Clicking save does NOT call updateLineup
+      await wrapper.find('[data-testid="save-replace-btn"]').trigger('click')
+      await flushPromises()
+      expect(mockUpdateLineup).not.toHaveBeenCalled()
+    })
+
+    it('player options show name and UTR', async () => {
+      mockLineups.value = [buildLineupWithPairs('lineup-1')]
+      const wrapper = mountView()
+      await flushPromises()
+      await wrapper.find('[data-testid="start-replace-btn"]').trigger('click')
+      await flushPromises()
+      const selects = wrapper.findAll('select')
+      const firstSelectText = selects[0].element.innerHTML
+      // Should contain player name and UTR
+      expect(firstSelectText).toContain('Alice')
     })
   })
 })

@@ -117,6 +117,89 @@
           </template>
         </div>
 
+        <!-- Task 6: Swap panel (collapsible) -->
+        <details class="mt-2">
+          <summary class="text-xs text-gray-400 cursor-pointer hover:text-gray-600 py-1">调整配对</summary>
+          <LineupSwapPanel :key="lineup.id + '-' + swapPanelVersion" :lineup="lineup" @update:lineup="handleSwapUpdate(lineup, $event)" />
+        </details>
+
+        <!-- Task 7: Player replacement entry button -->
+        <div class="mt-2 px-1">
+          <button
+            data-testid="start-replace-btn"
+            @click="startReplace(lineup)"
+            class="text-xs text-blue-500 hover:text-blue-700 border border-blue-300 rounded px-2 py-0.5 hover:bg-blue-50 transition-colors"
+          >替换球员</button>
+        </div>
+
+        <!-- Task 7: Player replacement UI -->
+        <div v-if="replacingLineupId === lineup.id" class="mt-2 px-1 border border-gray-200 rounded-lg p-3 bg-gray-50">
+          <div class="text-xs text-gray-600 font-medium mb-2">替换球员配置</div>
+
+          <!-- Pairs editor -->
+          <div class="space-y-2">
+            <div
+              v-for="(pair, pairIdx) in replacingPairs"
+              :key="pair.position"
+              class="flex items-center gap-2"
+            >
+              <span class="w-7 text-xs font-bold text-green-600">{{ pair.position }}</span>
+              <!-- Player 1 slot -->
+              <select
+                :value="pair.player1Id"
+                @change="onReplacePlayerChange(pairIdx, 'player1Id', $event.target.value)"
+                class="text-xs border border-gray-300 rounded px-1 py-0.5 flex-1"
+              >
+                <option
+                  v-for="player in getAvailablePlayers(pairIdx, 'player1Id')"
+                  :key="player.id"
+                  :value="player.id"
+                >{{ player.name }} (UTR: {{ player.utr }})</option>
+              </select>
+              <!-- Player 2 slot -->
+              <select
+                :value="pair.player2Id"
+                @change="onReplacePlayerChange(pairIdx, 'player2Id', $event.target.value)"
+                class="text-xs border border-gray-300 rounded px-1 py-0.5 flex-1"
+              >
+                <option
+                  v-for="player in getAvailablePlayers(pairIdx, 'player2Id')"
+                  :key="player.id"
+                  :value="player.id"
+                >{{ player.name }} (UTR: {{ player.utr }})</option>
+              </select>
+              <!-- Combined UTR display -->
+              <span class="text-xs text-gray-400 w-16">
+                UTR: {{ calcCombinedUtr(pair) }}
+              </span>
+            </div>
+          </div>
+
+          <!-- Constraint violations -->
+          <ul v-if="replaceViolations.length" class="mt-2 space-y-0.5">
+            <li
+              v-for="(v, i) in replaceViolations"
+              :key="i"
+              data-testid="replace-violation"
+              class="text-xs text-red-600"
+            >{{ v }}</li>
+          </ul>
+
+          <!-- Action buttons -->
+          <div class="mt-3 flex items-center gap-2">
+            <button
+              data-testid="save-replace-btn"
+              @click="saveReplace(lineup)"
+              class="text-xs px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+            >保存修改</button>
+            <button
+              data-testid="cancel-replace-btn"
+              @click="cancelReplace"
+              class="text-xs px-3 py-1 bg-gray-200 text-gray-600 rounded hover:bg-gray-300 transition-colors"
+            >取消</button>
+          </div>
+        </div>
+
         <!-- Bottom row: date, reorder buttons, delete -->
         <div class="mt-2 flex items-center justify-between px-1">
           <span class="text-xs text-gray-400">{{ formatDate(lineup.createdAt) }}</span>
@@ -157,6 +240,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import LineupCard from '../components/LineupCard.vue'
+import LineupSwapPanel from '../components/LineupSwapPanel.vue'
 import { useLineupHistory } from '../composables/useLineupHistory'
 import { useTeams } from '../composables/useTeams'
 
@@ -178,6 +262,12 @@ const labelSaving = ref(false)
 // Comment edit state
 const editingCommentId = ref(null)
 const commentInputValue = ref('')
+
+// Task 7: Player replacement state
+const replacingLineupId = ref(null)
+const replacingPairs = ref([])
+const replaceViolations = ref([])
+const swapPanelVersion = ref(0)
 
 onMounted(async () => {
   await Promise.all([fetchLineups(teamId), fetchTeams()])
@@ -312,6 +402,118 @@ async function handleMoveDown(index) {
   } catch (err) {
     updateError.value = err.message || '排序更新失败，请重试'
     await fetchLineups(teamId)
+  }
+}
+
+// ── Task 6: Swap panel ────────────────────────────────────────────────────────
+
+async function handleSwapUpdate(lineup, updatedLineup) {
+  updateError.value = null
+  try {
+    await updateLineup(teamId, lineup.id, { pairs: updatedLineup.pairs })
+  } catch (err) {
+    updateError.value = err.message || '互换保存失败，请重试'
+  } finally {
+    swapPanelVersion.value += 1
+    await fetchLineups(teamId)
+  }
+}
+
+// ── Task 7: Player replacement ────────────────────────────────────────────────
+
+function startReplace(lineup) {
+  replacingLineupId.value = lineup.id
+  replacingPairs.value = JSON.parse(JSON.stringify(lineup.pairs ?? []))
+  replaceViolations.value = validateReplacePairs(replacingPairs.value, currentTeam.value?.players)
+}
+
+function cancelReplace() {
+  replacingLineupId.value = null
+  replacingPairs.value = []
+  replaceViolations.value = []
+}
+
+function getAvailablePlayers(pairIdx, slot) {
+  const players = currentTeam.value?.players ?? []
+  // Collect all used player IDs except the current slot
+  const usedIds = new Set()
+  replacingPairs.value.forEach((pair, idx) => {
+    if (idx === pairIdx) {
+      // exclude only the OTHER slot in same pair
+      const otherSlot = slot === 'player1Id' ? 'player2Id' : 'player1Id'
+      if (pair[otherSlot]) usedIds.add(pair[otherSlot])
+    } else {
+      if (pair.player1Id) usedIds.add(pair.player1Id)
+      if (pair.player2Id) usedIds.add(pair.player2Id)
+    }
+  })
+  const available = players.filter(p => !usedIds.has(p.id))
+  // Preserve a ghost entry for the current slot value if the player is no longer on the team
+  const currentPair = replacingPairs.value[pairIdx]
+  const currentId = currentPair?.[slot]
+  if (currentId && !available.some(p => p.id === currentId)) {
+    available.unshift({ id: currentId, name: '(已移除球员)', utr: 0 })
+  }
+  return available
+}
+
+function calcCombinedUtr(pair) {
+  const players = currentTeam.value?.players ?? []
+  const playerMap = Object.fromEntries(players.map(p => [p.id, p]))
+  const utr1 = playerMap[pair.player1Id]?.utr ?? 0
+  const utr2 = playerMap[pair.player2Id]?.utr ?? 0
+  return (utr1 + utr2).toFixed(1)
+}
+
+function onReplacePlayerChange(pairIdx, slot, playerId) {
+  replacingPairs.value = replacingPairs.value.map((pair, idx) => {
+    if (idx !== pairIdx) return pair
+    return { ...pair, [slot]: playerId }
+  })
+  replaceViolations.value = validateReplacePairs(replacingPairs.value, currentTeam.value?.players)
+}
+
+function validateReplacePairs(pairs, players) {
+  const violations = []
+  const playerMap = Object.fromEntries((players ?? []).map(p => [p.id, p]))
+
+  const enriched = pairs.map(pair => ({
+    ...pair,
+    p1: playerMap[pair.player1Id],
+    p2: playerMap[pair.player2Id],
+    combined: (playerMap[pair.player1Id]?.utr ?? 0) + (playerMap[pair.player2Id]?.utr ?? 0),
+  }))
+
+  const totalUtr = enriched.reduce((sum, e) => sum + e.combined, 0)
+  if (totalUtr > 40.5) violations.push(`总UTR超出上限（当前: ${totalUtr.toFixed(2)}）`)
+
+  enriched.forEach(e => {
+    const gap = Math.abs((e.p1?.utr ?? 0) - (e.p2?.utr ?? 0))
+    if (gap > 3.5) violations.push(`${e.position} 搭档UTR差值超过3.5（${gap.toFixed(2)}）`)
+  })
+
+  const order = ['D1', 'D2', 'D3', 'D4']
+  order.forEach((pos, i) => {
+    if (i === 0) return
+    const curr = enriched.find(e => e.position === pos)?.combined ?? 0
+    const prev = enriched.find(e => e.position === order[i - 1])?.combined ?? 0
+    if (curr > prev) violations.push(`位置顺序违规：${pos} UTR高于${order[i - 1]}`)
+  })
+
+  return violations
+}
+
+async function saveReplace(lineup) {
+  if (replaceViolations.value.length > 0) return
+  updateError.value = null
+  try {
+    await updateLineup(teamId, lineup.id, { pairs: replacingPairs.value })
+    replacingLineupId.value = null
+    replacingPairs.value = []
+    replaceViolations.value = []
+    await fetchLineups(teamId)
+  } catch (err) {
+    updateError.value = err.message || '保存替换失败，请重试'
   }
 }
 </script>

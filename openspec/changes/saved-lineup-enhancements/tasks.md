@@ -30,18 +30,18 @@
 
 ## 6. 前端 — Swap 配对（复用 LineupSwapPanel）
 
-- [ ] 6.1 在 `LineupHistoryView.vue` 每张 card 底部添加可展开的 swap 区域（`<details>`），内嵌 `LineupSwapPanel`
-- [ ] 6.2 `LineupSwapPanel` swap 完成后 emit `update:lineup`，父组件收到后调用 updateLineup({ pairs }) 持久化，再刷新列表
+- [x] 6.1 在 `LineupHistoryView.vue` 每张 card 底部添加可展开的 swap 区域（`<details>`），内嵌 `LineupSwapPanel`
+- [x] 6.2 `LineupSwapPanel` swap 完成后 emit `update:lineup`，父组件收到后调用 updateLineup({ pairs }) 持久化，再刷新列表
 
 ## 7. 前端 — 替换球员
 
-- [ ] 7.1 在 `LineupHistoryView.vue` 每张 card 的配对行，每个球员名旁加铅笔图标，点击后该位置变为下拉选框（`<select>`），列出当前队伍所有球员（排除已在本排阵其他位置的球员）
-- [ ] 7.2 选择新球员后，即时重算受影响 pair 的 combinedUtr，并对整个排阵做前端约束校验（UTR 上限、搭档差值、位置顺序），违规时在 card 内显示红色警告列表
-- [ ] 7.3 显示「保存修改」和「取消」按钮；点击「保存修改」调用 updateLineup({ pairs })；点击「取消」恢复原始数据
+- [x] 7.1 在 `LineupHistoryView.vue` 每张 card 的配对行，每个球员名旁加铅笔图标，点击后该位置变为下拉选框（`<select>`），列出当前队伍所有球员（排除已在本排阵其他位置的球员）
+- [x] 7.2 选择新球员后，即时重算受影响 pair 的 combinedUtr，并对整个排阵做前端约束校验（UTR 上限、搭档差值、位置顺序），违规时在 card 内显示红色警告列表
+- [x] 7.3 显示「保存修改」和「取消」按钮；点击「保存修改」调用 updateLineup({ pairs })；点击「取消」恢复原始数据
 
 ## 8. 测试与验收
 
 - [ ] 8.1 运行后端测试：`mvn test`
-- [ ] 8.2 运行前端单元测试：`npm test`
+- [x] 8.2 运行前端单元测试：`npm test`
 - [ ] 8.3 手动验收：命名/备注持久化；swap 后保存正确；替换球员约束提示；上下移顺序保存
 - [ ] 8.4 部署到 fly.io：`flyctl deploy`
