@@ -302,10 +302,22 @@ public class LineupService {
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
 
+        // Imported lineups go AFTER existing ones, preserving source relative order.
+        // label, comment, and pairs (with player names) are preserved as-is.
+        int nextSortOrder = team.getLineups().stream()
+                .mapToInt(Lineup::getSortOrder)
+                .max()
+                .orElse(-1) + 1;
+
+        // Sort incoming by their original sortOrder so relative order carries over
+        List<Lineup> sortedIncoming = incoming.stream()
+                .sorted(Comparator.comparingInt(Lineup::getSortOrder))
+                .collect(Collectors.toList());
+
         int imported = 0;
         int skipped = 0;
 
-        for (Lineup lineup : incoming) {
+        for (Lineup lineup : sortedIncoming) {
             if (lineup.getPairs() == null) { skipped++; continue; }
             String key = buildPlayerNameKey(lineup);
             if (key != null && existingNameKeys.contains(key)) {
@@ -314,6 +326,8 @@ public class LineupService {
             }
             lineup.setId(generateLineupId());
             lineup.setCreatedAt(Instant.now());
+            lineup.setSortOrder(nextSortOrder++);
+            // label and comment are preserved from the incoming lineup (no reset)
             team.getLineups().add(lineup);
             if (key != null) existingNameKeys.add(key);
             imported++;

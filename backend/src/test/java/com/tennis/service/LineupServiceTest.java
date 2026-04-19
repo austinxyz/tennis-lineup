@@ -757,4 +757,85 @@ class LineupServiceTest {
         assertEquals("lineup-tie-2", result.get(0).getId());
         assertEquals("lineup-tie-1", result.get(1).getId());
     }
+
+    // ======================== import/export label/comment/sortOrder tests ========================
+
+    @Test
+    @DisplayName("exportLineups: includes label, comment, sortOrder in envelope")
+    void testExportIncludesAllFields() {
+        Lineup lineup = buildLineup("lineup-exp-1");
+        lineup.setLabel("赛前主选");
+        lineup.setComment("D3稳健");
+        lineup.setSortOrder(2);
+        team.setLineups(new ArrayList<>(List.of(lineup)));
+        when(jsonRepository.readData()).thenReturn(teamData);
+
+        Map<String, Object> envelope = lineupService.exportLineups("team-1");
+
+        @SuppressWarnings("unchecked")
+        List<Lineup> exported = (List<Lineup>) envelope.get("lineups");
+        assertEquals(1, exported.size());
+        assertEquals("赛前主选", exported.get(0).getLabel());
+        assertEquals("D3稳健", exported.get(0).getComment());
+        assertEquals(2, exported.get(0).getSortOrder());
+    }
+
+    @Test
+    @DisplayName("importLineups: preserves label and comment from source")
+    void testImportPreservesLabelAndComment() {
+        team.setLineups(new ArrayList<>());
+        when(jsonRepository.readData()).thenReturn(teamData);
+
+        Lineup incoming = buildLineupWithFixedPlayers("p1", "p2");
+        incoming.setId("src-lineup-1");
+        incoming.setLabel("从源环境导入");
+        incoming.setComment("备注内容");
+        incoming.setSortOrder(5);
+
+        Map<String, Integer> result = lineupService.importLineups("team-1", List.of(incoming));
+
+        assertEquals(1, result.get("imported"));
+        assertEquals(1, team.getLineups().size());
+        Lineup stored = team.getLineups().get(0);
+        assertEquals("从源环境导入", stored.getLabel());
+        assertEquals("备注内容", stored.getComment());
+        // ID is reassigned
+        assertNotEquals("src-lineup-1", stored.getId());
+    }
+
+    @Test
+    @DisplayName("importLineups: assigns sortOrder after existing lineups, preserving relative order")
+    void testImportSortOrderNormalization() {
+        // Existing: 2 lineups with sortOrder 0, 1
+        Lineup existing1 = buildLineupWithFixedPlayers("ex1a", "ex1b");
+        existing1.setId("existing-1");
+        existing1.setSortOrder(0);
+        Lineup existing2 = buildLineupWithFixedPlayers("ex2a", "ex2b");
+        existing2.setId("existing-2");
+        existing2.setSortOrder(1);
+        team.setLineups(new ArrayList<>(List.of(existing1, existing2)));
+        when(jsonRepository.readData()).thenReturn(teamData);
+
+        // Incoming: 2 lineups with sortOrder 3, 10 (non-sequential)
+        Lineup imp1 = buildLineupWithFixedPlayers("imp1a", "imp1b");
+        imp1.setId("src-1");
+        imp1.setLabel("first-imp");
+        imp1.setSortOrder(3);
+        Lineup imp2 = buildLineupWithFixedPlayers("imp2a", "imp2b");
+        imp2.setId("src-2");
+        imp2.setLabel("second-imp");
+        imp2.setSortOrder(10);
+
+        Map<String, Integer> result = lineupService.importLineups("team-1", List.of(imp2, imp1));
+
+        assertEquals(2, result.get("imported"));
+        assertEquals(4, team.getLineups().size());
+        // Imported appended after existing (sortOrder 2, 3), relative order preserved (imp1 before imp2)
+        Lineup stored1 = team.getLineups().get(2);
+        Lineup stored2 = team.getLineups().get(3);
+        assertEquals("first-imp", stored1.getLabel());
+        assertEquals("second-imp", stored2.getLabel());
+        assertEquals(2, stored1.getSortOrder());
+        assertEquals(3, stored2.getSortOrder());
+    }
 }
