@@ -31,8 +31,14 @@ Thumbs.db
 # Test coverage
 frontend/coverage/
 
-# Runtime data at project root (backend reads from backend/data/)
-/tennis-data.json
+# Runtime data files — never commit to git
+backend/data/tennis-data.json
+backend/data/tennis-config.json
+tennis-data.json
+
+# Team roster imports (contain player PII: names, UTRs)
+docs/import/
+docs/*.csv
 
 # Environment
 .env
