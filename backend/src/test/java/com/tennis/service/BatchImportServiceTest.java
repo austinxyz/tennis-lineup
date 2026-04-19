@@ -258,9 +258,10 @@ class BatchImportServiceTest {
                            "John Doe,male,1.5,true\n" +
                            "Jane Smith,female,2.0,false";
 
-        when(playerService.addPlayer("test-team", "John Doe", "male", 1.5, null, true, null, null, null)).thenReturn(new Player());
+        // BatchImportService passes player.getUtr() as actualUtr fallback (last arg)
+        when(playerService.addPlayer("test-team", "John Doe", "male", 1.5, null, true, null, null, 1.5)).thenReturn(new Player());
         doThrow(new RuntimeException("Team not found"))
-            .when(playerService).addPlayer("test-team", "Jane Smith", "female", 2.0, null, false, null, null, null);
+            .when(playerService).addPlayer("test-team", "Jane Smith", "female", 2.0, null, false, null, null, 2.0);
 
         // Act
         BatchImportService.ImportResult result = batchImportService.importFromCSV("test-team", csvContent);
