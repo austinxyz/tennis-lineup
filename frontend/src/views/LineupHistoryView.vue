@@ -442,11 +442,23 @@ function calcCombinedUtr(pair) {
 }
 
 function onReplacePlayerChange(pairIdx, slot, playerId) {
-  const updated = replacingPairs.value.map((pair, idx) =>
-    idx !== pairIdx ? pair : { ...pair, [slot]: playerId }
-  )
   const players = currentTeam.value?.players ?? []
   const pm = Object.fromEntries(players.map(p => [p.id, p]))
+  const player = pm[playerId]
+
+  // Determine which pair fields to update based on slot (player1 or player2)
+  const prefix = slot === 'player1Id' ? 'player1' : 'player2'
+  const playerFields = player ? {
+    [slot]: playerId,
+    [`${prefix}Name`]: player.name,
+    [`${prefix}Utr`]: player.utr,
+    [`${prefix}Gender`]: player.gender ?? null,
+    [`${prefix}ActualUtr`]: player.actualUtr ?? null,
+  } : { [slot]: playerId }
+
+  const updated = replacingPairs.value.map((pair, idx) =>
+    idx !== pairIdx ? pair : { ...pair, ...playerFields }
+  )
   const positions = ['D1', 'D2', 'D3', 'D4']
   const reordered = updated
     .map(pair => ({ ...pair, _c: (pm[pair.player1Id]?.utr ?? 0) + (pm[pair.player2Id]?.utr ?? 0) }))
