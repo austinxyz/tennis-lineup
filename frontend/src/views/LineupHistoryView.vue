@@ -466,11 +466,29 @@ function calcCombinedUtr(pair) {
 }
 
 function onReplacePlayerChange(pairIdx, slot, playerId) {
-  replacingPairs.value = replacingPairs.value.map((pair, idx) => {
+  // Update the changed slot
+  const updated = replacingPairs.value.map((pair, idx) => {
     if (idx !== pairIdx) return pair
     return { ...pair, [slot]: playerId }
   })
-  replaceViolations.value = validateReplacePairs(replacingPairs.value, currentTeam.value?.players)
+
+  // Auto-reorder D1-D4 by combinedUtr descending (same as lineup generator)
+  const players = currentTeam.value?.players ?? []
+  const playerMap = Object.fromEntries(players.map(p => [p.id, p]))
+  const positions = ['D1', 'D2', 'D3', 'D4']
+  const reordered = updated
+    .map(pair => ({
+      ...pair,
+      _combined: (playerMap[pair.player1Id]?.utr ?? 0) + (playerMap[pair.player2Id]?.utr ?? 0),
+    }))
+    .sort((a, b) => b._combined - a._combined)
+    .map((pair, i) => {
+      const { _combined, ...rest } = pair
+      return { ...rest, position: positions[i] ?? pair.position }
+    })
+
+  replacingPairs.value = reordered
+  replaceViolations.value = validateReplacePairs(reordered, players)
 }
 
 function validateReplacePairs(pairs, players) {
@@ -484,21 +502,32 @@ function validateReplacePairs(pairs, players) {
     combined: (playerMap[pair.player1Id]?.utr ?? 0) + (playerMap[pair.player2Id]?.utr ?? 0),
   }))
 
+  // Hard constraint: total UTR ≤ 40.5
   const totalUtr = enriched.reduce((sum, e) => sum + e.combined, 0)
   if (totalUtr > 40.5) violations.push(`总UTR超出上限（当前: ${totalUtr.toFixed(2)}）`)
 
+  // Hard constraint: partner gap ≤ 3.5
   enriched.forEach(e => {
     const gap = Math.abs((e.p1?.utr ?? 0) - (e.p2?.utr ?? 0))
     if (gap > 3.5) violations.push(`${e.position} 搭档UTR差值超过3.5（${gap.toFixed(2)}）`)
   })
 
-  const order = ['D1', 'D2', 'D3', 'D4']
-  order.forEach((pos, i) => {
-    if (i === 0) return
-    const curr = enriched.find(e => e.position === pos)?.combined ?? 0
-    const prev = enriched.find(e => e.position === order[i - 1])?.combined ?? 0
-    if (curr > prev) violations.push(`位置顺序违规：${pos} UTR高于${order[i - 1]}`)
-  })
+  // Hard constraint: at least 2 female players
+  const femaleCount = enriched.reduce((count, e) => {
+    if (e.p1?.gender === 'female') count++
+    if (e.p2?.gender === 'female') count++
+    return count
+  }, 0)
+  if (femaleCount < 2) violations.push(`至少需要2名女球员上阵（当前: ${femaleCount}名）`)
+
+  // Hard constraint: D4 both players must have verified doubles UTR
+  const d4 = enriched.find(e => e.position === 'D4')
+  if (d4) {
+    if (d4.p1 && !d4.p1.verified) violations.push(`D4 ${d4.p1.name} 缺少Verified Doubles UTR`)
+    if (d4.p2 && !d4.p2.verified) violations.push(`D4 ${d4.p2.name} 缺少Verified Doubles UTR`)
+  }
+
+  // Position order is auto-fixed by reordering — no violation needed
 
   return violations
 }

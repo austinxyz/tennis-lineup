@@ -58,11 +58,11 @@ vi.mock('../../components/LineupSwapPanel.vue', () => ({
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 const TEAM_PLAYERS = [
-  { id: 'p1', name: 'Alice', utr: 6.0 },
-  { id: 'p2', name: 'Bob', utr: 5.5 },
-  { id: 'p3', name: 'Carol', utr: 5.0 },
-  { id: 'p4', name: 'Dave', utr: 4.5 },
-  { id: 'new-p', name: 'Eve', utr: 4.0 },
+  { id: 'p1', name: 'Alice', utr: 6.0, gender: 'female', verified: true },
+  { id: 'p2', name: 'Bob', utr: 5.5, gender: 'male', verified: true },
+  { id: 'p3', name: 'Carol', utr: 5.0, gender: 'female', verified: true },
+  { id: 'p4', name: 'Dave', utr: 4.5, gender: 'male', verified: true },
+  { id: 'new-p', name: 'Eve', utr: 4.0, gender: 'female', verified: true },
 ]
 
 function buildLineup(id, overrides = {}) {
