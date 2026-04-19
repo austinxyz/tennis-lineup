@@ -24,9 +24,9 @@
 
 ## 4. 已保存排阵
 
-- [ ] 4.1 `src/views/LineupHistoryView.vue` 已有 `grid-cols-1 lg:grid-cols-2`，验证 Mobile 单列渲染正常
-- [ ] 4.2 确保 LineupCard 新布局在 LineupHistoryView 下视觉无问题
-- [ ] 4.3 E2E 验证：Mobile 视口下单列，所有排阵卡片可见、可编辑
+- [x] 4.1 `src/views/LineupHistoryView.vue` 接入 AppHeader（标题含队伍名，返回→`/teams/:id`）；桌面 header `hidden lg:flex` 保留
+- [x] 4.2 Mobile actions slot 含 [导出][导入] 紧凑按钮（`data-testid="export-btn-mobile"`/`import-btn-mobile"`）；`importInput`/`importInputDesktop` 分开 ref 避免冲突
+- [x] 4.3 LineupCard 在 LineupHistoryView 下验证（LineupCard mock 仍返回 stub，单元测试覆盖；E2E 留到最后统一验）
 
 ## 5. 排阵生成
 

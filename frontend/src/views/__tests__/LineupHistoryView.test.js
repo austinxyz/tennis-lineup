@@ -3,6 +3,14 @@ import { mount, flushPromises } from '@vue/test-utils'
 import { ref } from 'vue'
 import LineupHistoryView from '../LineupHistoryView.vue'
 
+vi.mock('../../components/AppHeader.vue', () => ({
+  default: {
+    name: 'AppHeader',
+    props: ['title', 'backTo', 'backLabel'],
+    template: '<header data-testid="app-header" :data-title="title" :data-back-to="backTo"><slot name="actions"/></header>',
+  },
+}))
+
 // ── Mock state ─────────────────────────────────────────────────────────────────
 const mockLineups = ref([])
 const mockTeams = ref([{ id: 'team-1', name: '浙江队' }])
@@ -441,6 +449,88 @@ describe('LineupHistoryView', () => {
       await flushPromises()
       expect(wrapper.find('[data-testid="update-error"]').exists()).toBe(true)
       expect(mockFetchLineups).toHaveBeenCalled()
+    })
+  })
+
+  // ── Mobile integration (Batch 4) ───────────────────────────────────────────
+  describe('LineupHistoryView mobile integration', () => {
+    it('renders AppHeader with "已保存排阵" in title', async () => {
+      mockLineups.value = []
+      const wrapper = mountView()
+      await flushPromises()
+      const header = wrapper.find('[data-testid="app-header"]')
+      expect(header.exists()).toBe(true)
+      expect(header.attributes('data-title')).toContain('已保存排阵')
+    })
+
+    it('AppHeader title includes team name when team is loaded', async () => {
+      mockLineups.value = []
+      mockTeams.value = [{ id: 'team-1', name: '浙江队', players: TEAM_PLAYERS }]
+      const wrapper = mountView()
+      await flushPromises()
+      const header = wrapper.find('[data-testid="app-header"]')
+      expect(header.attributes('data-title')).toContain('浙江队')
+    })
+
+    it('AppHeader title is plain "已保存排阵" when team has no name', async () => {
+      mockTeams.value = [{ id: 'team-1', players: TEAM_PLAYERS }]
+      mockLineups.value = []
+      const wrapper = mountView()
+      await flushPromises()
+      const header = wrapper.find('[data-testid="app-header"]')
+      expect(header.attributes('data-title')).toBe('已保存排阵')
+    })
+
+    it('AppHeader backTo points to the team page', async () => {
+      mockLineups.value = []
+      const wrapper = mountView()
+      await flushPromises()
+      const header = wrapper.find('[data-testid="app-header"]')
+      expect(header.attributes('data-back-to')).toBe('/teams/team-1')
+    })
+
+    it('mobile export/import buttons are in AppHeader actions slot', async () => {
+      mockLineups.value = []
+      const wrapper = mountView()
+      await flushPromises()
+      expect(wrapper.find('[data-testid="export-btn-mobile"]').exists()).toBe(true)
+      expect(wrapper.find('[data-testid="import-btn-mobile"]').exists()).toBe(true)
+    })
+
+    it('mobile export button calls handleExport when clicked', async () => {
+      mockLineups.value = []
+      const wrapper = mountView()
+      await flushPromises()
+      await wrapper.find('[data-testid="export-btn-mobile"]').trigger('click')
+      expect(mockExportLineups).toHaveBeenCalled()
+    })
+
+    it('uses grid-cols-1 for mobile (desktop lg:grid-cols-2)', async () => {
+      mockLineups.value = [{ id: 'l1', pairs: [], totalUtr: 0, strategy: 'balanced', sortOrder: 0 }]
+      const wrapper = mountView()
+      await flushPromises()
+      const grid = wrapper.find('.grid.grid-cols-1')
+      expect(grid.exists()).toBe(true)
+      expect(grid.classes()).toContain('lg:grid-cols-2')
+    })
+
+    it('desktop header is hidden on mobile (has hidden class)', async () => {
+      mockLineups.value = []
+      const wrapper = mountView()
+      await flushPromises()
+      const desktopHeader = wrapper.find('h2.text-2xl')
+      expect(desktopHeader.exists()).toBe(true)
+      // The desktop header wrapper must carry the 'hidden' class
+      expect(desktopHeader.element.closest('.hidden')).not.toBeNull()
+    })
+
+    it('content area has pt-14 padding to clear fixed AppHeader on mobile', async () => {
+      mockLineups.value = []
+      const wrapper = mountView()
+      await flushPromises()
+      // A container with pt-14 should exist to push content below the fixed header
+      const paddedContainer = wrapper.find('.pt-14')
+      expect(paddedContainer.exists()).toBe(true)
     })
   })
 })
