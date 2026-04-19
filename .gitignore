@@ -17,7 +17,6 @@ backend/data/tennis-data.backup.json
 
 # Claude Code local config (personal)
 .claude/
-Claude.md
 
 # Work in progress notes
 docs/wip/
