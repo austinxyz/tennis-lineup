@@ -220,6 +220,27 @@ public class LineupService {
                 ? team.getPlayers().stream().collect(Collectors.toMap(Player::getId, p -> p))
                 : Map.of();
 
+        // Self-heal: for imported lineups whose player IDs don't match the current team roster
+        // (common when importing from another environment), resolve IDs by player name.
+        Map<String, Player> playerByName = team.getPlayers() != null
+                ? team.getPlayers().stream()
+                    .filter(p -> p.getName() != null)
+                    .collect(Collectors.toMap(Player::getName, p -> p, (a, b) -> a))
+                : Map.of();
+
+        for (Lineup lineup : lineups) {
+            for (Pair pair : lineup.getPairs()) {
+                if (!playerMap.containsKey(pair.getPlayer1Id()) && pair.getPlayer1Name() != null) {
+                    Player byName = playerByName.get(pair.getPlayer1Name());
+                    if (byName != null) pair.setPlayer1Id(byName.getId());
+                }
+                if (!playerMap.containsKey(pair.getPlayer2Id()) && pair.getPlayer2Name() != null) {
+                    Player byName = playerByName.get(pair.getPlayer2Name());
+                    if (byName != null) pair.setPlayer2Id(byName.getId());
+                }
+            }
+        }
+
         for (Lineup lineup : lineups) {
             double lineupTotalUtr = 0;
             double lineupActualUtrTotal = 0;
@@ -309,6 +330,15 @@ public class LineupService {
                 .sorted(Comparator.comparingInt(Lineup::getSortOrder))
                 .collect(Collectors.toList());
 
+        // Remap source player IDs to target team player IDs by name.
+        // Without this, imported lineups' player IDs don't match the target's,
+        // so ConstraintService (which looks up by ID) can't find players and
+        // reports false violations like "上场女性球员少于2人".
+        Map<String, String> nameToTargetId = team.getPlayers() == null ? Map.of()
+                : team.getPlayers().stream()
+                        .filter(p -> p.getName() != null)
+                        .collect(Collectors.toMap(Player::getName, Player::getId, (a, b) -> a));
+
         int imported = 0;
         int skipped = 0;
 
@@ -319,10 +349,18 @@ public class LineupService {
                 skipped++;
                 continue;
             }
+            // Remap pair player IDs by name so validation finds them in target team
+            for (Pair pair : lineup.getPairs()) {
+                if (pair.getPlayer1Name() != null && nameToTargetId.containsKey(pair.getPlayer1Name())) {
+                    pair.setPlayer1Id(nameToTargetId.get(pair.getPlayer1Name()));
+                }
+                if (pair.getPlayer2Name() != null && nameToTargetId.containsKey(pair.getPlayer2Name())) {
+                    pair.setPlayer2Id(nameToTargetId.get(pair.getPlayer2Name()));
+                }
+            }
             lineup.setId(generateLineupId());
             lineup.setCreatedAt(Instant.now());
             lineup.setSortOrder(nextSortOrder++);
-            // label and comment are preserved from the incoming lineup (no reset)
             team.getLineups().add(lineup);
             if (key != null) existingNameKeys.add(key);
             imported++;
