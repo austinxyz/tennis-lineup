@@ -62,6 +62,71 @@ describe('useLineupHistory', () => {
     })
   })
 
+  describe('updateLineup()', () => {
+    it('calls PATCH /api/teams/:teamId/lineups/:lineupId with data', async () => {
+      const updated = { id: 'lineup-1', label: 'My Lineup', strategy: 'balanced' }
+      const fetchMock = makeFetchOk(updated)
+      vi.stubGlobal('fetch', fetchMock)
+      const { updateLineup } = useLineupHistory()
+      await updateLineup(TEAM_ID, 'lineup-1', { label: 'My Lineup' })
+      expect(fetchMock).toHaveBeenCalledWith(
+        `/api/teams/${TEAM_ID}/lineups/lineup-1`,
+        expect.objectContaining({ method: 'PATCH' })
+      )
+    })
+
+    it('sends JSON body with patch data', async () => {
+      const updated = { id: 'lineup-1', label: 'New Label' }
+      const fetchMock = makeFetchOk(updated)
+      vi.stubGlobal('fetch', fetchMock)
+      const { updateLineup } = useLineupHistory()
+      await updateLineup(TEAM_ID, 'lineup-1', { label: 'New Label' })
+      const [, options] = fetchMock.mock.calls[0]
+      expect(JSON.parse(options.body)).toEqual({ label: 'New Label' })
+    })
+
+    it('returns the updated lineup from the response', async () => {
+      const updated = { id: 'lineup-1', label: 'Updated', strategy: 'balanced' }
+      vi.stubGlobal('fetch', makeFetchOk(updated))
+      const { updateLineup } = useLineupHistory()
+      const result = await updateLineup(TEAM_ID, 'lineup-1', { label: 'Updated' })
+      expect(result).toEqual(updated)
+    })
+
+    it('sets error and rethrows on failure', async () => {
+      vi.stubGlobal('fetch', makeFetchError(400, '无效数据'))
+      const { error, updateLineup } = useLineupHistory()
+      await expect(updateLineup(TEAM_ID, 'lineup-1', { label: '' })).rejects.toThrow('无效数据')
+      expect(error.value).toBe('无效数据')
+    })
+
+    it('can patch sortOrder field', async () => {
+      const updated = { id: 'lineup-1', sortOrder: 5 }
+      const fetchMock = makeFetchOk(updated)
+      vi.stubGlobal('fetch', fetchMock)
+      const { updateLineup } = useLineupHistory()
+      await updateLineup(TEAM_ID, 'lineup-1', { sortOrder: 5 })
+      const [, options] = fetchMock.mock.calls[0]
+      expect(JSON.parse(options.body)).toEqual({ sortOrder: 5 })
+    })
+
+    it('can patch comment field', async () => {
+      const updated = { id: 'lineup-1', comment: 'Good formation' }
+      const fetchMock = makeFetchOk(updated)
+      vi.stubGlobal('fetch', fetchMock)
+      const { updateLineup } = useLineupHistory()
+      await updateLineup(TEAM_ID, 'lineup-1', { comment: 'Good formation' })
+      const [, options] = fetchMock.mock.calls[0]
+      expect(JSON.parse(options.body)).toEqual({ comment: 'Good formation' })
+    })
+
+    it('is exported from the composable return value', () => {
+      vi.stubGlobal('fetch', makeFetchOk({}))
+      const result = useLineupHistory()
+      expect(typeof result.updateLineup).toBe('function')
+    })
+  })
+
   describe('deleteLineup()', () => {
     it('removes deleted lineup from lineups.value', async () => {
       const data = [{ id: 'lineup-1' }, { id: 'lineup-2' }]

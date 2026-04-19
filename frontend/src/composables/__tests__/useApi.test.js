@@ -130,6 +130,27 @@ describe('useApi', () => {
     })
   })
 
+  describe('patch()', () => {
+    it('calls fetch with PATCH method and serialized body', async () => {
+      const fetchMock = makeFetchOk({ id: 1, label: 'New Label' })
+      vi.stubGlobal('fetch', fetchMock)
+      const { patch } = useApi()
+      const result = await patch('/api/test/1', { label: 'New Label' })
+      expect(result).toEqual({ id: 1, label: 'New Label' })
+      expect(fetchMock).toHaveBeenCalledWith('/api/test/1', expect.objectContaining({
+        method: 'PATCH',
+        body: JSON.stringify({ label: 'New Label' }),
+      }))
+    })
+
+    it('sets error and rethrows on HTTP error', async () => {
+      vi.stubGlobal('fetch', makeFetchError(404, 'Not Found'))
+      const { error, patch } = useApi()
+      await expect(patch('/api/test/99', {})).rejects.toThrow('Not Found')
+      expect(error.value).toBe('Not Found')
+    })
+  })
+
   describe('del()', () => {
     it('calls fetch with DELETE method', async () => {
       const fetchMock = makeFetchOk({})

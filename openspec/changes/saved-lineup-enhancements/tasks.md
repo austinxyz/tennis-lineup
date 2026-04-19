@@ -14,19 +14,19 @@
 
 ## 3. 前端 — composable 扩展
 
-- [ ] 3.1 在 `useLineupHistory.js` 新增 `updateLineup(teamId, lineupId, data)` 方法：调用 PATCH 端点，返回更新后的排阵
+- [x] 3.1 在 `useLineupHistory.js` 新增 `updateLineup(teamId, lineupId, data)` 方法：调用 PATCH 端点，返回更新后的排阵
 
 ## 4. 前端 — 排阵命名 & 备注
 
-- [ ] 4.1 在 `LineupHistoryView.vue` 每张 card 标题区加可点击的名称字段：点击变 input，失焦调用 updateLineup({ label })，为空则显示 strategy
-- [ ] 4.2 在 card 底部加备注入口：有 comment 时显示文字可点击编辑；无 comment 时显示「+ 添加备注」；失焦调用 updateLineup({ comment })
+- [x] 4.1 在 `LineupHistoryView.vue` 每张 card 标题区加可点击的名称字段：点击变 input，失焦调用 updateLineup({ label })，为空则显示 strategy
+- [x] 4.2 在 card 底部加备注入口：有 comment 时显示文字可点击编辑；无 comment 时显示「+ 添加备注」；失焦调用 updateLineup({ comment })
 
 ## 5. 前端 — 排序（上移/下移）
 
-- [ ] 5.1 在 `LineupHistoryView.vue` 每张 card 右上角加「↑」「↓」按钮，首位禁用↑，末位禁用↓
-- [ ] 5.2 点击↑：交换当前排阵与前一排阵的 sortOrder，依次调用两次 updateLineup({ sortOrder })，完成后刷新列表
-- [ ] 5.3 点击↓：同上，交换当前与后一排阵
-- [ ] 5.4 sortOrder 最小的 card 显示「⭐ 首选」徽章
+- [x] 5.1 在 `LineupHistoryView.vue` 每张 card 右上角加「↑」「↓」按钮，首位禁用↑，末位禁用↓
+- [x] 5.2 点击↑：交换当前排阵与前一排阵的 sortOrder，依次调用两次 updateLineup({ sortOrder })，完成后刷新列表
+- [x] 5.3 点击↓：同上，交换当前与后一排阵
+- [x] 5.4 sortOrder 最小的 card 显示「⭐ 首选」徽章
 
 ## 6. 前端 — Swap 配对（复用 LineupSwapPanel）
 

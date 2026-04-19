@@ -2,7 +2,7 @@ import { ref } from 'vue'
 import { useApi } from './useApi'
 
 export function useLineupHistory() {
-  const { loading, error, get, del, post } = useApi()
+  const { loading, error, get, del, post, patch } = useApi()
   const lineups = ref([])
 
   const fetchLineups = async (teamId) => {
@@ -41,6 +41,15 @@ export function useLineupHistory() {
     return await post(`/api/teams/${teamId}/lineups/import`, formData)
   }
 
+  const updateLineup = async (teamId, lineupId, data) => {
+    try {
+      return await patch(`/api/teams/${teamId}/lineups/${lineupId}`, data)
+    } catch (err) {
+      console.error('Failed to update lineup:', err)
+      throw err
+    }
+  }
+
   return {
     loading,
     error,
@@ -49,5 +58,6 @@ export function useLineupHistory() {
     deleteLineup,
     exportLineups,
     importLineups,
+    updateLineup,
   }
 }

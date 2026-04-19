@@ -58,6 +58,13 @@ export function useApi() {
     return request(url, { method: 'DELETE' })
   }
 
+  const patch = async (url, data) => {
+    return request(url, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    })
+  }
+
   return {
     loading,
     error,
@@ -65,5 +72,6 @@ export function useApi() {
     post,
     put,
     del,
+    patch,
   }
 }
