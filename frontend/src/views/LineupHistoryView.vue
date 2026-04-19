@@ -498,6 +498,7 @@ async function saveReplace(lineup) {
   updateError.value = null
   try {
     await updateLineup(teamId, lineup.id, { pairs: replacingPairs.value })
+    swapPanelVersion.value += 1  // force SwapPanel to remount with updated player data
     cancelReplace()
     await fetchLineups(teamId)
   } catch (err) {
