@@ -182,6 +182,12 @@ npm run test:e2e:ui      # Interactive UI mode
 
 **"TypeScript errors"** → Install missing types. Update interfaces when API changes.
 
+**`npx playwright test` reports "Protocol 'socks5:' not supported"** → Corporate proxy leaks into env. Before E2E: `unset all_proxy ALL_PROXY http_proxy HTTP_PROXY https_proxy HTTPS_PROXY`. The config itself is fine; env pollution is the culprit.
+
+**`curl http://localhost:<port>` returns 000 but the service is running** → Windows dual-stack: backend binds `0.0.0.0:<port>` (IPv4), Vite binds `[::1]:<port>` (IPv6). `curl localhost` hits the wrong stack silently. Probe explicitly: `curl http://127.0.0.1:8080` for backend, `curl http://[::1]:5173` for frontend.
+
+**E2E test fails with "unexpected value hidden" on an element that clearly exists** → Mobile/desktop dual-render pattern (`lg:hidden` + `hidden lg:block`) leaves BOTH copies in DOM. `.first()` picks the hidden one by DOM order. Fix: scope the locator to a desktop-only container (e.g., `page.locator('[data-testid="desktop-result-grid"]').locator(...)`) OR use `.filter({ visible: true })`. **When adding any mobile/desktop dual layout, give the desktop container a `data-testid` so future E2E tests can scope to it.**
+
 ## External Documentation
 
 For detailed information not covered by these guardrails:

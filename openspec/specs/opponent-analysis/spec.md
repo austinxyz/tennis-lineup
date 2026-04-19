@@ -168,3 +168,53 @@ The AI line commentary SHALL be generated using enriched lineup data (current pl
 #### Scenario: Frontend passes partner notes for commentary
 - **WHEN** user clicks "AI 逐线评析"
 - **THEN** `useOpponentMatchup.runCommentary` fetches partner notes for both teams and includes them in `POST /api/lineups/matchup-commentary` body
+
+---
+
+### Requirement: Opponent analysis uses dropdown selection only
+系统 SHALL 通过 4 个下拉选择构造对手分析输入：
+1. 我方队伍（team list）
+2. 我方排阵（所选队伍的已保存排阵）
+3. 对手队伍（所有队伍列表）
+4. 对手排阵（所选对手队伍的已保存排阵）
+
+文本输入对手阵容的方式 SHALL 被移除。对手队伍必须是系统内已存在的队伍，并且至少保存过一条排阵才能被选择分析。
+
+#### Scenario: 选择我方队伍后加载排阵
+- **WHEN** 用户选择我方队伍下拉
+- **THEN** 我方排阵下拉选项更新为该队的已保存排阵列表
+
+#### Scenario: 选择对手队伍后加载其排阵
+- **WHEN** 用户选择对手队伍下拉
+- **THEN** 对手排阵下拉选项更新为该队的已保存排阵列表
+
+#### Scenario: 对手队伍无排阵时
+- **WHEN** 所选对手队伍没有任何已保存排阵
+- **THEN** 对手排阵下拉显示禁用状态，文字"该队伍暂无排阵，请先添加"；「开始分析」按钮禁用
+
+#### Scenario: 选定后即时显示两边预览
+- **WHEN** 我方排阵和对手排阵都已选择
+- **THEN** 表单下方显示两个预览卡片：
+       - 我方预览（白色背景，绿色边框调）D1-D4 球员配对
+       - 对手预览（浅红色 `bg-red-50`，红色边框 `border-red-200`）D1-D4 球员配对
+       每对包含两名球员，每人一行：`[性别] 姓名`
+
+---
+
+### Requirement: Opponent analysis result page mobile layout
+系统 SHALL 在分析结果页顶部显示整体胜率卡（大号百分比 + 我方胜负预测），然后每条线（D1-D4）独立卡片，每个卡片显示：pos 标签 + 胜率百分比（绿/橙/红色）+ 左右对战布局（我方左/vs/对手右）+ 胜率进度条。胜率 < 50% 的线边框为橙色并显示 ⚠️ 警示，下方附加黄色建议框。底部显示 AI 综合点评（蓝色卡片）。
+
+#### Scenario: 整体胜率卡渲染
+- **WHEN** 分析完成
+- **THEN** 顶部绿色渐变卡显示总胜率大字 + "我方 N 胜 M 负"预测
+
+#### Scenario: 每线胜率显示
+- **WHEN** 渲染每条线卡片
+- **THEN** pos 标签 + 数字百分比 + 进度条；颜色规则：
+       - >= 60% → 绿色 `text-emerald-600` + 绿色进度条
+       - 50-60% → 橙色 `text-amber-600` + 橙色进度条
+       - < 50% → 红色 `text-red-600` + 红色进度条 + 橙色卡片边框 + ⚠️ 警示图标 + 黄色建议框
+
+#### Scenario: AI 点评显示
+- **WHEN** 服务端返回 AI 点评文本
+- **THEN** 页面底部蓝色卡 `bg-blue-50 border-blue-200` 显示点评文字，前缀 "💡 AI 综合点评"

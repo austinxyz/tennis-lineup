@@ -60,6 +60,6 @@
 
 ## 8. 部署
 
-- [ ] 8.1 提交 commit：`feat(mobile): responsive mobile UI optimization`
-- [ ] 8.2 部署 fly.io：`flyctl deploy`
-- [ ] 8.3 生产验证（Mobile Safari / Chrome Mobile）
+- [x] 8.1 提交 commit：`9945add feat(mobile): OpponentAnalysis two-tab result layout + E2E fixes`（另含前置 commit: 2e336bb/9b72168/cfdf113/dafe679/c3bba9c/7b59939/ba27811）
+- [x] 8.2 部署 fly.io：`flyctl deploy` → `deployment-01KPKH2XZZQF4FD52P0E4SR6T2`（rolling update, machine e82703da396978 healthy）
+- [x] 8.3 生产 smoke-test：`https://tennis-lineup.fly.dev/` 返回 200，`/api/teams` 返回 200（Mobile 浏览器手动验收由用户执行）

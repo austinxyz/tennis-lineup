@@ -267,6 +267,11 @@ rules:
     - 前端测试用 Vitest + @vue/test-utils，参考已有测试文件风格
     - 新增用户可见流程须添加对应 E2E 测试任务（Playwright，在 frontend/e2e/tests/ 下新建或扩展 spec 文件）
     - 新增 API 端点须同步更新 docs/api.md
+    - 修改 Java 代码后须包含"重启后端"步骤（Spring Boot 不热加载，旧 bytecode 会被 GlobalExceptionHandler 掩盖成 INTERNAL_ERROR）
+    - 引入 mobile/desktop 双份渲染（`lg:hidden` + `hidden lg:block`）时，desktop 容器必须加 `data-testid`（如 `desktop-result-grid`），避免 E2E `.first()` 误命中隐藏副本
+    - 改动 Service 层状态的功能须审查是否存在 TOCTOU：跨 `readData`/`writeData` 的非原子组合必须改用 `JsonRepository.updateData(UnaryOperator<TeamData>)`
+    - 部署任务须包含生产 smoke test：`GET https://tennis-lineup.fly.dev/` 与 `GET /api/teams` 均返回 200
+    - OpenSpec 归档前须运行 `openspec-sync-specs`，把 delta specs 合入 `openspec/specs/<capability>/spec.md`，而非只把 change 文件夹移走
   api:
     - Follow RESTful conventions
     - 错误响应格式：{ code, message, details }，参见 GlobalExceptionHandler
