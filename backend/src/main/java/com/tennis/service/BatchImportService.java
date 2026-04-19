@@ -195,7 +195,7 @@ public class BatchImportService {
         for (Player player : players) {
             try {
                 playerService.addPlayer(teamId, player.getName(), player.getGender(),
-                                    player.getUtr(), null, player.getVerified(), null, null, null);
+                                    player.getUtr(), null, player.getVerified(), null, null, player.getUtr());
                 successCount++;
             } catch (Exception e) {
                 errors.add("导入失败: " + e.getMessage());

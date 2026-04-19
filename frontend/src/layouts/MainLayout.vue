@@ -23,7 +23,7 @@
     </aside>
 
     <!-- Main content -->
-    <div class="flex-1 flex flex-col overflow-hidden pt-14 lg:pt-0">
+    <div class="flex-1 flex flex-col overflow-y-auto pt-14 lg:pt-0">
       <router-view/>
     </div>
   </div>
