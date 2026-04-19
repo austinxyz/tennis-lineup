@@ -306,38 +306,39 @@ async function handleDelete(lineupId) {
 
 // ── Reorder ───────────────────────────────────────────────────────────────────
 
-async function handleMoveUp(index) {
-  if (index === 0) return
-  const current = lineups.value[index]
-  const previous = lineups.value[index - 1]
+/**
+ * Reassign sortOrder of every lineup to match its new display position.
+ * Robust against existing duplicate/unset sortOrder values (all 0 by default).
+ * Only PATCHes lineups whose sortOrder actually needs to change.
+ */
+async function applyNewOrder(newOrder) {
   updateError.value = null
   try {
-    await Promise.all([
-      updateLineup(teamId, current.id, { sortOrder: previous.sortOrder }),
-      updateLineup(teamId, previous.id, { sortOrder: current.sortOrder }),
-    ])
-    await fetchLineups(teamId)
+    await Promise.all(
+      newOrder.map((lineup, newIndex) =>
+        lineup.sortOrder === newIndex
+          ? Promise.resolve()
+          : updateLineup(teamId, lineup.id, { sortOrder: newIndex })
+      )
+    )
   } catch (err) {
     updateError.value = err.message || '排序更新失败，请重试'
-    await fetchLineups(teamId)
   }
+  await fetchLineups(teamId)
+}
+
+async function handleMoveUp(index) {
+  if (index === 0) return
+  const newOrder = [...lineups.value]
+  ;[newOrder[index - 1], newOrder[index]] = [newOrder[index], newOrder[index - 1]]
+  await applyNewOrder(newOrder)
 }
 
 async function handleMoveDown(index) {
   if (index === lineups.value.length - 1) return
-  const current = lineups.value[index]
-  const next = lineups.value[index + 1]
-  updateError.value = null
-  try {
-    await Promise.all([
-      updateLineup(teamId, current.id, { sortOrder: next.sortOrder }),
-      updateLineup(teamId, next.id, { sortOrder: current.sortOrder }),
-    ])
-    await fetchLineups(teamId)
-  } catch (err) {
-    updateError.value = err.message || '排序更新失败，请重试'
-    await fetchLineups(teamId)
-  }
+  const newOrder = [...lineups.value]
+  ;[newOrder[index], newOrder[index + 1]] = [newOrder[index + 1], newOrder[index]]
+  await applyNewOrder(newOrder)
 }
 
 // ── Edit mode ─────────────────────────────────────────────────────────────────
