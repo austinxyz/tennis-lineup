@@ -9,6 +9,7 @@ vi.mock('vue-router', () => ({
   useRoute: vi.fn(() => ({
     get params() { return mockRouteParams.value },
   })),
+  useRouter: vi.fn(() => ({ push: vi.fn() })),
   RouterView: { name: 'RouterView', template: '<div data-testid="router-view-outlet" />' },
 }))
 
@@ -16,6 +17,14 @@ vi.mock('../../components/TeamListPanel.vue', () => ({
   default: {
     name: 'TeamListPanel',
     template: '<div data-testid="team-list-panel" />',
+  },
+}))
+
+vi.mock('../../components/AppHeader.vue', () => ({
+  default: {
+    name: 'AppHeader',
+    props: ['title', 'backTo', 'backLabel'],
+    template: '<header data-testid="app-header" :data-title="title" />',
   },
 }))
 
@@ -93,5 +102,19 @@ describe('TeamManagerView mobile responsive behavior', () => {
     const listWrapper = wrapper.find('[data-testid="team-list-panel-wrapper"]')
     // Should have lg:block so it still appears on desktop even when hidden on mobile
     expect(listWrapper.classes()).toContain('lg:block')
+  })
+
+  it('renders AppHeader with "队伍列表" title when no team is selected', () => {
+    mockRouteParams.value = {}
+    const wrapper = mountView()
+    const header = wrapper.find('[data-testid="app-header"]')
+    expect(header.exists()).toBe(true)
+    expect(header.attributes('data-title')).toBe('队伍列表')
+  })
+
+  it('does not render AppHeader when a team is selected (TeamDetail provides its own)', () => {
+    mockRouteParams.value = { id: 'team-1' }
+    const wrapper = mountView()
+    expect(wrapper.find('[data-testid="app-header"]').exists()).toBe(false)
   })
 })

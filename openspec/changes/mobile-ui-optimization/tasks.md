@@ -38,14 +38,13 @@
 
 ## 6. 对手分析（最大改动）
 
-- [x] 6.1 移除对手文本输入区
-- [x] 6.2 新增 4 个下拉：我方队伍/排阵、对手队伍/排阵（互斥，不能选同一队伍）
-- [x] 6.3 队伍选择触发 `GET /api/teams/{id}/lineups`；错误通过 `lineupLoadError` 显示
-- [x] 6.4 对手队伍无排阵时下拉禁用 + "该队伍暂无排阵，请先添加"
-- [x] 6.5 即时预览：我方白底，对手红底（`bg-red-50`），每对两行球员 + 性别徽章
-- [x] 6.6-6.9 保留现有结果模板（`MatchupResult` + `aiRecommendation`），迁移到新 `v-if="result"` 区块
-- [x] 6.10 46 个单元测试（含 partner notes payload 正确性验证）
-- [x] 6.11 Bug 修复：`buildPartnerNotes` 读 `player1Notes`/`player2Notes`（原读不存在的 `p.notes`）；0.5 边界浮点友好
+- [x] 6.1 保留原有两种模式：**最佳三阵 (bestThree)** + **逐线对比 (headToHead)** + 模式切换 Tab
+- [x] 6.2 保留两种分析方式：**UTR match**（算法推荐） + **AI 推荐/点评**（on-demand 按钮）
+- [x] 6.3 最佳三阵：两列布局（UTR 最佳三阵 vs AI 推荐）保留
+- [x] 6.4 接入 AppHeader（标题=对手策略分析）；`pt-14 lg:pt-0` 让内容避开 fixed header
+- [x] 6.5 桌面 h2 `hidden lg:block` 保留；移动端 AppHeader 承担标题作用
+- [x] 6.6 原有下拉选择 + 即时预览 + partner notes + 错误处理保持不变
+- [x] 6.7 原有 24 个单元测试全部保留
 
 ## 7. 测试与验收
 
