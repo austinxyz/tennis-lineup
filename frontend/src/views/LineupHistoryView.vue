@@ -395,10 +395,10 @@ async function handleSwapUpdate(lineup, updatedLineup) {
     await updateLineup(teamId, lineup.id, { pairs: updatedLineup.pairs })
   } catch (err) {
     updateError.value = err.message || '互换保存失败，请重试'
-  } finally {
-    swapPanelVersion.value += 1
-    await fetchLineups(teamId)
   }
+  // Refresh FIRST, then bump key so SwapPanel remounts with the fresh lineup
+  await fetchLineups(teamId)
+  swapPanelVersion.value += 1
 }
 
 // ── Replace players ───────────────────────────────────────────────────────────
@@ -498,9 +498,9 @@ async function saveReplace(lineup) {
   updateError.value = null
   try {
     await updateLineup(teamId, lineup.id, { pairs: replacingPairs.value })
-    swapPanelVersion.value += 1  // force SwapPanel to remount with updated player data
     cancelReplace()
     await fetchLineups(teamId)
+    swapPanelVersion.value += 1  // remount SwapPanel AFTER fetch so it sees new pairs
   } catch (err) {
     updateError.value = err.message || '保存替换失败，请重试'
   }
