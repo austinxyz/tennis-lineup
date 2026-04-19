@@ -65,6 +65,14 @@ Examples:
 
 **ALWAYS restart backend after code changes** - The running Spring Boot server uses compiled bytecode. After modifying Java files, kill the current process and restart via `mvn spring-boot:run`. Code changes are NOT hot-reloaded. Every OpenSpec task list MUST include a "restart backend" step after implementation.
 
+**Running backend silently serves old code** - If a new endpoint returns 500 or 404 unexpectedly after implementation, the backend is almost certainly running old compiled bytecode. The GlobalExceptionHandler converts unhandled Spring exceptions (e.g. `NoHandlerFoundException`) into `{"code":"INTERNAL_ERROR"}` — this looks like a bug but is actually a stale-process symptom. Fix: kill all Java processes and restart.
+
+```bash
+# Windows: kill backend and restart
+powershell -Command "Get-Process java | Stop-Process -Force"
+cd backend && JAVA_TOOL_OPTIONS="-Dfile.encoding=UTF-8 -Xmx384m -XX:+UseG1GC" /c/Users/lorra/tools/apache-maven-3.9.6/bin/mvn spring-boot:run
+```
+
 ## Common Anti-Patterns
 
 ❌ **Don't**: Create comprehensive documentation in CLAUDE.md for every feature
