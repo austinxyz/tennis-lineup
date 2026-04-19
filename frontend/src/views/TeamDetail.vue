@@ -1,5 +1,9 @@
 <template>
-  <div v-if="team" class="p-6">
+  <div v-if="team">
+    <!-- Mobile top bar -->
+    <AppHeader :title="team?.name || '队伍详情'" back-to="/" back-label="队伍" />
+
+    <div class="p-6">
     <!-- Header -->
     <div class="flex justify-between items-center mb-6">
       <div>
@@ -90,8 +94,8 @@
         <p class="text-sm text-red-700">{{ bulkNotesError }}</p>
       </div>
 
-      <!-- Players Table -->
-      <div class="bg-white rounded-lg shadow overflow-hidden">
+      <!-- Players Table (desktop) -->
+      <div class="hidden lg:block bg-white rounded-lg shadow overflow-hidden">
         <table class="min-w-full divide-y divide-gray-200">
           <thead class="bg-gray-50">
             <tr>
@@ -254,8 +258,64 @@
           </tbody>
         </table>
       </div>
+
+      <!-- Mobile player cards -->
+      <div class="lg:hidden px-4 py-3 space-y-2">
+        <div
+          v-for="player in sortedPlayers"
+          :key="player.id"
+          data-testid="player-card-mobile"
+          role="button"
+          tabindex="0"
+          :aria-expanded="expandedPlayerId === player.id"
+          @click="toggleExpand(player.id)"
+          @keydown.enter.prevent="toggleExpand(player.id)"
+          @keydown.space.prevent="toggleExpand(player.id)"
+          class="bg-white border border-gray-200 rounded-lg p-3 cursor-pointer transition-colors"
+          :class="{ 'bg-green-50 border-green-200': expandedPlayerId === player.id }"
+        >
+          <div class="flex items-center gap-2">
+            <span
+              data-testid="gender-tag"
+              class="text-xs font-bold px-1.5 py-0.5 rounded"
+              :class="player.gender === 'female' ? 'bg-pink-100 text-pink-700' : 'bg-blue-100 text-blue-700'"
+            >{{ player.gender === 'female' ? '女' : '男' }}</span>
+            <span class="font-semibold flex-1 text-gray-900">{{ player.name }}</span>
+            <div class="text-right text-xs">
+              <div class="text-gray-600">
+                UTR {{ Number(player.utr).toFixed(2) }}
+                <span v-if="player.verified" class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 ml-0.5" title="Verified"></span>
+              </div>
+              <div
+                v-if="player.actualUtr != null && player.actualUtr !== player.utr"
+                class="text-amber-500 font-semibold"
+              >实:{{ player.actualUtr.toFixed(2) }}</div>
+            </div>
+            <span class="text-gray-400 text-xs ml-1">{{ expandedPlayerId === player.id ? '▾' : '▸' }}</span>
+          </div>
+
+          <div
+            v-if="expandedPlayerId === player.id"
+            data-testid="player-card-detail"
+            class="mt-2 pt-2 border-t border-green-200 text-xs text-gray-600 space-y-1"
+            @click.stop
+          >
+            <div v-if="player.verifiedDoublesUtr != null">
+              <span class="text-gray-400">Verified Doubles:</span>
+              {{ player.verifiedDoublesUtr.toFixed(2) }} ✓
+            </div>
+            <div><span class="text-gray-400">性别:</span> {{ player.gender === 'female' ? '女' : '男' }}</div>
+            <div v-if="player.notes" class="bg-white p-2 rounded">📝 {{ player.notes }}</div>
+            <div class="flex gap-2 mt-2">
+              <button @click="editPlayer(player)" type="button" class="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-100">编辑</button>
+              <button @click="confirmDeletePlayer(player)" type="button" class="px-2 py-1 text-xs border border-red-200 rounded text-red-600 hover:bg-red-50">删除</button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
+    </div><!-- end .p-6 -->
     <!-- Add/Edit Player Modal -->
     <div v-if="showAddPlayerModal || editingPlayer" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
       <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
@@ -321,6 +381,7 @@ import { useTeams } from '../composables/useTeams'
 import { usePlayers } from '../composables/usePlayers'
 import { usePartnerNotes } from '../composables/usePartnerNotes'
 import PlayerPartnerNotesRow from '../components/PlayerPartnerNotesRow.vue'
+import AppHeader from '../components/AppHeader.vue'
 
 const route = useRoute()
 const teamId = route.params.id

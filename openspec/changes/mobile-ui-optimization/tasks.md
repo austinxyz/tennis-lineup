@@ -8,11 +8,11 @@
 
 ## 2. 队伍管理 & 队伍详情
 
-- [ ] 2.1 修改 `src/views/TeamManagerView.vue` — Mobile 根据 `route.params.id` 二选一显示 TeamListPanel / TeamDetail；桌面保留两栏
-- [ ] 2.2 修改 `src/views/TeamDetail.vue` — 新增 Mobile 卡片视图（`lg:hidden`），桌面保留现有表格（`hidden lg:block`）
-- [ ] 2.3 Mobile 球员卡片行：`[性别] 姓名 UTR[●Verified] 实:UTR ▸`，点击展开 Verified Doubles + 性别全称 + Notes + [编辑][删除]
-- [ ] 2.4 单元测试 `TeamDetail.test.js` 补充：Mobile 视图渲染、行展开/折叠、展开后显示详情字段
-- [ ] 2.5 单元测试 `TeamManagerView.test.js`：Mobile 下根据路由显示列表或详情
+- [x] 2.1 修改 `src/views/TeamManagerView.vue` — Mobile 根据 `route.params.id` 二选一显示 TeamListPanel / TeamDetail；桌面保留两栏
+- [x] 2.2 修改 `src/views/TeamDetail.vue` — 新增 Mobile 卡片视图（`lg:hidden`），桌面保留现有表格（`hidden lg:block`）
+- [x] 2.3 Mobile 球员卡片行：`[性别] 姓名 UTR[●Verified] 实:UTR ▸`，点击/Enter/Space 展开 Verified Doubles + 性别全称 + Notes + [编辑][删除]；role=button + tabindex 支持键盘
+- [x] 2.4 单元测试 `TeamDetail.test.js` 补充：Mobile 视图渲染、行展开/折叠、键盘操作、click.stop 行为、空列表（共 14 个新测试）
+- [x] 2.5 单元测试 `TeamManagerView.test.js`：Mobile 下根据路由显示列表或详情（6 个测试）
 
 ## 3. LineupCard 重构（影响三页）
 

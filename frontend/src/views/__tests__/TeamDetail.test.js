@@ -3,6 +3,15 @@ import { mount } from '@vue/test-utils'
 import { ref } from 'vue'
 import TeamDetail from '../TeamDetail.vue'
 
+// ── Stub AppHeader to avoid inject/router issues ───────────────────────────────
+vi.mock('../../components/AppHeader.vue', () => ({
+  default: {
+    name: 'AppHeader',
+    props: ['title', 'backTo', 'backLabel'],
+    template: '<header data-testid="app-header">{{ title }}<slot name="actions"/></header>',
+  },
+}))
+
 // ── Shared mock state ──────────────────────────────────────────────────────────
 const mockTeam = ref(null)
 const mockTeamsLoading = ref(false)
@@ -443,5 +452,154 @@ describe('TeamDetail', () => {
     await wrapper.vm.$nextTick()
     expect(wrapper.text()).toContain('以下球员更新失败')
     expect(wrapper.text()).toContain('服务器错误')
+  })
+})
+
+// ── TeamDetail mobile card view ────────────────────────────────────────────────
+describe('TeamDetail mobile card view', () => {
+  const twoPlayers = [
+    { id: 'p1', name: 'Alice', gender: 'female', utr: 8.5, actualUtr: null, verified: true, notes: null, profileUrl: null },
+    { id: 'p2', name: 'Bob', gender: 'male', utr: 7.0, actualUtr: null, verified: false, notes: '主力球员', profileUrl: null },
+  ]
+
+  beforeEach(() => {
+    mockTeam.value = sampleTeam
+    mockPlayers.value = twoPlayers
+  })
+
+  it('renders mobile player card for each player', () => {
+    const wrapper = mountDetail()
+    const cards = wrapper.findAll('[data-testid="player-card-mobile"]')
+    expect(cards.length).toBe(2)
+  })
+
+  it('shows pink gender tag "女" for female player', () => {
+    const wrapper = mountDetail()
+    // Find all gender tags
+    const genderTags = wrapper.findAll('[data-testid="gender-tag"]')
+    // Alice is female — find the one with '女'
+    const femaleTags = genderTags.filter(t => t.text() === '女')
+    expect(femaleTags.length).toBeGreaterThan(0)
+    expect(femaleTags[0].classes()).toContain('bg-pink-100')
+    expect(femaleTags[0].classes()).toContain('text-pink-700')
+  })
+
+  it('shows blue gender tag "男" for male player', () => {
+    const wrapper = mountDetail()
+    const genderTags = wrapper.findAll('[data-testid="gender-tag"]')
+    const maleTags = genderTags.filter(t => t.text() === '男')
+    expect(maleTags.length).toBeGreaterThan(0)
+    expect(maleTags[0].classes()).toContain('bg-blue-100')
+    expect(maleTags[0].classes()).toContain('text-blue-700')
+  })
+
+  it('shows actual UTR only when different from utr', () => {
+    mockPlayers.value = [
+      { id: 'p1', name: 'Alice', gender: 'female', utr: 8.5, actualUtr: 8.5, verified: true, notes: null, profileUrl: null },
+      { id: 'p2', name: 'Bob', gender: 'male', utr: 7.0, actualUtr: 9.0, verified: false, notes: null, profileUrl: null },
+    ]
+    const wrapper = mountDetail()
+    // Only Bob has a different actualUtr — one "实:" marker expected
+    const text = wrapper.html()
+    // Count occurrences of '实:' in the mobile card section
+    const matches = text.match(/实:/g) ?? []
+    expect(matches.length).toBe(1)
+  })
+
+  it('clicking a mobile player card expands details and shows notes', async () => {
+    mockPlayers.value = [
+      { id: 'p2', name: 'Bob', gender: 'male', utr: 7.0, actualUtr: null, verified: false, notes: '主力球员', profileUrl: null },
+    ]
+    const wrapper = mountDetail()
+    const card = wrapper.find('[data-testid="player-card-mobile"]')
+    await card.trigger('click')
+    const detail = wrapper.find('[data-testid="player-card-detail"]')
+    expect(detail.exists()).toBe(true)
+    expect(detail.text()).toContain('主力球员')
+  })
+
+  it('clicking an expanded card collapses it', async () => {
+    mockPlayers.value = [
+      { id: 'p2', name: 'Bob', gender: 'male', utr: 7.0, actualUtr: null, verified: false, notes: '主力球员', profileUrl: null },
+    ]
+    const wrapper = mountDetail()
+    const card = wrapper.find('[data-testid="player-card-mobile"]')
+    // Expand
+    await card.trigger('click')
+    expect(wrapper.find('[data-testid="player-card-detail"]').exists()).toBe(true)
+    // Collapse
+    await card.trigger('click')
+    expect(wrapper.find('[data-testid="player-card-detail"]').exists()).toBe(false)
+  })
+
+  it('mobile card container has lg:hidden class so desktop is not affected', () => {
+    const wrapper = mountDetail()
+    const card = wrapper.find('[data-testid="player-card-mobile"]')
+    expect(card.exists()).toBe(true)
+    const container = card.element.parentElement
+    expect(container.className).toContain('lg:hidden')
+  })
+
+  it('AppHeader is rendered with team name as title', () => {
+    const wrapper = mountDetail()
+    const header = wrapper.find('[data-testid="app-header"]')
+    expect(header.exists()).toBe(true)
+    expect(header.text()).toContain('Ace Squad')
+  })
+
+  it('mobile card has role=button and tabindex for keyboard access', () => {
+    const wrapper = mountDetail()
+    const card = wrapper.find('[data-testid="player-card-mobile"]')
+    expect(card.attributes('role')).toBe('button')
+    expect(card.attributes('tabindex')).toBe('0')
+  })
+
+  it('mobile card expands on Enter key', async () => {
+    mockPlayers.value = [
+      { id: 'p1', name: 'Alice', gender: 'female', utr: 8.5, actualUtr: null, verified: true, notes: 'test note', profileUrl: null },
+    ]
+    const wrapper = mountDetail()
+    const card = wrapper.find('[data-testid="player-card-mobile"]')
+    await card.trigger('keydown', { key: 'Enter' })
+    expect(wrapper.find('[data-testid="player-card-detail"]').exists()).toBe(true)
+  })
+
+  it('mobile card expands on Space key', async () => {
+    mockPlayers.value = [
+      { id: 'p1', name: 'Alice', gender: 'female', utr: 8.5, actualUtr: null, verified: true, notes: null, profileUrl: null },
+    ]
+    const wrapper = mountDetail()
+    const card = wrapper.find('[data-testid="player-card-mobile"]')
+    await card.trigger('keydown', { key: ' ' })
+    expect(wrapper.find('[data-testid="player-card-detail"]').exists()).toBe(true)
+  })
+
+  it('card detail @click.stop prevents card collapse when clicking inside detail', async () => {
+    mockPlayers.value = [
+      { id: 'p1', name: 'Alice', gender: 'female', utr: 8.5, actualUtr: null, verified: true, notes: 'note', profileUrl: null },
+    ]
+    const wrapper = mountDetail()
+    const card = wrapper.find('[data-testid="player-card-mobile"]')
+    await card.trigger('click')
+    expect(wrapper.find('[data-testid="player-card-detail"]').exists()).toBe(true)
+    // Click inside the detail area — should NOT collapse the card
+    const detail = wrapper.find('[data-testid="player-card-detail"]')
+    await detail.trigger('click')
+    expect(wrapper.find('[data-testid="player-card-detail"]').exists()).toBe(true)
+  })
+
+  it('shows empty player list gracefully (no cards rendered)', () => {
+    mockPlayers.value = []
+    const wrapper = mountDetail()
+    const cards = wrapper.findAll('[data-testid="player-card-mobile"]')
+    expect(cards.length).toBe(0)
+  })
+
+  it('AppHeader shows fallback title when team name is absent', () => {
+    mockTeam.value = { ...sampleTeam, name: undefined }
+    const wrapper = mountDetail()
+    const header = wrapper.find('[data-testid="app-header"]')
+    expect(header.exists()).toBe(true)
+    expect(header.text()).toContain('队伍详情')
   })
 })
