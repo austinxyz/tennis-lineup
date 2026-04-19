@@ -31,5 +31,5 @@
 
 ## 6. 发布
 
-- [ ] 6.1 提交代码：`feat(lineup): add export/import for saved lineups`
+- [x] 6.1 提交代码：`feat(lineup): add export/import for saved lineups`
 - [ ] 6.2 部署到 fly.io：`flyctl deploy`

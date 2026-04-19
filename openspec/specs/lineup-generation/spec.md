@@ -73,9 +73,25 @@ The system SHALL use a two-level algorithm to generate lineup candidates:
 
 **Level 2 — Pair-level backtracking within each subset:** All valid pairs (partner UTR gap ≤ 3.5) are generated and sorted by combined UTR descending. Without pin constraints, only the top-20 pairs are considered for the first two pair slots (which become D1/D2 after UTR-based position assignment); all pairs are used for the remaining slots. With pin constraints, all pairs are used for every slot to ensure pinned-pair combinations are never missed. Positions D1–D4 are assigned in descending combined UTR order after all 4 pairs are selected.
 
+**Candidate pool expansion and actualUtr re-ranking:** After constraint validation, the algorithm collects up to 100 valid lineup candidates (instead of stopping at 6). All candidates are then sorted by `actualUtrSum` (sum of each player's effective actualUtr — `actualUtr ?? utr` — across all 8 players) descending. The top 6 from this re-ranked list are returned. Hard constraints (total UTR cap, ordering, gap, gender, verified) continue to use official `utr` values throughout.
+
 #### Scenario: Primary sort: candidates closest to 40.5 ranked first
 - **WHEN** multiple valid candidates exist
-- **THEN** candidates SHALL be sorted by `40.5 - totalUtr` ascending (candidates closest to the 40.5 cap rank higher) before strategy-specific secondary sorting is applied
+- **THEN** candidates SHALL be sorted by `40.5 - totalUtr` ascending (candidates closest to the 40.5 cap rank higher) before actualUtr re-ranking is applied
+
+#### Scenario: actualUtrSum secondary ranking applied after candidate pool collection
+- **WHEN** more than 6 valid candidates are found (up to 100)
+- **THEN** candidates SHALL be re-ranked by `actualUtrSum` descending before the top 6 are selected
+- **THEN** a lineup with lower official `totalUtr` but higher `actualUtrSum` MAY rank above one with higher `totalUtr`
+
+#### Scenario: actualUtrSum uses effective actualUtr fallback
+- **WHEN** a player has `actualUtr: null`
+- **THEN** `utr` is used as the effective actualUtr for `actualUtrSum` calculation
+
+#### Scenario: No actualUtr set for any player — ranking unchanged
+- **WHEN** all players have `actualUtr: null`
+- **THEN** `actualUtrSum` equals `totalUtr` for every candidate
+- **THEN** final ranking is equivalent to the pre-change proximity-to-40.5 ranking (no observable change for users without actualUtr data)
 
 #### Scenario: 8-player team produces combinations within 5 seconds
 - **WHEN** a team has exactly 8 eligible players
