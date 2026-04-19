@@ -21,28 +21,55 @@
 
     <!-- Pairs -->
     <div class="divide-y divide-gray-50">
-      <div
-        v-for="pair in sortedPairs"
-        :key="pair.position"
-        class="px-5 py-3 flex items-center gap-4"
-      >
-        <span class="w-8 text-xs font-bold text-green-600">{{ pair.position }}</span>
-        <div class="flex-1 text-sm text-gray-800">
-          <template v-if="showPlayerUtr">
-            <span v-if="pair.player1Gender" :class="pair.player1Gender === 'female' ? 'text-pink-500' : 'text-blue-500'" class="text-xs font-semibold mr-0.5">{{ pair.player1Gender === 'female' ? '女' : '男' }}</span>{{ pair.player1Name }} ({{ pair.player1Utr ?? '—' }}<template v-if="pair.player1ActualUtr != null"> / <span class="text-orange-500 text-xs">实:{{ pair.player1ActualUtr.toFixed(2) }}</span></template>)
-            /
-            <span v-if="pair.player2Gender" :class="pair.player2Gender === 'female' ? 'text-pink-500' : 'text-blue-500'" class="text-xs font-semibold mr-0.5">{{ pair.player2Gender === 'female' ? '女' : '男' }}</span>{{ pair.player2Name }} ({{ pair.player2Utr ?? '—' }}<template v-if="pair.player2ActualUtr != null"> / <span class="text-orange-500 text-xs">实:{{ pair.player2ActualUtr.toFixed(2) }}</span></template>)
-          </template>
-          <template v-else>
+      <template v-if="showPlayerUtr">
+        <div
+          v-for="pair in sortedPairs"
+          :key="pair.position"
+          class="px-4 py-2.5 grid grid-cols-[36px_1fr_auto] gap-3 items-start border-t border-gray-50 first:border-t-0"
+        >
+          <span class="text-xs font-bold text-green-600 pt-1">{{ pair.position }}</span>
+          <div class="space-y-1 min-w-0">
+            <div
+              v-for="slot in [1, 2]"
+              :key="slot"
+              data-testid="pair-player-row"
+              class="flex items-center gap-2 text-sm min-w-0"
+            >
+              <span
+                v-if="pair[`player${slot}Gender`]"
+                data-testid="gender-tag"
+                class="text-xs font-bold px-1.5 py-0.5 rounded flex-shrink-0"
+                :class="pair[`player${slot}Gender`] === 'female' ? 'bg-pink-100 text-pink-700' : 'bg-blue-100 text-blue-700'"
+              >{{ pair[`player${slot}Gender`] === 'female' ? '女' : '男' }}</span>
+              <span class="font-semibold text-gray-900 flex-1 truncate">{{ pair[`player${slot}Name`] }}</span>
+              <span class="text-xs text-gray-500">{{ pair[`player${slot}Utr`] ?? '—' }}</span>
+              <span
+                v-if="pair[`player${slot}ActualUtr`] != null && pair[`player${slot}ActualUtr`] !== pair[`player${slot}Utr`]"
+                class="text-xs text-amber-500 font-semibold"
+              >实:{{ pair[`player${slot}ActualUtr`].toFixed(2) }}</span>
+            </div>
+          </div>
+          <div class="text-right text-xs text-gray-500 pt-1 whitespace-nowrap">
+            <div>{{ pair.combinedUtr.toFixed(2) }}</div>
+            <div v-if="pairActualUtrSum(pair) !== null" class="text-xs text-amber-500">
+              实:{{ pairActualUtrSum(pair) }}
+            </div>
+          </div>
+        </div>
+      </template>
+      <template v-else>
+        <div
+          v-for="pair in sortedPairs"
+          :key="pair.position"
+          class="px-5 py-3 flex items-center gap-4"
+        >
+          <span class="w-8 text-xs font-bold text-green-600">{{ pair.position }}</span>
+          <div class="flex-1 text-sm text-gray-800">
             {{ pair.player1Name }} / {{ pair.player2Name }}
-          </template>
+          </div>
+          <span class="text-xs text-gray-500">{{ pair.combinedUtr.toFixed(2) }}</span>
         </div>
-        <div v-if="showPlayerUtr" class="text-right shrink-0">
-          <div class="text-xs text-gray-500">{{ pair.combinedUtr.toFixed(2) }}</div>
-          <div v-if="pair.player1ActualUtr != null || pair.player2ActualUtr != null" class="text-xs text-orange-500">实:{{ pairActualUtr(pair) }}</div>
-        </div>
-        <span v-else class="text-xs text-gray-500">{{ pair.combinedUtr.toFixed(2) }}</span>
-      </div>
+      </template>
     </div>
 
     <!-- Strategy footer -->
@@ -83,10 +110,13 @@ const props = defineProps({
 
 const positionOrder = ['D1', 'D2', 'D3', 'D4']
 
+// Defensive sort: unknown positions get sorted to the end instead of top.
 const sortedPairs = computed(() =>
-  [...props.lineup.pairs].sort(
-    (a, b) => positionOrder.indexOf(a.position) - positionOrder.indexOf(b.position)
-  )
+  [...props.lineup.pairs].sort((a, b) => {
+    const ai = positionOrder.indexOf(a.position)
+    const bi = positionOrder.indexOf(b.position)
+    return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi)
+  })
 )
 
 const totalUtr = computed(() => props.lineup.totalUtr?.toFixed(2) ?? '—')
@@ -95,9 +125,12 @@ const actualUtrSum = computed(() =>
   props.lineup.actualUtrSum?.toFixed(2) ?? props.lineup.totalUtr?.toFixed(2) ?? '—'
 )
 
-function pairActualUtr(pair) {
-  const a1 = pair.player1ActualUtr ?? pair.player1Utr ?? 0
-  const a2 = pair.player2ActualUtr ?? pair.player2Utr ?? 0
-  return (a1 + a2).toFixed(2)
+// Only sum non-null actualUtr values. Returns null when no player has actualUtr
+// (so the caller can hide the "实:" row entirely and avoid misleading
+// partial-sum values like "实:0.00" or mixing actual with scheduled UTR).
+function pairActualUtrSum(pair) {
+  const vals = [pair.player1ActualUtr, pair.player2ActualUtr].filter(v => v != null)
+  if (vals.length === 0) return null
+  return vals.reduce((s, v) => s + v, 0).toFixed(2)
 }
 </script>

@@ -16,11 +16,11 @@
 
 ## 3. LineupCard 重构（影响三页）
 
-- [ ] 3.1 修改 `src/components/LineupCard.vue` — 球员行改为每对两行（player1 上 / player2 下），每行 `[性别徽章] 姓名(加粗) UTR 实:UTR`
-- [ ] 3.2 性别徽章样式：女 `bg-pink-100 text-pink-700`，男 `bg-blue-100 text-blue-700`
-- [ ] 3.3 实际 UTR 只在非 null 且不等于 utr 时显示，橙色 `text-amber-500 font-semibold`
-- [ ] 3.4 Verified 绿点 `bg-emerald-500` inline 在 UTR 右侧
-- [ ] 3.5 单元测试 `LineupCard.test.js` 更新：验证每对两行结构、性别徽章、实际 UTR 显示逻辑
+- [x] 3.1 修改 `src/components/LineupCard.vue` — 球员行改为每对两行（player1 上 / player2 下），每行 `[性别徽章] 姓名(加粗) UTR 实:UTR`
+- [x] 3.2 性别徽章样式：女 `bg-pink-100 text-pink-700`，男 `bg-blue-100 text-blue-700`
+- [x] 3.3 实际 UTR 只在非 null 且不等于 utr 时显示，橙色 `text-amber-500 font-semibold`
+- [~] 3.4 Verified 绿点暂缓（本批次未实现，后续单独补）
+- [x] 3.5 单元测试 `LineupCard.test.js` 更新：2 行结构 + 性别徽章 + 实际 UTR 显示 + 部分空 actualUtr 场景（12 个新测试）
 
 ## 4. 已保存排阵
 
