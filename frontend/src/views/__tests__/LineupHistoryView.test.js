@@ -48,8 +48,13 @@ vi.mock('../../composables/useTeams', () => ({
 vi.mock('../../components/LineupCard.vue', () => ({
   default: {
     name: 'LineupCard',
-    props: ['lineup', 'showPlayerUtr'],
-    template: '<div data-testid="lineup-card">{{ lineup.id }}</div>',
+    props: ['lineup', 'showPlayerUtr', 'label', 'comment', 'preferred'],
+    template: `<div data-testid="lineup-card">
+      <span v-if="preferred" data-testid="preferred-badge">⭐ 首选</span>
+      <span data-testid="lineup-name">{{ label }}</span>
+      <span v-if="comment" data-testid="lineup-comment-view">{{ comment }}</span>
+      {{ lineup.id }}
+    </div>`,
   },
 }))
 

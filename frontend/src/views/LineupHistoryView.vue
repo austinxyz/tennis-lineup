@@ -33,52 +33,36 @@
       <div v-for="(lineup, index) in lineups" :key="lineup.id">
 
         <!-- ── VIEW CARD ──────────────────────────────────────── -->
-        <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div>
+          <!-- Lineup card (includes name/comment in header) -->
+          <LineupCard
+            :lineup="lineup"
+            :show-player-utr="true"
+            :label="lineup.label || lineup.strategy"
+            :comment="lineup.comment"
+            :preferred="index === 0"
+          />
 
-          <!-- Card header: badge + name + comment -->
-          <div class="px-4 pt-3 pb-2 border-b border-gray-100">
-            <div class="flex items-center gap-1.5 flex-wrap">
-              <span
-                v-if="index === 0"
-                data-testid="preferred-badge"
-                class="px-1.5 py-0.5 text-xs font-medium rounded-full bg-yellow-100 text-yellow-700"
-              >⭐ 首选</span>
-              <span
-                data-testid="lineup-name"
-                class="text-sm font-semibold text-gray-800"
-              >{{ lineup.label || lineup.strategy }}</span>
-            </div>
-            <p
-              v-if="lineup.comment"
-              data-testid="lineup-comment-view"
-              class="mt-1 text-xs text-gray-500 leading-relaxed"
-            >{{ lineup.comment }}</p>
-          </div>
-
-          <!-- Pairs (read-only) -->
-          <LineupCard :lineup="lineup" :show-player-utr="true" />
-
-          <!-- Validity -->
-          <div class="px-4 py-1.5 border-t border-gray-50">
-            <span
-              v-if="lineup.currentValid !== false"
-              class="inline-block px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-700"
-            >合法</span>
-            <span
-              v-else
-              class="inline-block px-2 py-0.5 text-xs font-medium rounded-full bg-red-100 text-red-600"
-            >已失效</span>
-            <ul
-              v-if="lineup.currentValid === false && lineup.currentViolations?.length"
-              class="mt-1 text-xs text-red-600 list-disc list-inside space-y-0.5"
-            >
+          <!-- Validity + violations -->
+          <div v-if="lineup.currentValid === false && lineup.currentViolations?.length" class="mt-1 px-1">
+            <ul class="text-xs text-red-600 list-disc list-inside space-y-0.5">
               <li v-for="(v, i) in lineup.currentViolations" :key="i">{{ v }}</li>
             </ul>
           </div>
 
-          <!-- Bottom bar: date · reorder · edit · delete -->
-          <div class="px-4 py-2 flex items-center justify-between border-t border-gray-100">
-            <span class="text-xs text-gray-400">{{ formatDate(lineup.createdAt) }}</span>
+          <!-- Bottom bar: validity badge · date · reorder · edit · delete -->
+          <div class="mt-1 px-1 flex items-center justify-between flex-wrap gap-2">
+            <div class="flex items-center gap-2">
+              <span
+                v-if="lineup.currentValid !== false"
+                class="px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-700"
+              >合法</span>
+              <span
+                v-else
+                class="px-2 py-0.5 text-xs font-medium rounded-full bg-red-100 text-red-600"
+              >已失效</span>
+              <span class="text-xs text-gray-400">{{ formatDate(lineup.createdAt) }}</span>
+            </div>
             <div class="flex items-center gap-1">
               <button
                 data-testid="move-up-btn"
