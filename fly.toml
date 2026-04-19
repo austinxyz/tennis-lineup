@@ -7,7 +7,7 @@ primary_region = "nrt"
   DATA_FILE_PATH    = "/data/tennis-data.json"
   CONFIG_FILE_PATH  = "/data/tennis-config.json"
   SERVER_PORT       = "8080"
-  JAVA_TOOL_OPTIONS = "-Dfile.encoding=UTF-8 -Xmx384m -XX:+UseG1GC -XX:MaxGCPauseMillis=200"
+  JAVA_TOOL_OPTIONS = "-Dfile.encoding=UTF-8"
 
 [http_service]
   internal_port = 8080
