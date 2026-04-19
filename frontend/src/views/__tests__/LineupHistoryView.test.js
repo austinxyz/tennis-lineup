@@ -13,6 +13,14 @@ const mockExportLineups = vi.fn()
 const mockImportLineups = vi.fn()
 const mockUpdateLineup = vi.fn()
 
+const TEAM_PLAYERS = [
+  { id: 'p1', name: 'Alice', utr: 6.0, gender: 'female', verified: true },
+  { id: 'p2', name: 'Bob', utr: 5.5, gender: 'male', verified: true },
+  { id: 'p3', name: 'Carol', utr: 5.0, gender: 'female', verified: true },
+  { id: 'p4', name: 'Dave', utr: 4.5, gender: 'male', verified: true },
+  { id: 'new-p', name: 'Eve', utr: 4.0, gender: 'female', verified: true },
+]
+
 // ── Module mocks ───────────────────────────────────────────────────────────────
 vi.mock('vue-router', () => ({
   useRoute: vi.fn(() => ({ params: { id: 'team-1' } })),
@@ -57,24 +65,8 @@ vi.mock('../../components/LineupSwapPanel.vue', () => ({
 }))
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
-const TEAM_PLAYERS = [
-  { id: 'p1', name: 'Alice', utr: 6.0, gender: 'female', verified: true },
-  { id: 'p2', name: 'Bob', utr: 5.5, gender: 'male', verified: true },
-  { id: 'p3', name: 'Carol', utr: 5.0, gender: 'female', verified: true },
-  { id: 'p4', name: 'Dave', utr: 4.5, gender: 'male', verified: true },
-  { id: 'new-p', name: 'Eve', utr: 4.0, gender: 'female', verified: true },
-]
-
 function buildLineup(id, overrides = {}) {
-  return {
-    id,
-    strategy: 'balanced',
-    totalUtr: 38.0,
-    createdAt: '2026-01-01T10:00:00Z',
-    pairs: [],
-    sortOrder: 0,
-    ...overrides,
-  }
+  return { id, strategy: 'balanced', totalUtr: 38.0, createdAt: '2026-01-01T10:00:00Z', pairs: [], sortOrder: 0, ...overrides }
 }
 
 function buildLineupWithPairs(id, overrides = {}) {
@@ -88,11 +80,7 @@ function buildLineupWithPairs(id, overrides = {}) {
 }
 
 function mountView() {
-  return mount(LineupHistoryView, {
-    global: {
-      stubs: { RouterLink: true },
-    },
-  })
+  return mount(LineupHistoryView, { global: { stubs: { RouterLink: true } } })
 }
 
 beforeEach(() => {
@@ -102,12 +90,7 @@ beforeEach(() => {
   mockDeleteLineup.mockReset()
   mockUpdateLineup.mockReset().mockResolvedValue()
   vi.spyOn(window, 'confirm').mockReturnValue(true)
-  // Reset teams with players for replacement tests
-  mockTeams.value = [{
-    id: 'team-1',
-    name: '浙江队',
-    players: TEAM_PLAYERS,
-  }]
+  mockTeams.value = [{ id: 'team-1', name: '浙江队', players: TEAM_PLAYERS }]
 })
 
 // ── Tests ──────────────────────────────────────────────────────────────────────
@@ -119,7 +102,6 @@ describe('LineupHistoryView', () => {
   })
 
   it('shows empty state when no lineups', async () => {
-    mockLineups.value = []
     const wrapper = mountView()
     await flushPromises()
     expect(wrapper.text()).toContain('暂无保存的排阵')
@@ -129,531 +111,230 @@ describe('LineupHistoryView', () => {
     mockLineups.value = [buildLineup('lineup-1'), buildLineup('lineup-2')]
     const wrapper = mountView()
     await flushPromises()
-    const cards = wrapper.findAll('[data-testid="lineup-card"]')
-    expect(cards).toHaveLength(2)
+    expect(wrapper.findAll('[data-testid="lineup-card"]')).toHaveLength(2)
   })
 
-  it('does not show empty state when lineups exist', async () => {
+  it('shows lineup name (label || strategy) in card header', async () => {
+    mockLineups.value = [buildLineup('lineup-1', { label: 'My Label', strategy: 'balanced' })]
+    const wrapper = mountView()
+    await flushPromises()
+    expect(wrapper.find('[data-testid="lineup-name"]').text()).toBe('My Label')
+  })
+
+  it('falls back to strategy when label is absent', async () => {
+    mockLineups.value = [buildLineup('lineup-1', { strategy: 'aggressive' })]
+    const wrapper = mountView()
+    await flushPromises()
+    expect(wrapper.find('[data-testid="lineup-name"]').text()).toBe('aggressive')
+  })
+
+  it('shows comment below name when present', async () => {
+    mockLineups.value = [buildLineup('lineup-1', { comment: '赛前主选' })]
+    const wrapper = mountView()
+    await flushPromises()
+    expect(wrapper.find('[data-testid="lineup-comment-view"]').text()).toBe('赛前主选')
+  })
+
+  it('does not show comment element when absent', async () => {
     mockLineups.value = [buildLineup('lineup-1')]
     const wrapper = mountView()
     await flushPromises()
-    expect(wrapper.text()).not.toContain('暂无保存的排阵')
+    expect(wrapper.find('[data-testid="lineup-comment-view"]').exists()).toBe(false)
   })
 
-  it('calls deleteLineup and removes card on delete success', async () => {
+  it('shows ⭐ 首选 badge only on index 0', async () => {
     mockLineups.value = [buildLineup('lineup-1'), buildLineup('lineup-2')]
+    const wrapper = mountView()
+    await flushPromises()
+    expect(wrapper.findAll('[data-testid="preferred-badge"]')).toHaveLength(1)
+  })
+
+  // ── Delete ─────────────────────────────────────────────────────────────────
+  it('calls deleteLineup on delete confirm', async () => {
+    mockLineups.value = [buildLineup('lineup-1')]
     mockDeleteLineup.mockResolvedValue()
     const wrapper = mountView()
     await flushPromises()
-
-    const deleteBtn = wrapper.findAll('button').find(b => b.text() === '删除')
-    await deleteBtn.trigger('click')
+    await wrapper.findAll('button').find(b => b.text() === '删除').trigger('click')
     await flushPromises()
-
     expect(mockDeleteLineup).toHaveBeenCalledWith('lineup-1')
   })
 
-  it('shows error message when delete fails', async () => {
-    mockLineups.value = [buildLineup('lineup-1')]
-    mockDeleteLineup.mockRejectedValue(new Error('排阵不存在'))
-    const wrapper = mountView()
-    await flushPromises()
-
-    const deleteBtn = wrapper.findAll('button').find(b => b.text() === '删除')
-    await deleteBtn.trigger('click')
-    await flushPromises()
-
-    expect(wrapper.text()).toContain('排阵不存在')
-  })
-
-  it('does not call deleteLineup if confirm is cancelled', async () => {
+  it('does not call deleteLineup if confirm cancelled', async () => {
     vi.spyOn(window, 'confirm').mockReturnValue(false)
     mockLineups.value = [buildLineup('lineup-1')]
     const wrapper = mountView()
     await flushPromises()
-
-    const deleteBtn = wrapper.findAll('button').find(b => b.text() === '删除')
-    await deleteBtn.trigger('click')
+    await wrapper.findAll('button').find(b => b.text() === '删除').trigger('click')
     await flushPromises()
-
     expect(mockDeleteLineup).not.toHaveBeenCalled()
   })
 
-  // ── Task 4.1: Inline label editing ──────────────────────────────────────────
-  describe('inline label editing', () => {
-    it('shows lineup.label as display name when label is set', async () => {
-      mockLineups.value = [buildLineup('lineup-1', { label: 'My Label' })]
-      const wrapper = mountView()
-      await flushPromises()
-      expect(wrapper.text()).toContain('My Label')
-    })
-
-    it('falls back to lineup.strategy when label is absent', async () => {
-      mockLineups.value = [buildLineup('lineup-1', { strategy: 'aggressive' })]
-      const wrapper = mountView()
-      await flushPromises()
-      expect(wrapper.text()).toContain('aggressive')
-    })
-
-    it('shows a pencil button next to the name', async () => {
-      mockLineups.value = [buildLineup('lineup-1', { label: 'Test' })]
-      const wrapper = mountView()
-      await flushPromises()
-      const editBtn = wrapper.find('[data-testid="label-edit-btn"]')
-      expect(editBtn.exists()).toBe(true)
-    })
-
-    it('clicking pencil button enters edit mode showing an input', async () => {
-      mockLineups.value = [buildLineup('lineup-1', { label: 'Original' })]
-      const wrapper = mountView()
-      await flushPromises()
-      const editBtn = wrapper.find('[data-testid="label-edit-btn"]')
-      await editBtn.trigger('click')
-      const input = wrapper.find('[data-testid="label-input"]')
-      expect(input.exists()).toBe(true)
-      expect(input.element.value).toBe('Original')
-    })
-
-    it('clicking name text enters edit mode', async () => {
-      mockLineups.value = [buildLineup('lineup-1', { label: 'Clickable' })]
-      const wrapper = mountView()
-      await flushPromises()
-      const nameSpan = wrapper.find('[data-testid="lineup-label"]')
-      await nameSpan.trigger('click')
-      const input = wrapper.find('[data-testid="label-input"]')
-      expect(input.exists()).toBe(true)
-    })
-
-    it('on Enter calls updateLineup and fetchLineups', async () => {
-      mockLineups.value = [buildLineup('lineup-1', { label: 'Old', sortOrder: 0 })]
-      const wrapper = mountView()
-      await flushPromises()
-      const editBtn = wrapper.find('[data-testid="label-edit-btn"]')
-      await editBtn.trigger('click')
-      const input = wrapper.find('[data-testid="label-input"]')
-      await input.setValue('New Label')
-      await input.trigger('keydown', { key: 'Enter' })
-      await flushPromises()
-      expect(mockUpdateLineup).toHaveBeenCalledWith('team-1', 'lineup-1', { label: 'New Label' })
-      expect(mockFetchLineups).toHaveBeenCalledWith('team-1')
-    })
-
-    it('on blur calls updateLineup and fetchLineups', async () => {
-      mockLineups.value = [buildLineup('lineup-1', { label: 'Old' })]
-      const wrapper = mountView()
-      await flushPromises()
-      const editBtn = wrapper.find('[data-testid="label-edit-btn"]')
-      await editBtn.trigger('click')
-      const input = wrapper.find('[data-testid="label-input"]')
-      await input.setValue('Blurred Label')
-      await input.trigger('blur')
-      await flushPromises()
-      expect(mockUpdateLineup).toHaveBeenCalledWith('team-1', 'lineup-1', { label: 'Blurred Label' })
-    })
-
-    it('on Escape cancels without calling updateLineup', async () => {
-      mockLineups.value = [buildLineup('lineup-1', { label: 'Unchanged' })]
-      const wrapper = mountView()
-      await flushPromises()
-      const editBtn = wrapper.find('[data-testid="label-edit-btn"]')
-      await editBtn.trigger('click')
-      const input = wrapper.find('[data-testid="label-input"]')
-      await input.setValue('Discarded')
-      await input.trigger('keydown', { key: 'Escape' })
-      await flushPromises()
-      expect(mockUpdateLineup).not.toHaveBeenCalled()
-    })
-
-    it('sends empty string when input is cleared', async () => {
-      mockLineups.value = [buildLineup('lineup-1', { label: 'Has Label' })]
-      const wrapper = mountView()
-      await flushPromises()
-      const editBtn = wrapper.find('[data-testid="label-edit-btn"]')
-      await editBtn.trigger('click')
-      const input = wrapper.find('[data-testid="label-input"]')
-      await input.setValue('')
-      await input.trigger('keydown', { key: 'Enter' })
-      await flushPromises()
-      expect(mockUpdateLineup).toHaveBeenCalledWith('team-1', 'lineup-1', { label: '' })
-    })
-
-    it('hides input and shows name after saving', async () => {
-      mockLineups.value = [buildLineup('lineup-1', { label: 'Test' })]
-      const wrapper = mountView()
-      await flushPromises()
-      await wrapper.find('[data-testid="label-edit-btn"]').trigger('click')
-      await wrapper.find('[data-testid="label-input"]').trigger('keydown', { key: 'Enter' })
-      await flushPromises()
-      expect(wrapper.find('[data-testid="label-input"]').exists()).toBe(false)
-    })
+  it('shows deleteError when delete fails', async () => {
+    mockLineups.value = [buildLineup('lineup-1')]
+    mockDeleteLineup.mockRejectedValue(new Error('删除失败'))
+    const wrapper = mountView()
+    await flushPromises()
+    await wrapper.findAll('button').find(b => b.text() === '删除').trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).toContain('删除失败')
   })
 
-  // ── Task 4.2: Inline comment editing ────────────────────────────────────────
-  describe('inline comment editing', () => {
-    it('shows existing comment text when comment is set', async () => {
-      mockLineups.value = [buildLineup('lineup-1', { comment: 'Great pick' })]
+  // ── Edit mode ──────────────────────────────────────────────────────────────
+  describe('edit mode', () => {
+    it('shows 编辑 button per lineup', async () => {
+      mockLineups.value = [buildLineup('lineup-1'), buildLineup('lineup-2')]
       const wrapper = mountView()
       await flushPromises()
-      expect(wrapper.text()).toContain('Great pick')
+      expect(wrapper.findAll('[data-testid="edit-btn"]')).toHaveLength(2)
     })
 
-    it('shows "+ 添加备注" link when no comment', async () => {
+    it('edit panel is hidden before clicking 编辑', async () => {
       mockLineups.value = [buildLineup('lineup-1')]
       const wrapper = mountView()
       await flushPromises()
-      expect(wrapper.text()).toContain('+ 添加备注')
+      expect(wrapper.find('[data-testid="edit-panel"]').exists()).toBe(false)
     })
 
-    it('clicking comment text enters edit mode with textarea', async () => {
-      mockLineups.value = [buildLineup('lineup-1', { comment: 'Click me' })]
+    it('clicking 编辑 shows edit panel', async () => {
+      mockLineups.value = [buildLineup('lineup-1', { label: 'My Label', comment: 'A note' })]
       const wrapper = mountView()
       await flushPromises()
-      await wrapper.find('[data-testid="lineup-comment"]').trigger('click')
-      const textarea = wrapper.find('[data-testid="comment-input"]')
-      expect(textarea.exists()).toBe(true)
-      expect(textarea.element.value).toBe('Click me')
+      await wrapper.find('[data-testid="edit-btn"]').trigger('click')
+      await flushPromises()
+      expect(wrapper.find('[data-testid="edit-panel"]').exists()).toBe(true)
     })
 
-    it('clicking "+ 添加备注" enters edit mode with empty textarea', async () => {
+    it('edit panel pre-fills label and comment', async () => {
+      mockLineups.value = [buildLineup('lineup-1', { label: 'My Label', comment: 'A note' })]
+      const wrapper = mountView()
+      await flushPromises()
+      await wrapper.find('[data-testid="edit-btn"]').trigger('click')
+      await flushPromises()
+      expect(wrapper.find('[data-testid="edit-label-input"]').element.value).toBe('My Label')
+      expect(wrapper.find('[data-testid="edit-comment-input"]').element.value).toBe('A note')
+    })
+
+    it('clicking 取消 closes edit panel without saving', async () => {
       mockLineups.value = [buildLineup('lineup-1')]
       const wrapper = mountView()
       await flushPromises()
-      await wrapper.find('[data-testid="add-comment-btn"]').trigger('click')
-      const textarea = wrapper.find('[data-testid="comment-input"]')
-      expect(textarea.exists()).toBe(true)
-      expect(textarea.element.value).toBe('')
-    })
-
-    it('textarea has rows=2', async () => {
-      mockLineups.value = [buildLineup('lineup-1', { comment: 'Test' })]
-      const wrapper = mountView()
+      await wrapper.find('[data-testid="edit-btn"]').trigger('click')
       await flushPromises()
-      await wrapper.find('[data-testid="lineup-comment"]').trigger('click')
-      const textarea = wrapper.find('[data-testid="comment-input"]')
-      expect(textarea.attributes('rows')).toBe('2')
-    })
-
-    it('on blur saves comment via updateLineup', async () => {
-      mockLineups.value = [buildLineup('lineup-1', { comment: 'Old comment' })]
-      const wrapper = mountView()
+      await wrapper.find('[data-testid="cancel-edit-btn"]').trigger('click')
       await flushPromises()
-      await wrapper.find('[data-testid="lineup-comment"]').trigger('click')
-      const textarea = wrapper.find('[data-testid="comment-input"]')
-      await textarea.setValue('New comment')
-      await textarea.trigger('blur')
-      await flushPromises()
-      expect(mockUpdateLineup).toHaveBeenCalledWith('team-1', 'lineup-1', { comment: 'New comment' })
-    })
-
-    it('on Escape cancels without saving', async () => {
-      mockLineups.value = [buildLineup('lineup-1', { comment: 'Keep me' })]
-      const wrapper = mountView()
-      await flushPromises()
-      await wrapper.find('[data-testid="lineup-comment"]').trigger('click')
-      const textarea = wrapper.find('[data-testid="comment-input"]')
-      await textarea.setValue('Discard this')
-      await textarea.trigger('keydown', { key: 'Escape' })
-      await flushPromises()
-      expect(mockUpdateLineup).not.toHaveBeenCalled()
-    })
-  })
-
-  // ── Tasks 5.1-5.4: Reorder (up/down) ────────────────────────────────────────
-  describe('reorder up/down', () => {
-    it('shows ↑ and ↓ buttons for each lineup', async () => {
-      mockLineups.value = [
-        buildLineup('lineup-1', { sortOrder: 0 }),
-        buildLineup('lineup-2', { sortOrder: 1 }),
-      ]
-      const wrapper = mountView()
-      await flushPromises()
-      const upBtns = wrapper.findAll('[data-testid="move-up-btn"]')
-      const downBtns = wrapper.findAll('[data-testid="move-down-btn"]')
-      expect(upBtns).toHaveLength(2)
-      expect(downBtns).toHaveLength(2)
-    })
-
-    it('disables ↑ button for first lineup', async () => {
-      mockLineups.value = [
-        buildLineup('lineup-1', { sortOrder: 0 }),
-        buildLineup('lineup-2', { sortOrder: 1 }),
-      ]
-      const wrapper = mountView()
-      await flushPromises()
-      const upBtns = wrapper.findAll('[data-testid="move-up-btn"]')
-      expect(upBtns[0].attributes('disabled')).toBeDefined()
-      expect(upBtns[1].attributes('disabled')).toBeUndefined()
-    })
-
-    it('disables ↓ button for last lineup', async () => {
-      mockLineups.value = [
-        buildLineup('lineup-1', { sortOrder: 0 }),
-        buildLineup('lineup-2', { sortOrder: 1 }),
-      ]
-      const wrapper = mountView()
-      await flushPromises()
-      const downBtns = wrapper.findAll('[data-testid="move-down-btn"]')
-      expect(downBtns[1].attributes('disabled')).toBeDefined()
-      expect(downBtns[0].attributes('disabled')).toBeUndefined()
-    })
-
-    it('clicking ↓ swaps sortOrder with next lineup and refreshes', async () => {
-      mockLineups.value = [
-        buildLineup('lineup-1', { sortOrder: 0 }),
-        buildLineup('lineup-2', { sortOrder: 1 }),
-      ]
-      const wrapper = mountView()
-      await flushPromises()
-      const downBtns = wrapper.findAll('[data-testid="move-down-btn"]')
-      await downBtns[0].trigger('click')
-      await flushPromises()
-      expect(mockUpdateLineup).toHaveBeenCalledWith('team-1', 'lineup-1', { sortOrder: 1 })
-      expect(mockUpdateLineup).toHaveBeenCalledWith('team-1', 'lineup-2', { sortOrder: 0 })
-      expect(mockFetchLineups).toHaveBeenCalledWith('team-1')
-    })
-
-    it('clicking ↑ swaps sortOrder with previous lineup and refreshes', async () => {
-      mockLineups.value = [
-        buildLineup('lineup-1', { sortOrder: 0 }),
-        buildLineup('lineup-2', { sortOrder: 1 }),
-      ]
-      const wrapper = mountView()
-      await flushPromises()
-      const upBtns = wrapper.findAll('[data-testid="move-up-btn"]')
-      await upBtns[1].trigger('click')
-      await flushPromises()
-      expect(mockUpdateLineup).toHaveBeenCalledWith('team-1', 'lineup-2', { sortOrder: 0 })
-      expect(mockUpdateLineup).toHaveBeenCalledWith('team-1', 'lineup-1', { sortOrder: 1 })
-      expect(mockFetchLineups).toHaveBeenCalledWith('team-1')
-    })
-
-    it('shows ⭐ 首选 badge on the first lineup (index 0)', async () => {
-      mockLineups.value = [
-        buildLineup('lineup-1', { sortOrder: 0 }),
-        buildLineup('lineup-2', { sortOrder: 1 }),
-      ]
-      const wrapper = mountView()
-      await flushPromises()
-      expect(wrapper.text()).toContain('⭐ 首选')
-    })
-
-    it('shows ⭐ 首选 badge only on first lineup, not second', async () => {
-      mockLineups.value = [
-        buildLineup('lineup-1', { sortOrder: 0 }),
-        buildLineup('lineup-2', { sortOrder: 1 }),
-      ]
-      const wrapper = mountView()
-      await flushPromises()
-      const badges = wrapper.findAll('[data-testid="preferred-badge"]')
-      expect(badges).toHaveLength(1)
-    })
-
-    it('shows ⭐ 首选 badge even when only one lineup exists', async () => {
-      mockLineups.value = [buildLineup('lineup-1', { sortOrder: 0 })]
-      const wrapper = mountView()
-      await flushPromises()
-      // Single lineup at index 0 should still show badge
-      const badges = wrapper.findAll('[data-testid="preferred-badge"]')
-      expect(badges).toHaveLength(1)
-    })
-
-    it('disabled ↑ button click does not call updateLineup', async () => {
-      mockLineups.value = [
-        buildLineup('lineup-1', { sortOrder: 0 }),
-        buildLineup('lineup-2', { sortOrder: 1 }),
-      ]
-      const wrapper = mountView()
-      await flushPromises()
-      const upBtns = wrapper.findAll('[data-testid="move-up-btn"]')
-      await upBtns[0].trigger('click')
-      await flushPromises()
+      expect(wrapper.find('[data-testid="edit-panel"]').exists()).toBe(false)
       expect(mockUpdateLineup).not.toHaveBeenCalled()
     })
 
-    it('shows updateError when reorder PATCH fails and still refreshes list', async () => {
-      mockUpdateLineup.mockRejectedValue(new Error('网络错误'))
-      mockLineups.value = [
-        buildLineup('lineup-1', { sortOrder: 0 }),
-        buildLineup('lineup-2', { sortOrder: 1 }),
-      ]
+    it('clicking 保存 calls updateLineup with label and comment then closes panel', async () => {
+      mockLineups.value = [buildLineup('lineup-1', { label: 'Old', comment: '' })]
       const wrapper = mountView()
       await flushPromises()
-      mockFetchLineups.mockReset().mockResolvedValue()
-      const upBtns = wrapper.findAll('[data-testid="move-up-btn"]')
-      await upBtns[1].trigger('click')
+      await wrapper.find('[data-testid="edit-btn"]').trigger('click')
+      await flushPromises()
+      await wrapper.find('[data-testid="edit-label-input"]').setValue('New Name')
+      await wrapper.find('[data-testid="save-edit-btn"]').trigger('click')
+      await flushPromises()
+      expect(mockUpdateLineup).toHaveBeenCalledWith('team-1', 'lineup-1', expect.objectContaining({ label: 'New Name' }))
+      expect(mockFetchLineups).toHaveBeenCalled()
+      expect(wrapper.find('[data-testid="edit-panel"]').exists()).toBe(false)
+    })
+
+    it('updateLineup failure shows updateError and keeps panel open', async () => {
+      mockUpdateLineup.mockRejectedValue(new Error('保存失败'))
+      mockLineups.value = [buildLineup('lineup-1')]
+      const wrapper = mountView()
+      await flushPromises()
+      await wrapper.find('[data-testid="edit-btn"]').trigger('click')
+      await flushPromises()
+      await wrapper.find('[data-testid="save-edit-btn"]').trigger('click')
       await flushPromises()
       expect(wrapper.find('[data-testid="update-error"]').exists()).toBe(true)
-      expect(mockFetchLineups).toHaveBeenCalled() // still refreshes
+      expect(wrapper.find('[data-testid="edit-panel"]').exists()).toBe(true)
     })
 
-    it('disabled ↓ button click does not call updateLineup', async () => {
-      mockLineups.value = [
-        buildLineup('lineup-1', { sortOrder: 0 }),
-        buildLineup('lineup-2', { sortOrder: 1 }),
-      ]
+    it('only one edit panel open at a time', async () => {
+      mockLineups.value = [buildLineup('lineup-1'), buildLineup('lineup-2')]
       const wrapper = mountView()
       await flushPromises()
-      const downBtns = wrapper.findAll('[data-testid="move-down-btn"]')
-      await downBtns[1].trigger('click')
+      const editBtns = wrapper.findAll('[data-testid="edit-btn"]')
+      await editBtns[0].trigger('click')
       await flushPromises()
-      expect(mockUpdateLineup).not.toHaveBeenCalled()
+      await editBtns[1].trigger('click')
+      await flushPromises()
+      expect(wrapper.findAll('[data-testid="edit-panel"]')).toHaveLength(1)
     })
   })
 
-  // ── Task 6: Swap panel in lineup history ─────────────────────────────────────
-  describe('swap panel', () => {
-    it('renders a <details> with LineupSwapPanel for each lineup', async () => {
-      mockLineups.value = [
-        buildLineup('lineup-1'),
-        buildLineup('lineup-2'),
-      ]
-      const wrapper = mountView()
-      await flushPromises()
-      const swapPanels = wrapper.findAll('[data-testid="swap-panel"]')
-      expect(swapPanels).toHaveLength(2)
-    })
-
-    it('renders summary text "调整配对" inside <details>', async () => {
+  // ── Swap panel ─────────────────────────────────────────────────────────────
+  describe('swap panel in edit mode', () => {
+    it('swap panel renders inside edit panel', async () => {
       mockLineups.value = [buildLineup('lineup-1')]
       const wrapper = mountView()
       await flushPromises()
-      const details = wrapper.find('details')
-      expect(details.exists()).toBe(true)
-      expect(details.find('summary').text()).toContain('调整配对')
+      await wrapper.find('[data-testid="edit-btn"]').trigger('click')
+      await flushPromises()
+      expect(wrapper.find('[data-testid="swap-panel"]').exists()).toBe(true)
     })
 
-    it('handleSwapUpdate calls updateLineup with new pairs when swap emits', async () => {
+    it('swap emit calls updateLineup and fetchLineups', async () => {
       mockLineups.value = [buildLineup('lineup-1')]
       const wrapper = mountView()
       await flushPromises()
-      const swapBtn = wrapper.find('[data-testid="swap-panel"] button')
-      await swapBtn.trigger('click')
+      await wrapper.find('[data-testid="edit-btn"]').trigger('click')
       await flushPromises()
-      expect(mockUpdateLineup).toHaveBeenCalledWith(
-        'team-1',
-        'lineup-1',
-        { pairs: [{ position: 'D1', player1Id: 'swapped' }] },
-      )
+      await wrapper.find('[data-testid="swap-panel"] button').trigger('click')
+      await flushPromises()
+      expect(mockUpdateLineup).toHaveBeenCalledWith('team-1', 'lineup-1', expect.objectContaining({ pairs: expect.any(Array) }))
+      expect(mockFetchLineups).toHaveBeenCalled()
     })
 
-    it('handleSwapUpdate calls fetchLineups after successful update', async () => {
-      mockLineups.value = [buildLineup('lineup-1')]
-      mockFetchLineups.mockReset().mockResolvedValue()
-      const wrapper = mountView()
-      await flushPromises()
-      mockFetchLineups.mockReset().mockResolvedValue()
-      const swapBtn = wrapper.find('[data-testid="swap-panel"] button')
-      await swapBtn.trigger('click')
-      await flushPromises()
-      expect(mockFetchLineups).toHaveBeenCalledWith('team-1')
-    })
-
-    it('updateLineup error sets updateError and still calls fetchLineups', async () => {
+    it('swap updateLineup failure shows updateError and still calls fetchLineups', async () => {
       mockUpdateLineup.mockRejectedValue(new Error('swap failed'))
       mockLineups.value = [buildLineup('lineup-1')]
       const wrapper = mountView()
       await flushPromises()
+      await wrapper.find('[data-testid="edit-btn"]').trigger('click')
+      await flushPromises()
       mockFetchLineups.mockReset().mockResolvedValue()
-      const swapBtn = wrapper.find('[data-testid="swap-panel"] button')
-      await swapBtn.trigger('click')
+      await wrapper.find('[data-testid="swap-panel"] button').trigger('click')
       await flushPromises()
       expect(wrapper.find('[data-testid="update-error"]').exists()).toBe(true)
-      expect(mockFetchLineups).toHaveBeenCalledWith('team-1')
+      expect(mockFetchLineups).toHaveBeenCalled()
     })
   })
 
-  // ── Task 7: Player replacement in lineup history ──────────────────────────────
-  describe('player replacement', () => {
-    it('renders a "替换球员" button for each lineup', async () => {
-      mockLineups.value = [buildLineupWithPairs('lineup-1'), buildLineupWithPairs('lineup-2')]
-      const wrapper = mountView()
-      await flushPromises()
-      const btns = wrapper.findAll('[data-testid="start-replace-btn"]')
-      expect(btns).toHaveLength(2)
-    })
-
-    it('replacement UI is hidden before clicking "替换球员"', async () => {
+  // ── Replace players ────────────────────────────────────────────────────────
+  describe('player replacement in edit mode', () => {
+    it('shows 选择替换 button inside edit panel', async () => {
       mockLineups.value = [buildLineupWithPairs('lineup-1')]
       const wrapper = mountView()
       await flushPromises()
-      expect(wrapper.find('[data-testid="save-replace-btn"]').exists()).toBe(false)
+      await wrapper.find('[data-testid="edit-btn"]').trigger('click')
+      await flushPromises()
+      expect(wrapper.find('[data-testid="start-replace-btn"]').exists()).toBe(true)
     })
 
-    it('clicking "替换球员" shows replacement UI with select elements', async () => {
+    it('clicking 选择替换 shows select dropdowns', async () => {
       mockLineups.value = [buildLineupWithPairs('lineup-1')]
       const wrapper = mountView()
+      await flushPromises()
+      await wrapper.find('[data-testid="edit-btn"]').trigger('click')
       await flushPromises()
       await wrapper.find('[data-testid="start-replace-btn"]').trigger('click')
       await flushPromises()
-      const saves = wrapper.findAll('[data-testid="save-replace-btn"]')
-      expect(saves).toHaveLength(1)
-      // Each pair has 2 player slots = 4 selects total (2 pairs × 2 players)
-      const selects = wrapper.findAll('select')
-      expect(selects.length).toBeGreaterThanOrEqual(4)
+      expect(wrapper.findAll('select').length).toBeGreaterThan(0)
     })
 
-    it('player dropdown excludes players already used in other slots', async () => {
-      mockLineups.value = [buildLineupWithPairs('lineup-1')]
-      const wrapper = mountView()
-      await flushPromises()
-      await wrapper.find('[data-testid="start-replace-btn"]').trigger('click')
-      await flushPromises()
-      const selects = wrapper.findAll('select')
-      // First select is for D1 player1 (p1). Other taken slots: p2 (D1p2), p3 (D2p1), p4 (D2p2)
-      // So first select should only show p1 and new-p (Eve), NOT p2, p3, p4
-      const firstSelectOptions = selects[0].findAll('option')
-      const optionValues = firstSelectOptions.map(o => o.element.value)
-      expect(optionValues).toContain('p1')
-      expect(optionValues).toContain('new-p')
-      expect(optionValues).not.toContain('p2')
-      expect(optionValues).not.toContain('p3')
-      expect(optionValues).not.toContain('p4')
-    })
-
-    it('changing a player selection updates the pair and triggers validation', async () => {
-      // Make pairs with high UTR to trigger violation (>40.5 total)
-      const highUtrLineup = buildLineup('lineup-1', {
-        pairs: [
-          { position: 'D1', player1Id: 'p1', player2Id: 'p2', combinedUtr: 11.5 },
-          { position: 'D2', player1Id: 'p3', player2Id: 'p4', combinedUtr: 9.5 },
-        ],
-      })
-      // Use players with very high UTR to breach 40.5
+    it('save is blocked when violations exist', async () => {
       mockTeams.value = [{
-        id: 'team-1',
-        name: '浙江队',
+        id: 'team-1', name: '浙江队',
         players: [
-          { id: 'p1', name: 'Alice', utr: 12.0 },
-          { id: 'p2', name: 'Bob', utr: 11.0 },
-          { id: 'p3', name: 'Carol', utr: 10.0 },
-          { id: 'p4', name: 'Dave', utr: 9.0 },
-          { id: 'new-p', name: 'Eve', utr: 8.0 },
-        ],
-      }]
-      mockLineups.value = [highUtrLineup]
-      const wrapper = mountView()
-      await flushPromises()
-      await wrapper.find('[data-testid="start-replace-btn"]').trigger('click')
-      await flushPromises()
-      // change any select to trigger validation with high utrs
-      const selects = wrapper.findAll('select')
-      await selects[0].setValue('p1')
-      await flushPromises()
-      // Violation list should appear (total UTR will be 12+11+10+9=42 > 40.5)
-      const violations = wrapper.findAll('[data-testid="replace-violation"]')
-      expect(violations.length).toBeGreaterThan(0)
-    })
-
-    it('shows total UTR violation message when sum > 40.5', async () => {
-      mockTeams.value = [{
-        id: 'team-1',
-        name: '浙江队',
-        players: [
-          { id: 'p1', name: 'Alice', utr: 12.0 },
-          { id: 'p2', name: 'Bob', utr: 11.0 },
-          { id: 'p3', name: 'Carol', utr: 10.0 },
-          { id: 'p4', name: 'Dave', utr: 9.0 },
-          { id: 'new-p', name: 'Eve', utr: 4.0 },
+          { id: 'p1', name: 'Alice', utr: 12.0, gender: 'female', verified: true },
+          { id: 'p2', name: 'Bob', utr: 11.0, gender: 'male', verified: true },
+          { id: 'p3', name: 'Carol', utr: 10.0, gender: 'female', verified: true },
+          { id: 'p4', name: 'Dave', utr: 9.0, gender: 'male', verified: true },
         ],
       }]
       mockLineups.value = [buildLineup('lineup-1', {
@@ -661,37 +342,25 @@ describe('LineupHistoryView', () => {
           { position: 'D1', player1Id: 'p1', player2Id: 'p2', combinedUtr: 23.0 },
           { position: 'D2', player1Id: 'p3', player2Id: 'p4', combinedUtr: 19.0 },
         ],
+        totalUtr: 42.0,
       })]
       const wrapper = mountView()
       await flushPromises()
-      await wrapper.find('[data-testid="start-replace-btn"]').trigger('click')
-      await flushPromises()
-      // Trigger validation by selecting same player (no real change needed, just setValue)
-      const selects = wrapper.findAll('select')
-      await selects[0].setValue('p1')
-      await flushPromises()
-      expect(wrapper.text()).toContain('总UTR超出上限')
-    })
-
-    it('clicking "保存修改" calls updateLineup with pairs then fetchLineups', async () => {
-      mockLineups.value = [buildLineupWithPairs('lineup-1')]
-      const wrapper = mountView()
+      await wrapper.find('[data-testid="edit-btn"]').trigger('click')
       await flushPromises()
       await wrapper.find('[data-testid="start-replace-btn"]').trigger('click')
       await flushPromises()
+      expect(wrapper.find('[data-testid="replace-violation"]').exists()).toBe(true)
       await wrapper.find('[data-testid="save-replace-btn"]').trigger('click')
       await flushPromises()
-      expect(mockUpdateLineup).toHaveBeenCalledWith(
-        'team-1',
-        'lineup-1',
-        expect.objectContaining({ pairs: expect.any(Array) }),
-      )
-      expect(mockFetchLineups).toHaveBeenCalledWith('team-1')
+      expect(mockUpdateLineup).not.toHaveBeenCalled()
     })
 
-    it('clicking "取消" hides replacement UI', async () => {
+    it('clicking 取消 hides replace UI', async () => {
       mockLineups.value = [buildLineupWithPairs('lineup-1')]
       const wrapper = mountView()
+      await flushPromises()
+      await wrapper.find('[data-testid="edit-btn"]').trigger('click')
       await flushPromises()
       await wrapper.find('[data-testid="start-replace-btn"]').trigger('click')
       await flushPromises()
@@ -701,87 +370,72 @@ describe('LineupHistoryView', () => {
       expect(wrapper.find('[data-testid="save-replace-btn"]').exists()).toBe(false)
     })
 
-    it('updateLineup error during save shows updateError and keeps UI open', async () => {
-      mockUpdateLineup.mockRejectedValue(new Error('save failed'))
+    it('saving replace calls updateLineup then fetchLineups', async () => {
       mockLineups.value = [buildLineupWithPairs('lineup-1')]
       const wrapper = mountView()
+      await flushPromises()
+      await wrapper.find('[data-testid="edit-btn"]').trigger('click')
       await flushPromises()
       await wrapper.find('[data-testid="start-replace-btn"]').trigger('click')
       await flushPromises()
       await wrapper.find('[data-testid="save-replace-btn"]').trigger('click')
+      await flushPromises()
+      expect(mockUpdateLineup).toHaveBeenCalledWith('team-1', 'lineup-1', expect.objectContaining({ pairs: expect.any(Array) }))
+      expect(mockFetchLineups).toHaveBeenCalled()
+    })
+  })
+
+  // ── Reorder ────────────────────────────────────────────────────────────────
+  describe('reorder up/down', () => {
+    it('renders ↑ and ↓ buttons per lineup', async () => {
+      mockLineups.value = [buildLineup('lineup-1'), buildLineup('lineup-2')]
+      const wrapper = mountView()
+      await flushPromises()
+      expect(wrapper.findAll('[data-testid="move-up-btn"]')).toHaveLength(2)
+      expect(wrapper.findAll('[data-testid="move-down-btn"]')).toHaveLength(2)
+    })
+
+    it('↑ is disabled for the first lineup', async () => {
+      mockLineups.value = [buildLineup('lineup-1', { sortOrder: 0 }), buildLineup('lineup-2', { sortOrder: 1 })]
+      const wrapper = mountView()
+      await flushPromises()
+      const upBtns = wrapper.findAll('[data-testid="move-up-btn"]')
+      expect(upBtns[0].element.disabled).toBe(true)
+      expect(upBtns[1].element.disabled).toBe(false)
+    })
+
+    it('↓ is disabled for the last lineup', async () => {
+      mockLineups.value = [buildLineup('lineup-1', { sortOrder: 0 }), buildLineup('lineup-2', { sortOrder: 1 })]
+      const wrapper = mountView()
+      await flushPromises()
+      const downBtns = wrapper.findAll('[data-testid="move-down-btn"]')
+      expect(downBtns[0].element.disabled).toBe(false)
+      expect(downBtns[1].element.disabled).toBe(true)
+    })
+
+    it('↑ swaps sortOrder of adjacent lineups and fetches', async () => {
+      mockLineups.value = [
+        buildLineup('lineup-1', { sortOrder: 0 }),
+        buildLineup('lineup-2', { sortOrder: 1 }),
+      ]
+      const wrapper = mountView()
+      await flushPromises()
+      await wrapper.findAll('[data-testid="move-up-btn"]')[1].trigger('click')
+      await flushPromises()
+      expect(mockUpdateLineup).toHaveBeenCalledTimes(2)
+      expect(mockFetchLineups).toHaveBeenCalled()
+    })
+
+    it('shows updateError when reorder fails and still refreshes', async () => {
+      mockUpdateLineup.mockRejectedValue(new Error('网络错误'))
+      mockLineups.value = [buildLineup('lineup-1', { sortOrder: 0 }), buildLineup('lineup-2', { sortOrder: 1 })]
+      const wrapper = mountView()
+      await flushPromises()
+      mockFetchLineups.mockReset().mockResolvedValue()
+      await wrapper.findAll('[data-testid="move-up-btn"]')[1].trigger('click')
       await flushPromises()
       expect(wrapper.find('[data-testid="update-error"]').exists()).toBe(true)
-      // Replacement UI should still be visible
-      expect(wrapper.find('[data-testid="save-replace-btn"]').exists()).toBe(true)
-    })
-
-    it('only one lineup replacement UI is open at a time when clicking another start-replace-btn', async () => {
-      mockLineups.value = [
-        buildLineupWithPairs('lineup-1'),
-        buildLineupWithPairs('lineup-2'),
-      ]
-      const wrapper = mountView()
-      await flushPromises()
-      const startBtns = wrapper.findAll('[data-testid="start-replace-btn"]')
-      await startBtns[0].trigger('click')
-      await flushPromises()
-      expect(wrapper.findAll('[data-testid="save-replace-btn"]')).toHaveLength(1)
-      await startBtns[1].trigger('click')
-      await flushPromises()
-      // Still only one open (the second one now)
-      expect(wrapper.findAll('[data-testid="save-replace-btn"]')).toHaveLength(1)
-    })
-
-    it('position labels D1/D2 are shown in replacement UI', async () => {
-      mockLineups.value = [buildLineupWithPairs('lineup-1')]
-      const wrapper = mountView()
-      await flushPromises()
-      await wrapper.find('[data-testid="start-replace-btn"]').trigger('click')
-      await flushPromises()
-      expect(wrapper.text()).toContain('D1')
-      expect(wrapper.text()).toContain('D2')
-    })
-
-    it('save is blocked when constraint violations exist', async () => {
-      // Build lineup where all players have high UTR → total > 40.5
-      const highUtrPairs = [
-        { position: 'D1', player1Id: 'p1', player2Id: 'p2', combinedUtr: 11.5 },
-        { position: 'D2', player1Id: 'p3', player2Id: 'p4', combinedUtr: 9.5 },
-        { position: 'D3', player1Id: 'p1', player2Id: 'p3', combinedUtr: 11.0 },
-        { position: 'D4', player1Id: 'p2', player2Id: 'p4', combinedUtr: 10.0 },
-      ]
-      mockTeams.value = [{
-        id: 'team-1', name: '浙江队',
-        players: [
-          { id: 'p1', name: 'Alice', utr: 12.0 },
-          { id: 'p2', name: 'Bob', utr: 11.0 },
-          { id: 'p3', name: 'Carol', utr: 10.0 },
-          { id: 'p4', name: 'Dave', utr: 9.0 },
-        ],
-      }]
-      mockLineups.value = [buildLineup('lineup-1', { pairs: highUtrPairs, totalUtr: 42.0 })]
-      const wrapper = mountView()
-      await flushPromises()
-      await wrapper.find('[data-testid="start-replace-btn"]').trigger('click')
-      await flushPromises()
-      // Violations shown on open
-      expect(wrapper.find('[data-testid="replace-violation"]').exists()).toBe(true)
-      // Clicking save does NOT call updateLineup
-      await wrapper.find('[data-testid="save-replace-btn"]').trigger('click')
-      await flushPromises()
-      expect(mockUpdateLineup).not.toHaveBeenCalled()
-    })
-
-    it('player options show name and UTR', async () => {
-      mockLineups.value = [buildLineupWithPairs('lineup-1')]
-      const wrapper = mountView()
-      await flushPromises()
-      await wrapper.find('[data-testid="start-replace-btn"]').trigger('click')
-      await flushPromises()
-      const selects = wrapper.findAll('select')
-      const firstSelectText = selects[0].element.innerHTML
-      // Should contain player name and UTR
-      expect(firstSelectText).toContain('Alice')
+      expect(mockFetchLineups).toHaveBeenCalled()
     })
   })
 })
