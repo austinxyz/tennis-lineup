@@ -15,6 +15,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.function.UnaryOperator;
 
 @Repository
 @Slf4j
@@ -77,6 +78,43 @@ public class JsonRepository {
             throw new RuntimeException("Failed to read data file", e);
         } finally {
             lock.readLock().unlock();
+        }
+    }
+
+    /**
+     * Atomic read-modify-write under a single write lock, preventing lost-update races.
+     * Use this for all mutating operations instead of separate readData + writeData calls.
+     */
+    public void updateData(UnaryOperator<TeamData> transform) {
+        lock.writeLock().lock();
+        try {
+            TeamData current = readDataUnlocked();
+            TeamData updated = transform.apply(current);
+            writeDataUnlocked(updated);
+        } finally {
+            lock.writeLock().unlock();
+        }
+    }
+
+    private TeamData readDataUnlocked() {
+        try {
+            if (!Files.exists(dataFilePath)) return new TeamData();
+            byte[] jsonData = Files.readAllBytes(dataFilePath);
+            return objectMapper.readValue(jsonData, TeamData.class);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to read data file", e);
+        }
+    }
+
+    private void writeDataUnlocked(TeamData data) {
+        try {
+            ensureParentDir(dataFilePath);
+            Path tempFilePath = Paths.get(dataFilePath.toString() + ".tmp");
+            objectMapper.writeValue(tempFilePath.toFile(), data);
+            Files.move(tempFilePath, dataFilePath, java.nio.file.StandardCopyOption.ATOMIC_MOVE,
+                    java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to write data file", e);
         }
     }
 

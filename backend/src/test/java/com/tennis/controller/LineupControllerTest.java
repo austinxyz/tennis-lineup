@@ -400,4 +400,59 @@ class LineupControllerTest {
         mockMvc.perform(multipart("/api/teams/team-1/lineups/import").file(file))
                 .andExpect(status().isBadRequest());
     }
+
+    // ======================== PATCH /api/teams/{teamId}/lineups/{lineupId} tests ========================
+
+    @Test
+    @DisplayName("PATCH /api/teams/{teamId}/lineups/{lineupId} returns 200 with updated lineup")
+    void testPatchLineupSuccess() throws Exception {
+        testLineup.setLabel("My Label");
+        when(lineupService.updateLineup(eq("team-1"), eq("lineup-001"), any()))
+                .thenReturn(testLineup);
+
+        String body = "{\"label\":\"My Label\"}";
+
+        mockMvc.perform(patch("/api/teams/team-1/lineups/lineup-001")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value("lineup-001"))
+                .andExpect(jsonPath("$.label").value("My Label"));
+    }
+
+    @Test
+    @DisplayName("PATCH /api/teams/{teamId}/lineups/{lineupId} returns 404 when lineup not found")
+    void testPatchLineupNotFound() throws Exception {
+        when(lineupService.updateLineup(eq("team-1"), eq("nonexistent"), any()))
+                .thenThrow(new NotFoundException("排阵不存在"));
+
+        mockMvc.perform(patch("/api/teams/team-1/lineups/nonexistent")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"label\":\"x\"}"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("PATCH /api/teams/{teamId}/lineups/{lineupId} returns 400 on duplicate pairs")
+    void testPatchLineupDuplicatePairs() throws Exception {
+        when(lineupService.updateLineup(eq("team-1"), eq("lineup-001"), any()))
+                .thenThrow(new IllegalArgumentException("该排阵已保存，请勿重复保存"));
+
+        String body = "{\"pairs\":[{\"position\":\"D1\",\"player1Id\":\"p1\",\"player2Id\":\"p2\"}]}";
+
+        mockMvc.perform(patch("/api/teams/team-1/lineups/lineup-001")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("该排阵已保存，请勿重复保存"));
+    }
+
+    @Test
+    @DisplayName("PATCH /api/teams/{teamId}/lineups/{lineupId} returns 400 for malformed JSON")
+    void testPatchLineupBadRequest() throws Exception {
+        mockMvc.perform(patch("/api/teams/team-1/lineups/lineup-001")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("not-json"))
+                .andExpect(status().isBadRequest());
+    }
 }

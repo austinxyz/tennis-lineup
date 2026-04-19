@@ -1,5 +1,6 @@
 package com.tennis.service;
 
+import com.tennis.controller.LineupUpdateRequest;
 import com.tennis.exception.NotFoundException;
 import com.tennis.model.Lineup;
 import com.tennis.model.Pair;
@@ -263,7 +264,8 @@ public class LineupService {
         }
 
         return lineups.stream()
-                .sorted(Comparator.comparing(Lineup::getCreatedAt).reversed())
+                .sorted(Comparator.comparingInt(Lineup::getSortOrder)
+                        .thenComparing(Comparator.comparing(Lineup::getCreatedAt).reversed()))
                 .toList();
     }
 
@@ -325,6 +327,108 @@ public class LineupService {
     private String buildPlayerNameKey(Lineup lineup) {
         if (lineup.getPairs() == null) return null;
         List<String> names = lineup.getPairs().stream()
+                .flatMap(p -> Stream.of(p.getPlayer1Name(), p.getPlayer2Name()))
+                .filter(Objects::nonNull)
+                .sorted()
+                .collect(Collectors.toList());
+        if (names.isEmpty()) return null;
+        return String.join(",", names);
+    }
+
+    /**
+     * Partially update a saved lineup. Only non-null fields in the request are applied.
+     * When pairs are updated, the player-name dedup key is rebuilt and checked for duplicates.
+     */
+    public Lineup updateLineup(String teamId, String lineupId, LineupUpdateRequest req) {
+        // Validate pairs dedup before entering the write lock (read-only check, cheap)
+        if (req.getPairs() != null) {
+            validatePairsNotDuplicate(teamId, lineupId, req.getPairs());
+        }
+
+        // Atomic read-modify-write under write lock — prevents lost-update races
+        final Lineup[] result = new Lineup[1];
+        jsonRepository.updateData(teamData -> {
+            Team team = teamData.getTeams().stream()
+                    .filter(t -> t.getId().equals(teamId))
+                    .findFirst()
+                    .orElseThrow(() -> new NotFoundException("队伍不存在"));
+
+            Lineup target = team.getLineups() == null ? null : team.getLineups().stream()
+                    .filter(l -> lineupId.equals(l.getId()))
+                    .findFirst()
+                    .orElse(null);
+            if (target == null) {
+                throw new NotFoundException("排阵不存在");
+            }
+
+            boolean changed = false;
+
+            // null = don't update; blank string = explicit clear to null
+            if (req.getLabel() != null) {
+                target.setLabel(req.getLabel().isBlank() ? null : req.getLabel());
+                changed = true;
+            }
+            if (req.getComment() != null) {
+                target.setComment(req.getComment().isBlank() ? null : req.getComment());
+                changed = true;
+            }
+            if (req.getSortOrder() != null) {
+                target.setSortOrder(req.getSortOrder());
+                changed = true;
+            }
+            if (req.getPairs() != null) {
+                target.setPairs(new ArrayList<>(req.getPairs())); // defensive copy
+                changed = true;
+            }
+
+            result[0] = target;
+            if (!changed) return teamData; // skip write if nothing changed
+            log.info("Updated lineup {} for team {}", lineupId, teamId);
+            return teamData;
+        });
+        return result[0];
+    }
+
+    private void validatePairsNotDuplicate(String teamId, String lineupId, List<Pair> pairs) {
+        TeamData teamData = jsonRepository.readData();
+        Team team = teamData.getTeams().stream()
+                .filter(t -> t.getId().equals(teamId))
+                .findFirst()
+                .orElse(null);
+        if (team == null || team.getLineups() == null) return;
+
+        String incomingNameKey = buildPlayerNameKeyFromPairs(pairs);
+        Set<String> incomingIds = pairs.stream()
+                .flatMap(p -> Stream.of(p.getPlayer1Id(), p.getPlayer2Id()))
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        boolean duplicate = team.getLineups().stream()
+                .filter(l -> !lineupId.equals(l.getId()))
+                .anyMatch(other -> {
+                    String otherNameKey = buildPlayerNameKey(other);
+                    // Use name-based dedup when BOTH sides have names (consistent strategy)
+                    if (incomingNameKey != null && otherNameKey != null) {
+                        return incomingNameKey.equals(otherNameKey);
+                    }
+                    // Fall back to ID-based when either side lacks names
+                    if (!incomingIds.isEmpty() && other.getPairs() != null) {
+                        Set<String> otherIds = other.getPairs().stream()
+                                .flatMap(p -> Stream.of(p.getPlayer1Id(), p.getPlayer2Id()))
+                                .filter(Objects::nonNull)
+                                .collect(Collectors.toSet());
+                        return incomingIds.equals(otherIds);
+                    }
+                    return false;
+                });
+        if (duplicate) {
+            throw new IllegalArgumentException("该排阵已保存，请勿重复保存");
+        }
+    }
+
+    private String buildPlayerNameKeyFromPairs(List<Pair> pairs) {
+        if (pairs == null) return null;
+        List<String> names = pairs.stream()
                 .flatMap(p -> Stream.of(p.getPlayer1Name(), p.getPlayer2Name()))
                 .filter(Objects::nonNull)
                 .sorted()

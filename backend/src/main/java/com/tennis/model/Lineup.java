@@ -39,6 +39,15 @@ public class Lineup {
     @JsonProperty("violationMessages")
     private List<String> violationMessages = new ArrayList<>();
 
+    @JsonProperty("label")
+    private String label; // nullable custom display name
+
+    @JsonProperty("comment")
+    private String comment; // nullable free text note
+
+    @JsonProperty("sortOrder")
+    private int sortOrder = 0; // display order ascending; 0 = default
+
     // Transient validation fields: serialized to client but not persisted (READ_ONLY = serialize only)
     @JsonProperty(value = "currentValid", access = READ_ONLY)
     private boolean currentValid = true;

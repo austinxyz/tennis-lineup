@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.function.UnaryOperator;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -488,5 +489,272 @@ class LineupServiceTest {
         lineupService.getLineupsByTeam("team-1");
 
         verify(constraintService, times(2)).validateLineup(any(), eq(team.getPlayers()));
+    }
+
+    // ======================== updateLineup tests ========================
+
+    /** Sets up updateData mock to execute the transform lambda against teamData. */
+    @SuppressWarnings("unchecked")
+    private void mockUpdateData() {
+        doAnswer(inv -> {
+            UnaryOperator<TeamData> transform = inv.getArgument(0);
+            transform.apply(teamData);
+            return null;
+        }).when(jsonRepository).updateData(any());
+    }
+
+    @Test
+    @DisplayName("updateLineup: update label only leaves other fields unchanged")
+    void testUpdateLineupLabelOnly() {
+        Lineup existing = buildLineup("lineup-upd-1");
+        existing.setLabel(null);
+        existing.setComment("original comment");
+        existing.setSortOrder(0);
+        team.setLineups(new ArrayList<>(List.of(existing)));
+        mockUpdateData();
+
+        com.tennis.controller.LineupUpdateRequest req = new com.tennis.controller.LineupUpdateRequest();
+        req.setLabel("My Label");
+
+        Lineup updated = lineupService.updateLineup("team-1", "lineup-upd-1", req);
+
+        assertEquals("My Label", updated.getLabel());
+        assertEquals("original comment", updated.getComment());
+        assertEquals(0, updated.getSortOrder());
+        verify(jsonRepository).updateData(any());
+    }
+
+    @Test
+    @DisplayName("updateLineup: blank string clears label to null")
+    void testUpdateLineupBlankLabelClears() {
+        Lineup existing = buildLineup("lineup-upd-blank");
+        existing.setLabel("existing label");
+        team.setLineups(new ArrayList<>(List.of(existing)));
+        mockUpdateData();
+
+        com.tennis.controller.LineupUpdateRequest req = new com.tennis.controller.LineupUpdateRequest();
+        req.setLabel("   "); // blank = explicit clear
+
+        Lineup updated = lineupService.updateLineup("team-1", "lineup-upd-blank", req);
+
+        assertNull(updated.getLabel());
+        verify(jsonRepository).updateData(any());
+    }
+
+    @Test
+    @DisplayName("updateLineup: blank string clears comment to null")
+    void testUpdateLineupBlankCommentClears() {
+        Lineup existing = buildLineup("lineup-upd-blank2");
+        existing.setComment("existing comment");
+        team.setLineups(new ArrayList<>(List.of(existing)));
+        mockUpdateData();
+
+        com.tennis.controller.LineupUpdateRequest req = new com.tennis.controller.LineupUpdateRequest();
+        req.setComment("");
+
+        Lineup updated = lineupService.updateLineup("team-1", "lineup-upd-blank2", req);
+
+        assertNull(updated.getComment());
+        verify(jsonRepository).updateData(any());
+    }
+
+    @Test
+    @DisplayName("updateLineup: update comment only leaves other fields unchanged")
+    void testUpdateLineupCommentOnly() {
+        Lineup existing = buildLineup("lineup-upd-2");
+        existing.setLabel("existing label");
+        existing.setComment(null);
+        existing.setSortOrder(2);
+        team.setLineups(new ArrayList<>(List.of(existing)));
+        mockUpdateData();
+
+        com.tennis.controller.LineupUpdateRequest req = new com.tennis.controller.LineupUpdateRequest();
+        req.setComment("new note");
+
+        Lineup updated = lineupService.updateLineup("team-1", "lineup-upd-2", req);
+
+        assertEquals("existing label", updated.getLabel());
+        assertEquals("new note", updated.getComment());
+        assertEquals(2, updated.getSortOrder());
+        verify(jsonRepository).updateData(any());
+    }
+
+    @Test
+    @DisplayName("updateLineup: update sortOrder only leaves other fields unchanged")
+    void testUpdateLineupSortOrderOnly() {
+        Lineup existing = buildLineup("lineup-upd-3");
+        existing.setLabel("lbl");
+        existing.setComment("cmt");
+        existing.setSortOrder(0);
+        team.setLineups(new ArrayList<>(List.of(existing)));
+        mockUpdateData();
+
+        com.tennis.controller.LineupUpdateRequest req = new com.tennis.controller.LineupUpdateRequest();
+        req.setSortOrder(5);
+
+        Lineup updated = lineupService.updateLineup("team-1", "lineup-upd-3", req);
+
+        assertEquals("lbl", updated.getLabel());
+        assertEquals("cmt", updated.getComment());
+        assertEquals(5, updated.getSortOrder());
+        verify(jsonRepository).updateData(any());
+    }
+
+    @Test
+    @DisplayName("updateLineup: update pairs stores defensive copy")
+    void testUpdateLineupPairs() {
+        Lineup existing = buildLineupWithFixedPlayers("old-p1", "old-p2");
+        existing.setId("lineup-upd-4");
+        existing.setCreatedAt(Instant.now());
+        team.setLineups(new ArrayList<>(List.of(existing)));
+        when(jsonRepository.readData()).thenReturn(teamData); // for validatePairsNotDuplicate
+        mockUpdateData();
+
+        Pair newPair = new Pair();
+        newPair.setPosition("D1");
+        newPair.setPlayer1Id("new-p1");
+        newPair.setPlayer1Name("New Player 1");
+        newPair.setPlayer2Id("new-p2");
+        newPair.setPlayer2Name("New Player 2");
+        newPair.setCombinedUtr(10.0);
+
+        com.tennis.controller.LineupUpdateRequest req = new com.tennis.controller.LineupUpdateRequest();
+        req.setPairs(List.of(newPair));
+
+        Lineup updated = lineupService.updateLineup("team-1", "lineup-upd-4", req);
+
+        assertEquals(1, updated.getPairs().size());
+        assertEquals("new-p1", updated.getPairs().get(0).getPlayer1Id());
+        verify(jsonRepository).updateData(any());
+    }
+
+    @Test
+    @DisplayName("updateLineup: throws NotFoundException when lineup not found")
+    void testUpdateLineupNotFound() {
+        team.setLineups(new ArrayList<>());
+        mockUpdateData();
+
+        com.tennis.controller.LineupUpdateRequest req = new com.tennis.controller.LineupUpdateRequest();
+        req.setLabel("label");
+
+        assertThrows(NotFoundException.class, () ->
+                lineupService.updateLineup("team-1", "nonexistent-lineup", req));
+    }
+
+    @Test
+    @DisplayName("updateLineup: throws NotFoundException when team not found")
+    void testUpdateLineupTeamNotFound() {
+        mockUpdateData();
+
+        com.tennis.controller.LineupUpdateRequest req = new com.tennis.controller.LineupUpdateRequest();
+        req.setLabel("label");
+
+        assertThrows(NotFoundException.class, () ->
+                lineupService.updateLineup("unknown-team", "lineup-1", req));
+    }
+
+    @Test
+    @DisplayName("updateLineup: throws IllegalArgumentException when updated pairs duplicate another lineup")
+    void testUpdateLineupDuplicatePairsThrows() {
+        Lineup lineup1 = buildLineupWithFixedPlayers("dup-x1", "dup-x2");
+        lineup1.setId("lineup-dup-a");
+        lineup1.setCreatedAt(Instant.now());
+        Lineup lineup2 = buildLineupWithFixedPlayers("dup-y1", "dup-y2");
+        lineup2.setId("lineup-dup-b");
+        lineup2.setCreatedAt(Instant.now());
+        team.setLineups(new ArrayList<>(Arrays.asList(lineup1, lineup2)));
+        when(jsonRepository.readData()).thenReturn(teamData); // for validatePairsNotDuplicate
+
+        Pair dupPair = new Pair();
+        dupPair.setPosition("D1");
+        dupPair.setPlayer1Id("dup-x1");
+        dupPair.setPlayer2Id("dup-x2");
+        dupPair.setCombinedUtr(8.0);
+
+        com.tennis.controller.LineupUpdateRequest req = new com.tennis.controller.LineupUpdateRequest();
+        req.setPairs(List.of(dupPair));
+
+        assertThrows(IllegalArgumentException.class, () ->
+                lineupService.updateLineup("team-1", "lineup-dup-b", req));
+    }
+
+    @Test
+    @DisplayName("updateLineup: null fields are ignored and no write occurs")
+    void testUpdateLineupNullFieldsIgnored() {
+        Lineup existing = buildLineup("lineup-upd-5");
+        existing.setLabel("keep-label");
+        existing.setComment("keep-comment");
+        existing.setSortOrder(3);
+        team.setLineups(new ArrayList<>(List.of(existing)));
+        mockUpdateData();
+
+        com.tennis.controller.LineupUpdateRequest req = new com.tennis.controller.LineupUpdateRequest();
+
+        Lineup updated = lineupService.updateLineup("team-1", "lineup-upd-5", req);
+
+        assertEquals("keep-label", updated.getLabel());
+        assertEquals("keep-comment", updated.getComment());
+        assertEquals(3, updated.getSortOrder());
+        // updateData is still called (lambda invoked), but internally skips writeDataUnlocked
+        verify(jsonRepository).updateData(any());
+    }
+
+    // ======================== getLineupsByTeam sort order tests ========================
+
+    @Test
+    @DisplayName("getLineupsByTeam: lineups with all sortOrder=0 remain in createdAt desc order")
+    void testGetLineupsByTeamDefaultSortCreatedAtDesc() {
+        Lineup old = buildLineup("lineup-sort-1");
+        old.setCreatedAt(Instant.parse("2026-01-01T00:00:00Z"));
+        old.setSortOrder(0);
+        Lineup newer = buildLineup("lineup-sort-2");
+        newer.setCreatedAt(Instant.parse("2026-02-01T00:00:00Z"));
+        newer.setSortOrder(0);
+        team.setLineups(new ArrayList<>(Arrays.asList(old, newer)));
+        when(jsonRepository.readData()).thenReturn(teamData);
+
+        List<Lineup> result = lineupService.getLineupsByTeam("team-1");
+
+        // Both have sortOrder=0; tie-break by createdAt desc → newer first
+        assertEquals("lineup-sort-2", result.get(0).getId());
+        assertEquals("lineup-sort-1", result.get(1).getId());
+    }
+
+    @Test
+    @DisplayName("getLineupsByTeam: explicit sortOrder values are respected ascending")
+    void testGetLineupsByTeamExplicitSortOrder() {
+        Lineup l1 = buildLineup("lineup-ord-1");
+        l1.setCreatedAt(Instant.parse("2026-01-01T00:00:00Z"));
+        l1.setSortOrder(2);
+        Lineup l2 = buildLineup("lineup-ord-2");
+        l2.setCreatedAt(Instant.parse("2026-02-01T00:00:00Z"));
+        l2.setSortOrder(1);
+        team.setLineups(new ArrayList<>(Arrays.asList(l1, l2)));
+        when(jsonRepository.readData()).thenReturn(teamData);
+
+        List<Lineup> result = lineupService.getLineupsByTeam("team-1");
+
+        // sortOrder 1 comes before sortOrder 2
+        assertEquals("lineup-ord-2", result.get(0).getId());
+        assertEquals("lineup-ord-1", result.get(1).getId());
+    }
+
+    @Test
+    @DisplayName("getLineupsByTeam: same sortOrder breaks tie by createdAt desc")
+    void testGetLineupsByTeamSameSortOrderTieBreakByCreatedAt() {
+        Lineup l1 = buildLineup("lineup-tie-1");
+        l1.setCreatedAt(Instant.parse("2026-01-01T00:00:00Z"));
+        l1.setSortOrder(1);
+        Lineup l2 = buildLineup("lineup-tie-2");
+        l2.setCreatedAt(Instant.parse("2026-03-01T00:00:00Z"));
+        l2.setSortOrder(1);
+        team.setLineups(new ArrayList<>(Arrays.asList(l1, l2)));
+        when(jsonRepository.readData()).thenReturn(teamData);
+
+        List<Lineup> result = lineupService.getLineupsByTeam("team-1");
+
+        // Same sortOrder=1; newer createdAt first
+        assertEquals("lineup-tie-2", result.get(0).getId());
+        assertEquals("lineup-tie-1", result.get(1).getId());
     }
 }

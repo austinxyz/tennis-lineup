@@ -126,6 +126,15 @@ public class LineupController {
         return ResponseEntity.ok(result);
     }
 
+    @PatchMapping("/api/teams/{teamId}/lineups/{lineupId}")
+    public ResponseEntity<com.tennis.model.Lineup> updateLineup(
+            @PathVariable String teamId,
+            @PathVariable String lineupId,
+            @RequestBody LineupUpdateRequest req) {
+        com.tennis.model.Lineup updated = lineupService.updateLineup(teamId, lineupId, req);
+        return ResponseEntity.ok(updated);
+    }
+
     @DeleteMapping("/api/lineups/{id}")
     public ResponseEntity<Void> deleteLineup(@PathVariable String id) {
         lineupService.deleteLineup(id);
