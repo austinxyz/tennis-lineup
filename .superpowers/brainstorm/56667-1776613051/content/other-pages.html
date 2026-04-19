@@ -1,0 +1,341 @@
+<h2>其他页面 Mobile 布局</h2>
+<p class="subtitle">排阵生成 + 对手分析</p>
+
+<style>
+  .mobile-frame {
+    width: 340px;
+    border: 2px solid #e5e7eb;
+    border-radius: 24px;
+    background: white;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .mobile-header {
+    background: white;
+    border-bottom: 1px solid #e5e7eb;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+  }
+  .mobile-body {
+    padding: 12px;
+    background: #f9fafb;
+    max-height: 620px;
+    overflow-y: auto;
+  }
+  .field { margin-bottom: 10px; }
+  .field-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #6b7280;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .form-ctrl {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 12px;
+    background: white;
+    box-sizing: border-box;
+  }
+  .strategy-grp {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+  }
+  .strategy-btn {
+    padding: 8px 6px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    background: white;
+    font-size: 11px;
+    text-align: center;
+    color: #6b7280;
+  }
+  .strategy-btn.active {
+    background: #ecfdf5;
+    color: #059669;
+    border-color: #86efac;
+    font-weight: 600;
+  }
+  .chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 6px;
+    background: white;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    min-height: 32px;
+  }
+  .chip {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 12px;
+    background: #e0e7ff;
+    color: #3730a3;
+  }
+  .chip.exc { background: #fee2e2; color: #991b1b; }
+  .collapse-section {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    margin-bottom: 8px;
+  }
+  .collapse-head {
+    padding: 10px 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    font-weight: 600;
+    color: #374151;
+  }
+  .big-btn {
+    width: 100%;
+    padding: 12px;
+    background: #059669;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    margin-top: 8px;
+  }
+
+  /* Opponent analysis specifics */
+  .prob-bar {
+    background: #f3f4f6;
+    border-radius: 10px;
+    height: 18px;
+    position: relative;
+    overflow: hidden;
+    margin-top: 3px;
+  }
+  .prob-fill {
+    background: linear-gradient(to right, #10b981, #059669);
+    height: 100%;
+    border-radius: 10px 0 0 10px;
+  }
+  .prob-label {
+    position: absolute;
+    left: 6px; top: 0; bottom: 0;
+    display: flex; align-items: center;
+    font-size: 10px; color: white; font-weight: 600;
+  }
+  .line-analysis {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 10px;
+    margin-bottom: 8px;
+  }
+  .commentary {
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    border-radius: 8px;
+    padding: 10px;
+    font-size: 11px;
+    line-height: 1.5;
+    color: #78350f;
+  }
+</style>
+
+<div style="display: flex; justify-content: center; gap: 16px; flex-wrap: wrap; align-items: flex-start;">
+
+  <!-- PAGE 1: LINEUP GENERATOR -->
+  <div>
+    <h3 style="text-align: center;">① 排阵生成</h3>
+    <p class="subtitle" style="text-align: center;">紧凑表单 + 可折叠高级选项</p>
+    <div class="mobile-frame">
+      <div class="mobile-header">
+        <span style="color: #6b7280;">☰</span>
+        <span style="flex: 1; font-weight: 600;">排阵生成</span>
+      </div>
+      <div class="mobile-body">
+
+        <div class="field">
+          <div class="field-label">队伍</div>
+          <select class="form-ctrl">
+            <option>浙江队 (16名球员)</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <div class="field-label">策略</div>
+          <div class="strategy-grp">
+            <div class="strategy-btn active">均衡</div>
+            <div class="strategy-btn">激进</div>
+            <div class="strategy-btn">自定义</div>
+          </div>
+        </div>
+
+        <!-- Advanced options as collapsible -->
+        <div class="collapse-section">
+          <div class="collapse-head">
+            <span>📌 固定位置 <span style="background: #e0e7ff; color: #3730a3; padding: 0 5px; border-radius: 8px; font-size: 10px;">2</span></span>
+            <span style="color: #9ca3af;">▾</span>
+          </div>
+          <div style="padding: 0 12px 10px; font-size: 11px; color: #6b7280;">
+            <div style="display: flex; justify-content: space-between; padding: 4px 0;">
+              <span>May Wang</span><span style="color: #059669; font-weight: 600;">D1</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding: 4px 0;">
+              <span>Orien Xu</span><span style="color: #059669; font-weight: 600;">D1</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="collapse-section">
+          <div class="collapse-head">
+            <span>✓ 包含球员 <span style="background: #d1fae5; color: #065f46; padding: 0 5px; border-radius: 8px; font-size: 10px;">3</span></span>
+            <span style="color: #9ca3af;">▾</span>
+          </div>
+          <div style="padding: 0 12px 10px;">
+            <div class="chip-row" style="border: none; padding: 0;">
+              <span class="chip">Bin Feng</span>
+              <span class="chip">Wei Jing</span>
+              <span class="chip">Lucy Pan</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="collapse-section">
+          <div class="collapse-head">
+            <span>✗ 排除球员 <span style="background: #fee2e2; color: #991b1b; padding: 0 5px; border-radius: 8px; font-size: 10px;">1</span></span>
+            <span style="color: #9ca3af;">▾</span>
+          </div>
+          <div style="padding: 0 12px 10px;">
+            <div class="chip-row" style="border: none; padding: 0;">
+              <span class="chip exc">Bing Cai</span>
+            </div>
+          </div>
+        </div>
+
+        <button class="big-btn">生成排阵</button>
+
+        <!-- Results area hint -->
+        <div style="margin-top: 16px; text-align: center; font-size: 10px; color: #9ca3af;">
+          生成后结果在下方单列显示<br/>（方案1、方案2、...）
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGE 2: OPPONENT ANALYSIS -->
+  <div>
+    <h3 style="text-align: center;">② 对手分析</h3>
+    <p class="subtitle" style="text-align: center;">AI 点评 + 逐线胜率条</p>
+    <div class="mobile-frame">
+      <div class="mobile-header">
+        <span style="color: #6b7280;">☰</span>
+        <span style="flex: 1; font-weight: 600;">对手分析</span>
+      </div>
+      <div class="mobile-body">
+
+        <div class="field">
+          <div class="field-label">我方队伍</div>
+          <select class="form-ctrl">
+            <option>浙江队</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <div class="field-label">我方排阵</div>
+          <select class="form-ctrl">
+            <option>⭐ 隐藏主力阵容 (40.15)</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <div class="field-label">对手阵容</div>
+          <textarea class="form-ctrl" rows="3" placeholder="粘贴对手阵容（姓名,UTR 每行一对）..."
+            style="resize: none;">D1 张三 6.5 / 李四 5.8
+D2 王五 5.2 / 赵六 4.8
+D3 陈七 4.5 / 刘八 4.2
+D4 孙九 3.8 / 周十 3.5</textarea>
+        </div>
+
+        <button class="big-btn" style="background: #3b82f6;">开始分析</button>
+
+        <!-- Results -->
+        <div style="margin-top: 16px;">
+          <div class="field-label" style="margin-bottom: 6px;">胜率预测</div>
+
+          <div class="line-analysis">
+            <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;">
+              <strong style="color: #059669;">D1</strong>
+              <span style="font-size: 10px; color: #6b7280;">May/Orien vs 张三/李四</span>
+            </div>
+            <div class="prob-bar">
+              <div class="prob-fill" style="width: 65%;"></div>
+              <span class="prob-label">我方 65%</span>
+            </div>
+          </div>
+
+          <div class="line-analysis">
+            <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;">
+              <strong style="color: #059669;">D2</strong>
+              <span style="font-size: 10px; color: #6b7280;">Bin/Chen vs 王五/赵六</span>
+            </div>
+            <div class="prob-bar">
+              <div class="prob-fill" style="width: 72%; background: linear-gradient(to right, #10b981, #059669);"></div>
+              <span class="prob-label">我方 72%</span>
+            </div>
+          </div>
+
+          <div class="line-analysis">
+            <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;">
+              <strong style="color: #059669;">D3</strong>
+              <span style="font-size: 10px; color: #6b7280;">Wei/Lucy vs 陈七/刘八</span>
+            </div>
+            <div class="prob-bar">
+              <div class="prob-fill" style="width: 48%; background: linear-gradient(to right, #f59e0b, #d97706);"></div>
+              <span class="prob-label">我方 48%</span>
+            </div>
+          </div>
+
+          <div class="line-analysis">
+            <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;">
+              <strong style="color: #059669;">D4</strong>
+              <span style="font-size: 10px; color: #6b7280;">Hanshan/Bill vs 孙九/周十</span>
+            </div>
+            <div class="prob-bar">
+              <div class="prob-fill" style="width: 82%;"></div>
+              <span class="prob-label">我方 82%</span>
+            </div>
+          </div>
+
+          <div class="commentary" style="margin-top: 10px;">
+            <strong>💡 AI 点评：</strong> 我方整体占优，D3 存在风险，建议考虑 Bing/Lucy 组合以增加稳定性。D1 和 D4 胜算较大，应保持现有配对。
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="options" style="margin-top: 20px;">
+  <div class="option" data-choice="approve-both" onclick="toggleSelect(this)">
+    <div class="letter">✓</div>
+    <div class="content"><h3>两个页面都 OK</h3><p>整体布局通过，可以出 spec</p></div>
+  </div>
+  <div class="option" data-choice="adjust-generator" onclick="toggleSelect(this)">
+    <div class="letter">①</div>
+    <div class="content"><h3>排阵生成需调整</h3><p>留言具体要改哪里</p></div>
+  </div>
+  <div class="option" data-choice="adjust-opponent" onclick="toggleSelect(this)">
+    <div class="letter">②</div>
+    <div class="content"><h3>对手分析需调整</h3><p>留言具体要改哪里</p></div>
+  </div>
+</div>

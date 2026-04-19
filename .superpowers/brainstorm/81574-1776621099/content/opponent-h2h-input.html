@@ -1,0 +1,237 @@
+<h2>逐线对比 — 输入表单（4 项选择）</h2>
+<p class="subtitle">我方队伍 → 我方排阵 → 对手队伍 → 对手排阵</p>
+
+<style>
+  .mobile-frame {
+    width: 360px;
+    border: 2px solid #e5e7eb;
+    border-radius: 24px;
+    background: white;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    overflow: hidden;
+  }
+  .mobile-header {
+    background: white;
+    border-bottom: 1px solid #e5e7eb;
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+  }
+  .mobile-body {
+    padding: 10px;
+    background: #f9fafb;
+    max-height: 680px;
+    overflow-y: auto;
+  }
+
+  .mode-tabs {
+    display: flex;
+    gap: 4px;
+    background: #f3f4f6;
+    border-radius: 8px;
+    padding: 3px;
+    margin-bottom: 12px;
+  }
+  .mode-tab {
+    flex: 1;
+    padding: 8px;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 500;
+    border-radius: 6px;
+    color: #6b7280;
+  }
+  .mode-tab.active {
+    background: white;
+    color: #059669;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  }
+
+  .side-divider {
+    position: relative;
+    text-align: center;
+    margin: 14px 0 8px;
+    font-size: 10px;
+    color: #9ca3af;
+    font-weight: 600;
+    letter-spacing: 2px;
+  }
+  .side-divider::before, .side-divider::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    width: 32%;
+    height: 1px;
+    background: #e5e7eb;
+  }
+  .side-divider::before { left: 0; }
+  .side-divider::after { right: 0; }
+
+  .field-label {
+    font-size: 11px;
+    color: #6b7280;
+    font-weight: 600;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .select {
+    width: 100%;
+    padding: 8px 10px;
+    font-size: 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    background: white;
+    margin-bottom: 10px;
+  }
+  .select:disabled {
+    background: #f3f4f6;
+    color: #9ca3af;
+  }
+
+  .preview {
+    border-radius: 6px;
+    padding: 6px 8px;
+    font-size: 10px;
+    margin-top: -6px;
+    margin-bottom: 10px;
+    line-height: 1.5;
+  }
+  .preview.ours {
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    color: #065f46;
+  }
+  .preview.opp {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #991b1b;
+  }
+
+  .btn-primary {
+    width: 100%;
+    padding: 11px;
+    background: #059669;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    margin-top: 6px;
+  }
+  .btn-primary:disabled {
+    background: #d1d5db;
+    cursor: not-allowed;
+  }
+
+  .gender-tag {
+    font-size: 9px;
+    font-weight: 700;
+    padding: 1px 4px;
+    border-radius: 2px;
+  }
+  .gender-tag.f { background: #fce7f3; color: #be185d; }
+  .gender-tag.m { background: #dbeafe; color: #1d4ed8; }
+</style>
+
+<div style="display: flex; justify-content: center;">
+  <div class="mobile-frame">
+    <div class="mobile-header">
+      <span style="color: #6b7280;">☰</span>
+      <span style="flex: 1; font-weight: 600;">对手策略分析</span>
+    </div>
+    <div class="mobile-body">
+
+      <div class="mode-tabs">
+        <div class="mode-tab">最佳三阵</div>
+        <div class="mode-tab active">逐线对比</div>
+      </div>
+
+      <!-- Our side -->
+      <div class="side-divider">· 我 方 ·</div>
+
+      <div class="field-label">队伍</div>
+      <select class="select">
+        <option>浙江队 (16 名)</option>
+      </select>
+
+      <div class="field-label">排阵</div>
+      <select class="select">
+        <option>⭐ 主力阵容 (UTR 40.15)</option>
+      </select>
+      <div class="preview ours">
+        D1 May/Orien · D2 Bin/Chen<br/>
+        D3 Wei/Lucy · D4 Hanshan/Bill
+      </div>
+
+      <!-- Opponent side -->
+      <div class="side-divider">· 对 手 ·</div>
+
+      <div class="field-label">队伍</div>
+      <select class="select">
+        <option>上海队</option>
+      </select>
+
+      <div class="field-label">对手排阵</div>
+      <select class="select">
+        <option>主力阵容 (UTR 38.5)</option>
+      </select>
+      <div class="preview opp">
+        D1 男王大/男李二 · D2 女张三/男赵四<br/>
+        D3 女陈五/男刘六 · D4 男孙七/女周八
+      </div>
+
+      <details style="margin: 10px 0;">
+        <summary style="font-size: 11px; color: #6b7280; cursor: pointer; padding: 4px 0;">
+          📝 对手搭档笔记 (选填)
+        </summary>
+        <div style="font-size: 10px; padding: 6px 0; color: #9ca3af;">
+          （展开后可添加对手球员配对笔记）
+        </div>
+      </details>
+
+      <button class="btn-primary">开始分析</button>
+
+    </div>
+  </div>
+</div>
+
+<h3 style="margin-top: 20px;">对比：两个模式的输入差异</h3>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; max-width: 800px; margin: 0 auto;">
+  <div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px;">
+    <div style="font-weight: 600; color: #059669; margin-bottom: 8px;">最佳三阵 (3 项)</div>
+    <ol style="font-size: 13px; color: #4b5563; padding-left: 20px; line-height: 1.7;">
+      <li>我方队伍</li>
+      <li>对手队伍</li>
+      <li>对手排阵</li>
+    </ol>
+    <div style="font-size: 11px; color: #9ca3af; margin-top: 8px;">
+      输出：算法自动从我方所有已保存排阵中挑出 Top 3 对位
+    </div>
+  </div>
+  <div style="background: white; border: 1px solid #059669; border-radius: 8px; padding: 12px;">
+    <div style="font-weight: 600; color: #059669; margin-bottom: 8px;">逐线对比 (4 项)</div>
+    <ol style="font-size: 13px; color: #4b5563; padding-left: 20px; line-height: 1.7;">
+      <li>我方队伍</li>
+      <li><strong>我方排阵</strong> ← 额外</li>
+      <li>对手队伍</li>
+      <li>对手排阵</li>
+    </ol>
+    <div style="font-size: 11px; color: #9ca3af; margin-top: 8px;">
+      输出：指定排阵 vs 对手排阵 逐线对比
+    </div>
+  </div>
+</div>
+
+<div class="options" style="margin-top: 20px;">
+  <div class="option" data-choice="approve" onclick="toggleSelect(this)">
+    <div class="letter">✓</div>
+    <div class="content"><h3>这样可以</h3><p>两个 tab 输入形式都清晰，准备实施</p></div>
+  </div>
+  <div class="option" data-choice="adjust" onclick="toggleSelect(this)">
+    <div class="letter">✎</div>
+    <div class="content"><h3>需要调整</h3><p>留言具体点</p></div>
+  </div>
+</div>

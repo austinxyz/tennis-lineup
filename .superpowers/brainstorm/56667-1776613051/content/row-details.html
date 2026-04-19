@@ -1,0 +1,309 @@
+<h2>球员/排阵行 — 折叠 + 展开</h2>
+<p class="subtitle">默认紧凑显示，点击行展开更多细节。两种视图都用相同的交互模式。</p>
+
+<style>
+  .mobile-frame {
+    width: 320px;
+    border: 2px solid #e5e7eb;
+    border-radius: 24px;
+    background: white;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    overflow: hidden;
+  }
+  .mobile-header {
+    background: white;
+    border-bottom: 1px solid #e5e7eb;
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+  }
+  .mobile-body {
+    padding: 8px;
+    background: #f9fafb;
+    min-height: 340px;
+  }
+
+  /* Player row — collapsed */
+  .player-row {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 4px;
+    font-size: 12px;
+  }
+  .player-row.expanded { background: #f0fdf4; border-color: #86efac; }
+  .player-top {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .gender-tag {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+  .gender-tag.f { background: #fce7f3; color: #be185d; }
+  .gender-tag.m { background: #dbeafe; color: #1d4ed8; }
+  .player-name { font-weight: 600; color: #1f2937; flex: 1; }
+  .utr-col { font-size: 11px; color: #6b7280; text-align: right; }
+  .utr-col .actual { color: #f59e0b; font-weight: 600; }
+  .verified-dot { width: 6px; height: 6px; border-radius: 50%; background: #10b981; display: inline-block; margin-left: 4px; }
+  .expand-arrow { color: #9ca3af; font-size: 11px; margin-left: 4px; }
+
+  /* Player row — expanded details */
+  .player-detail {
+    border-top: 1px dashed #d1fae5;
+    margin-top: 8px;
+    padding-top: 8px;
+    font-size: 11px;
+    color: #4b5563;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px 10px;
+  }
+  .player-detail .label { color: #9ca3af; font-size: 10px; }
+  .player-detail .notes { grid-column: 1 / -1; background: white; padding: 6px 8px; border-radius: 4px; margin-top: 4px; }
+
+  /* Lineup card */
+  .lineup-card {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 8px;
+  }
+  .lineup-head { display: flex; justify-content: space-between; margin-bottom: 10px; }
+  .lineup-title { font-size: 12px; font-weight: 600; color: #1f2937; }
+  .lineup-utr { font-size: 11px; color: #6b7280; text-align: right; }
+  .lineup-utr .actual { color: #f59e0b; display: block; font-weight: 600; }
+  .pair-row {
+    display: grid;
+    grid-template-columns: 28px 1fr;
+    gap: 6px;
+    padding: 5px 0;
+    border-top: 1px solid #f3f4f6;
+    font-size: 11px;
+  }
+  .pair-pos { font-weight: 700; color: #059669; font-size: 10px; }
+  .pair-players { display: flex; flex-direction: column; gap: 2px; }
+  .pair-player { display: flex; align-items: center; gap: 4px; }
+  .pair-player .utr { color: #6b7280; font-size: 10px; }
+  .pair-player .actual { color: #f59e0b; font-size: 10px; font-weight: 600; }
+</style>
+
+<div class="split">
+
+  <!-- LEFT: Team detail rows -->
+  <div style="display: flex; flex-direction: column; align-items: center;">
+    <h3 style="align-self: flex-start; margin-left: 8px;">队伍详情 — 球员行</h3>
+    <p class="subtitle" style="align-self: flex-start; margin-left: 8px;">点击任意行展开</p>
+    <div class="mobile-frame">
+      <div class="mobile-header">
+        <span style="color: #6b7280;">☰</span>
+        <span style="color: #2563eb; font-weight: 500;">← 队伍</span>
+        <span style="flex: 1; font-weight: 600;">浙江队</span>
+      </div>
+      <div class="mobile-body">
+        <!-- Collapsed row -->
+        <div class="player-row">
+          <div class="player-top">
+            <span class="gender-tag f">女</span>
+            <span class="player-name">May Wang</span>
+            <div class="utr-col">
+              <div>UTR 5.05<span class="verified-dot" title="Verified"></span></div>
+              <div class="actual">实:6.80</div>
+            </div>
+            <span class="expand-arrow">▸</span>
+          </div>
+        </div>
+
+        <!-- Expanded row -->
+        <div class="player-row expanded">
+          <div class="player-top">
+            <span class="gender-tag m">男</span>
+            <span class="player-name">Orien Xu</span>
+            <div class="utr-col">
+              <div>UTR 6.18<span class="verified-dot"></span></div>
+              <div class="actual">实:6.18</div>
+            </div>
+            <span class="expand-arrow">▾</span>
+          </div>
+          <div class="player-detail">
+            <span class="label">Verified Doubles:</span>
+            <span>6.18 ✓</span>
+            <span class="label">性别:</span>
+            <span>男</span>
+            <div class="notes">📝 底线很稳定，可连续多拍不失误，去年USTA混双6.0打到national，是主力</div>
+            <div style="grid-column: 1/-1; display: flex; gap: 6px; margin-top: 6px;">
+              <button class="mock-button" style="font-size: 10px; padding: 3px 8px;">编辑</button>
+              <button class="mock-button" style="font-size: 10px; padding: 3px 8px; background: #fef2f2; color: #dc2626; border: 1px solid #fecaca;">删除</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="player-row">
+          <div class="player-top">
+            <span class="gender-tag m">男</span>
+            <span class="player-name">Bill Wei</span>
+            <div class="utr-col">
+              <div>UTR 5.69</div>
+              <div class="actual">实:6.25</div>
+            </div>
+            <span class="expand-arrow">▸</span>
+          </div>
+        </div>
+        <div class="player-row">
+          <div class="player-top">
+            <span class="gender-tag f">女</span>
+            <span class="player-name">Chenchen Zhang</span>
+            <div class="utr-col">
+              <div>UTR 4.28</div>
+              <div class="actual">实:4.60</div>
+            </div>
+            <span class="expand-arrow">▸</span>
+          </div>
+        </div>
+        <div class="player-row">
+          <div class="player-top">
+            <span class="gender-tag m">男</span>
+            <span class="player-name">Wei Jing</span>
+            <div class="utr-col">
+              <div>UTR 6.16<span class="verified-dot"></span></div>
+              <div class="actual">实:6.50</div>
+            </div>
+            <span class="expand-arrow">▸</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Saved lineup with per-player detail -->
+  <div style="display: flex; flex-direction: column; align-items: center;">
+    <h3 style="align-self: flex-start; margin-left: 8px;">已保存排阵 — 配对行</h3>
+    <p class="subtitle" style="align-self: flex-start; margin-left: 8px;">每个球员显示姓名/性别/UTR/实际UTR</p>
+    <div class="mobile-frame">
+      <div class="mobile-header">
+        <span style="color: #6b7280;">☰</span>
+        <span style="color: #2563eb; font-weight: 500;">← 队伍</span>
+        <span style="flex: 1; font-weight: 600; font-size: 12px;">已保存排阵</span>
+      </div>
+      <div class="mobile-body">
+        <div class="lineup-card">
+          <div class="lineup-head">
+            <div>
+              <span style="background: #fef3c7; color: #b45309; padding: 1px 5px; border-radius: 3px; font-size: 10px; margin-right: 4px;">⭐首选</span>
+              <span class="lineup-title">隐藏主力阵容</span>
+            </div>
+            <div class="lineup-utr">
+              总: 40.15
+              <span class="actual">实: 42.48</span>
+            </div>
+          </div>
+          <div style="font-size: 10px; color: #6b7280; margin-bottom: 8px;">这是一个加强D2/D4的阵容</div>
+
+          <div class="pair-row">
+            <div class="pair-pos">D1</div>
+            <div class="pair-players">
+              <div class="pair-player">
+                <span class="gender-tag f">女</span>
+                <span style="font-weight: 500;">May Wang</span>
+                <span class="utr">5.05</span>
+                <span class="actual">/ 6.80</span>
+              </div>
+              <div class="pair-player">
+                <span class="gender-tag m">男</span>
+                <span style="font-weight: 500;">Orien Xu</span>
+                <span class="utr">6.18</span>
+                <span class="actual">/ 6.18</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="pair-row">
+            <div class="pair-pos">D2</div>
+            <div class="pair-players">
+              <div class="pair-player">
+                <span class="gender-tag m">男</span>
+                <span style="font-weight: 500;">Bin Feng</span>
+                <span class="utr">6.28</span>
+                <span class="actual">/ 6.80</span>
+              </div>
+              <div class="pair-player">
+                <span class="gender-tag f">女</span>
+                <span style="font-weight: 500;">Chen Zhang</span>
+                <span class="utr">4.28</span>
+                <span class="actual">/ 4.60</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="pair-row">
+            <div class="pair-pos">D3</div>
+            <div class="pair-players">
+              <div class="pair-player">
+                <span class="gender-tag m">男</span>
+                <span style="font-weight: 500;">Wei Jing</span>
+                <span class="utr">6.16</span>
+                <span class="actual">/ 6.50</span>
+              </div>
+              <div class="pair-player">
+                <span class="gender-tag f">女</span>
+                <span style="font-weight: 500;">Lucy Pan</span>
+                <span class="utr">3.32</span>
+                <span class="actual">/ 4.00</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="pair-row">
+            <div class="pair-pos">D4</div>
+            <div class="pair-players">
+              <div class="pair-player">
+                <span class="gender-tag f">女</span>
+                <span style="font-weight: 500;">Hanshan Ye</span>
+                <span class="utr">3.19</span>
+                <span class="actual">/ 3.60</span>
+              </div>
+              <div class="pair-player">
+                <span class="gender-tag m">男</span>
+                <span style="font-weight: 500;">Bill Wei</span>
+                <span class="utr">5.69</span>
+                <span class="actual">/ 6.25</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px; padding-top: 8px; border-top: 1px solid #f3f4f6; font-size: 10px;">
+            <span style="background: #d1fae5; color: #065f46; padding: 2px 6px; border-radius: 10px;">合法</span>
+            <span style="color: #9ca3af;">2026/04/18</span>
+            <div style="display: flex; gap: 3px;">
+              <span style="color: #9ca3af;">↑↓</span>
+              <span style="color: #2563eb; border: 1px solid #bfdbfe; padding: 1px 6px; border-radius: 3px;">编辑</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="options" style="margin-top: 20px;">
+  <div class="option" data-choice="approve" onclick="toggleSelect(this)">
+    <div class="letter">✓</div>
+    <div class="content"><h3>看起来对</h3><p>继续这个方案</p></div>
+  </div>
+  <div class="option" data-choice="expand-lineup" onclick="toggleSelect(this)">
+    <div class="letter">?</div>
+    <div class="content"><h3>排阵卡片也要展开更多</h3><p>点排阵卡展开显示策略/历史等</p></div>
+  </div>
+  <div class="option" data-choice="adjust" onclick="toggleSelect(this)">
+    <div class="letter">✎</div>
+    <div class="content"><h3>信息密度调整</h3><p>留言告诉我哪里太拥挤或太空</p></div>
+  </div>
+</div>

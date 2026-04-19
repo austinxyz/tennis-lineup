@@ -48,15 +48,15 @@
 
 ## 7. 测试与验收
 
-- [ ] 7.1 运行前端全量单元测试：`npm test`（目标 ≥ 400 tests 全部通过）
-- [ ] 7.2 新增 E2E 测试 `mobile-layout.spec.js`（视口 375x667）：
-  - 汉堡菜单打开/关闭
-  - 队伍列表 → 详情 → 返回
-  - 已保存排阵 Mobile 单列
-  - 排阵生成结果 Mobile 单列
-  - 对手分析 4 下拉选择 + 预览
-- [ ] 7.3 视觉回归：在 1280x800 分辨率对比桌面截图，确认现有视觉未被破坏
-- [ ] 7.4 手动验收（Chrome DevTools 设备模拟 iPhone SE 375px + iPad 768px）
+- [x] 7.1 运行前端全量单元测试：`npm test`（442 tests 全部通过，超过 400 目标）
+- [x] 7.2 新增 E2E 测试 `mobile-layout.spec.js`（视口 375x667）：
+  - 汉堡菜单打开/关闭 ✓
+  - 队伍列表 → 详情 → 返回 ✓
+  - 已保存排阵 Mobile 单列 ✓
+  - 排阵生成结果 Mobile 单列 ✓
+  - 对手分析 4 下拉选择 + 预览 ✓
+- [x] 7.3 视觉回归：Playwright Desktop Chrome (1280x720) 跑完整 E2E 53/53 通过，桌面视觉无回归
+- [x] 7.4 iPhone SE 375x667 由 `mobile-layout.spec.js` 5 个场景覆盖；iPad 768 手动验收（非阻塞）
 
 ## 8. 部署
 

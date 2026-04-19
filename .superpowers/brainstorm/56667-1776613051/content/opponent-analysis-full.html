@@ -1,0 +1,410 @@
+<h2>对手分析（Mobile 完整流程）</h2>
+<p class="subtitle">输入对手阵容 → 逐线胜率 → AI 点评</p>
+
+<style>
+  .mobile-frame {
+    width: 380px;
+    border: 2px solid #e5e7eb;
+    border-radius: 24px;
+    background: white;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .mobile-header {
+    background: white;
+    border-bottom: 1px solid #e5e7eb;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+  }
+  .mobile-body {
+    padding: 12px;
+    background: #f9fafb;
+    max-height: 680px;
+    overflow-y: auto;
+  }
+  .field { margin-bottom: 10px; }
+  .field-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #6b7280;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .form-ctrl {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 12px;
+    background: white;
+    box-sizing: border-box;
+  }
+  .gender-tag {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+  .gender-tag.f { background: #fce7f3; color: #be185d; }
+  .gender-tag.m { background: #dbeafe; color: #1d4ed8; }
+
+  /* Overall summary */
+  .overall-card {
+    background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+    border: 1px solid #86efac;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+    text-align: center;
+  }
+  .overall-score {
+    font-size: 36px;
+    font-weight: 800;
+    color: #065f46;
+    margin-bottom: 4px;
+  }
+  .overall-label { font-size: 12px; color: #047857; }
+
+  /* Line analysis cards */
+  .line-card {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 8px;
+  }
+  .line-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .line-pos {
+    font-weight: 700;
+    color: #059669;
+    font-size: 14px;
+  }
+  .line-winrate {
+    font-size: 18px;
+    font-weight: 700;
+  }
+  .win-high { color: #059669; }
+  .win-mid { color: #f59e0b; }
+  .win-low { color: #dc2626; }
+
+  .matchup-row {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 8px;
+    align-items: center;
+    font-size: 11px;
+    padding: 4px 0;
+  }
+  .matchup-row .team-side { display: flex; flex-direction: column; gap: 2px; }
+  .matchup-row .player-line {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+  }
+  .matchup-row .name { font-weight: 600; color: #1f2937; }
+  .matchup-row .utr { color: #6b7280; font-size: 10px; }
+  .matchup-row .vs {
+    color: #9ca3af;
+    font-weight: 600;
+    font-size: 10px;
+    padding: 0 4px;
+  }
+  .matchup-row .opponent .name { color: #dc2626; }
+
+  .prob-bar {
+    background: #f3f4f6;
+    border-radius: 8px;
+    height: 14px;
+    position: relative;
+    overflow: hidden;
+    margin-top: 6px;
+  }
+  .prob-fill {
+    height: 100%;
+    border-radius: 8px 0 0 8px;
+  }
+  .prob-high { background: linear-gradient(to right, #10b981, #059669); }
+  .prob-mid { background: linear-gradient(to right, #fbbf24, #d97706); }
+  .prob-low { background: linear-gradient(to right, #f87171, #dc2626); }
+
+  .line-note {
+    margin-top: 6px;
+    padding: 6px 8px;
+    background: #fef3c7;
+    border-radius: 4px;
+    font-size: 10px;
+    color: #78350f;
+    line-height: 1.4;
+  }
+
+  .commentary {
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 10px;
+    padding: 12px;
+    font-size: 12px;
+    line-height: 1.6;
+    color: #1e40af;
+  }
+  .commentary strong { color: #1e3a8a; }
+
+  .big-btn {
+    width: 100%;
+    padding: 12px;
+    background: #3b82f6;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+  }
+</style>
+
+<div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap;">
+
+  <!-- LEFT: Input screen -->
+  <div>
+    <h3 style="text-align: center;">输入阶段</h3>
+    <div class="mobile-frame">
+      <div class="mobile-header">
+        <span style="color: #6b7280;">☰</span>
+        <span style="flex: 1; font-weight: 600;">对手分析</span>
+      </div>
+      <div class="mobile-body">
+
+        <div class="field">
+          <div class="field-label">我方队伍</div>
+          <select class="form-ctrl">
+            <option>浙江队 (16名球员)</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <div class="field-label">我方排阵</div>
+          <select class="form-ctrl">
+            <option>⭐ 隐藏主力阵容 (总40.15, 实42.48)</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <div class="field-label">对手队伍名（选填）</div>
+          <input class="form-ctrl" placeholder="如：上海队" />
+        </div>
+
+        <div class="field">
+          <div class="field-label">对手阵容</div>
+          <textarea class="form-ctrl" rows="5" style="resize: none; font-family: monospace;">D1 男王大 6.5 / 男李二 5.8
+D2 女张三 5.2 / 男赵四 4.8
+D3 女陈五 4.5 / 男刘六 4.2
+D4 男孙七 3.8 / 女周八 3.5</textarea>
+          <div style="font-size: 10px; color: #9ca3af; margin-top: 4px;">
+            格式：Dn [性别] 姓名 UTR / [性别] 姓名 UTR
+          </div>
+        </div>
+
+        <button class="big-btn">🔍 开始分析</button>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Results screen -->
+  <div>
+    <h3 style="text-align: center;">结果阶段</h3>
+    <div class="mobile-frame">
+      <div class="mobile-header">
+        <span style="color: #6b7280;">☰</span>
+        <span style="flex: 1; font-weight: 600;">对手分析 · 上海队</span>
+      </div>
+      <div class="mobile-body">
+
+        <!-- Overall summary -->
+        <div class="overall-card">
+          <div class="overall-score">66.8%</div>
+          <div class="overall-label">整体预测胜率</div>
+          <div style="margin-top: 8px; font-size: 11px; color: #047857;">
+            <strong>我方 3 胜 1 负</strong> · D3 存在风险
+          </div>
+        </div>
+
+        <!-- D1 -->
+        <div class="line-card">
+          <div class="line-head">
+            <span class="line-pos">D1</span>
+            <span class="line-winrate win-high">65%</span>
+          </div>
+          <div class="matchup-row">
+            <div class="team-side">
+              <div class="player-line">
+                <span class="gender-tag f">女</span>
+                <span class="name">May Wang</span>
+                <span class="utr">6.80</span>
+              </div>
+              <div class="player-line">
+                <span class="gender-tag m">男</span>
+                <span class="name">Orien Xu</span>
+                <span class="utr">6.18</span>
+              </div>
+            </div>
+            <span class="vs">vs</span>
+            <div class="team-side opponent" style="text-align: right;">
+              <div class="player-line" style="justify-content: flex-end;">
+                <span class="utr">6.5</span>
+                <span class="name">王大</span>
+                <span class="gender-tag m">男</span>
+              </div>
+              <div class="player-line" style="justify-content: flex-end;">
+                <span class="utr">5.8</span>
+                <span class="name">李二</span>
+                <span class="gender-tag m">男</span>
+              </div>
+            </div>
+          </div>
+          <div class="prob-bar"><div class="prob-fill prob-high" style="width: 65%;"></div></div>
+        </div>
+
+        <!-- D2 -->
+        <div class="line-card">
+          <div class="line-head">
+            <span class="line-pos">D2</span>
+            <span class="line-winrate win-high">72%</span>
+          </div>
+          <div class="matchup-row">
+            <div class="team-side">
+              <div class="player-line">
+                <span class="gender-tag m">男</span>
+                <span class="name">Bin Feng</span>
+                <span class="utr">6.80</span>
+              </div>
+              <div class="player-line">
+                <span class="gender-tag f">女</span>
+                <span class="name">Chen Zhang</span>
+                <span class="utr">4.60</span>
+              </div>
+            </div>
+            <span class="vs">vs</span>
+            <div class="team-side opponent" style="text-align: right;">
+              <div class="player-line" style="justify-content: flex-end;">
+                <span class="utr">5.2</span>
+                <span class="name">张三</span>
+                <span class="gender-tag f">女</span>
+              </div>
+              <div class="player-line" style="justify-content: flex-end;">
+                <span class="utr">4.8</span>
+                <span class="name">赵四</span>
+                <span class="gender-tag m">男</span>
+              </div>
+            </div>
+          </div>
+          <div class="prob-bar"><div class="prob-fill prob-high" style="width: 72%;"></div></div>
+        </div>
+
+        <!-- D3 - risk line -->
+        <div class="line-card" style="border-color: #f59e0b;">
+          <div class="line-head">
+            <span class="line-pos" style="color: #d97706;">D3 ⚠️</span>
+            <span class="line-winrate win-mid">48%</span>
+          </div>
+          <div class="matchup-row">
+            <div class="team-side">
+              <div class="player-line">
+                <span class="gender-tag m">男</span>
+                <span class="name">Wei Jing</span>
+                <span class="utr">6.50</span>
+              </div>
+              <div class="player-line">
+                <span class="gender-tag f">女</span>
+                <span class="name">Lucy Pan</span>
+                <span class="utr">4.00</span>
+              </div>
+            </div>
+            <span class="vs">vs</span>
+            <div class="team-side opponent" style="text-align: right;">
+              <div class="player-line" style="justify-content: flex-end;">
+                <span class="utr">4.5</span>
+                <span class="name">陈五</span>
+                <span class="gender-tag f">女</span>
+              </div>
+              <div class="player-line" style="justify-content: flex-end;">
+                <span class="utr">4.2</span>
+                <span class="name">刘六</span>
+                <span class="gender-tag m">男</span>
+              </div>
+            </div>
+          </div>
+          <div class="prob-bar"><div class="prob-fill prob-mid" style="width: 48%;"></div></div>
+          <div class="line-note">
+            <strong>⚠️ 风险线：</strong> Lucy UTR 4.0 偏低，搭档协同需配合。考虑 Bing Cai 替换。
+          </div>
+        </div>
+
+        <!-- D4 -->
+        <div class="line-card">
+          <div class="line-head">
+            <span class="line-pos">D4</span>
+            <span class="line-winrate win-high">82%</span>
+          </div>
+          <div class="matchup-row">
+            <div class="team-side">
+              <div class="player-line">
+                <span class="gender-tag f">女</span>
+                <span class="name">Hanshan Ye</span>
+                <span class="utr">3.60</span>
+              </div>
+              <div class="player-line">
+                <span class="gender-tag m">男</span>
+                <span class="name">Bill Wei</span>
+                <span class="utr">6.25</span>
+              </div>
+            </div>
+            <span class="vs">vs</span>
+            <div class="team-side opponent" style="text-align: right;">
+              <div class="player-line" style="justify-content: flex-end;">
+                <span class="utr">3.8</span>
+                <span class="name">孙七</span>
+                <span class="gender-tag m">男</span>
+              </div>
+              <div class="player-line" style="justify-content: flex-end;">
+                <span class="utr">3.5</span>
+                <span class="name">周八</span>
+                <span class="gender-tag f">女</span>
+              </div>
+            </div>
+          </div>
+          <div class="prob-bar"><div class="prob-fill prob-high" style="width: 82%;"></div></div>
+        </div>
+
+        <!-- AI Commentary -->
+        <div class="commentary" style="margin-top: 12px;">
+          <strong>💡 AI 综合点评</strong><br/>
+          我方 D1/D2/D4 占优，整体胜算较大。<strong>D3 存在较大风险</strong>：Lucy Pan UTR 4.0 相对较低，若 Wei Jing 状态平平易被拖入僵局。建议：若对手 D3 已确认，可考虑用 Bing Cai 替换 Lucy（UTR 3.26，但配对经验更丰富），或从保存排阵中选择"男双加强 D2"备选方案。
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="options" style="margin-top: 20px;">
+  <div class="option" data-choice="approve" onclick="toggleSelect(this)">
+    <div class="letter">✓</div>
+    <div class="content"><h3>这样可以</h3><p>开始写 spec 和实现计划</p></div>
+  </div>
+  <div class="option" data-choice="adjust" onclick="toggleSelect(this)">
+    <div class="letter">✎</div>
+    <div class="content"><h3>需要调整</h3><p>留言具体要改哪里</p></div>
+  </div>
+</div>

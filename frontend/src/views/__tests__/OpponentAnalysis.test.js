@@ -432,4 +432,223 @@ describe('OpponentAnalysis', () => {
       expect(wrapper.text()).toContain('己方队伍暂无保存排阵')
     })
   })
+
+  describe('mobile result tabs (最佳三阵 mode)', () => {
+    async function setupAndRunBestThreeLocal(wrapper) {
+      setupMockGet()
+      await wrapper.findAll('select')[0].setValue('team-1')
+      const opponentSelect = wrapper.findAll('select')[1]
+      await opponentSelect.setValue('team-2')
+      await opponentSelect.trigger('change')
+      await flushPromises()
+      await wrapper.findAll('select')[2].setValue('opp-lineup-1')
+      await wrapper.findAll('button').find(b => b.text().includes('查找最佳三阵')).trigger('click')
+      await flushPromises()
+    }
+
+    it('renders mobile result tab buttons when bestThreeResults are present', async () => {
+      const wrapper = mountComponent()
+      await flushPromises()
+      await setupAndRunBestThreeLocal(wrapper)
+
+      const tabWrapper = wrapper.find('[data-testid="mobile-result-tabs"]')
+      expect(tabWrapper.exists()).toBe(true)
+    })
+
+    it('mobile result tabs are not shown before results load', async () => {
+      const wrapper = mountComponent()
+      await flushPromises()
+
+      const tabWrapper = wrapper.find('[data-testid="mobile-result-tabs"]')
+      expect(tabWrapper.exists()).toBe(false)
+    })
+
+    it('default active tab is utr (算法推荐)', async () => {
+      const wrapper = mountComponent()
+      await flushPromises()
+      await setupAndRunBestThreeLocal(wrapper)
+
+      const utrTab = wrapper.find('[data-testid="result-tab-utr"]')
+      expect(utrTab.exists()).toBe(true)
+      expect(utrTab.classes()).toContain('bg-white')
+    })
+
+    it('ai tab button is not active by default', async () => {
+      const wrapper = mountComponent()
+      await flushPromises()
+      await setupAndRunBestThreeLocal(wrapper)
+
+      const aiTab = wrapper.find('[data-testid="result-tab-ai"]')
+      expect(aiTab.exists()).toBe(true)
+      expect(aiTab.classes()).not.toContain('bg-white')
+    })
+
+    it('clicking ai tab switches active tab styling', async () => {
+      const wrapper = mountComponent()
+      await flushPromises()
+      await setupAndRunBestThreeLocal(wrapper)
+
+      const aiTab = wrapper.find('[data-testid="result-tab-ai"]')
+      await aiTab.trigger('click')
+      await flushPromises()
+
+      expect(aiTab.classes()).toContain('bg-white')
+
+      const utrTab = wrapper.find('[data-testid="result-tab-utr"]')
+      expect(utrTab.classes()).not.toContain('bg-white')
+    })
+
+    it('ai tab shows trigger button when aiResult is null', async () => {
+      const wrapper = mountComponent()
+      await flushPromises()
+      await setupAndRunBestThreeLocal(wrapper)
+
+      const aiTab = wrapper.find('[data-testid="result-tab-ai"]')
+      await aiTab.trigger('click')
+      await flushPromises()
+
+      const mobileAiPanel = wrapper.find('[data-testid="mobile-ai-panel"]')
+      expect(mobileAiPanel.exists()).toBe(true)
+      expect(mobileAiPanel.text()).toContain('获取 AI 推荐')
+    })
+
+    it('ai tab shows AI result card after triggering AI analysis', async () => {
+      const wrapper = mountComponent()
+      await flushPromises()
+      await setupAndRunBestThreeLocal(wrapper)
+
+      // Switch to AI tab
+      const aiTab = wrapper.find('[data-testid="result-tab-ai"]')
+      await aiTab.trigger('click')
+      await flushPromises()
+
+      // Click the trigger button
+      const mobileAiPanel = wrapper.find('[data-testid="mobile-ai-panel"]')
+      const triggerBtn = mobileAiPanel.findAll('button').find(b => b.text().includes('获取 AI 推荐'))
+      await triggerBtn.trigger('click')
+      await flushPromises()
+
+      expect(mockRunAiAnalysis).toHaveBeenCalled()
+      expect(wrapper.find('[data-testid="mobile-ai-panel"]').text()).toContain('AI 推荐排阵')
+    })
+
+    it('mobile tab wrapper has lg:hidden class so it is invisible on desktop', async () => {
+      const wrapper = mountComponent()
+      await flushPromises()
+      await setupAndRunBestThreeLocal(wrapper)
+
+      const tabWrapper = wrapper.find('[data-testid="mobile-result-tabs"]')
+      expect(tabWrapper.classes()).toContain('lg:hidden')
+    })
+
+    it('desktop two-column grid exists and has hidden lg:grid classes', async () => {
+      const wrapper = mountComponent()
+      await flushPromises()
+      await setupAndRunBestThreeLocal(wrapper)
+
+      const desktopGrid = wrapper.find('[data-testid="desktop-result-grid"]')
+      expect(desktopGrid.exists()).toBe(true)
+      expect(desktopGrid.classes()).toContain('lg:grid')
+    })
+  })
+
+  describe('mobile bestThree card collapse/expand', () => {
+    async function setupAndRunBestThreeLocal(wrapper) {
+      setupMockGet()
+      await wrapper.findAll('select')[0].setValue('team-1')
+      const opponentSelect = wrapper.findAll('select')[1]
+      await opponentSelect.setValue('team-2')
+      await opponentSelect.trigger('change')
+      await flushPromises()
+      await wrapper.findAll('select')[2].setValue('opp-lineup-1')
+      await wrapper.findAll('button').find(b => b.text().includes('查找最佳三阵')).trigger('click')
+      await flushPromises()
+    }
+
+    it('first bestThree card content is visible by default (expanded)', async () => {
+      const wrapper = mountComponent()
+      await flushPromises()
+      await setupAndRunBestThreeLocal(wrapper)
+
+      const firstCard = wrapper.find('[data-testid="best-three-card-0"]')
+      expect(firstCard.exists()).toBe(true)
+      const content = firstCard.find('[data-testid="best-three-card-content-0"]')
+      expect(content.exists()).toBe(true)
+      // Should NOT have 'hidden' class (since it's expanded by default)
+      expect(content.classes()).not.toContain('hidden')
+    })
+
+    it('second bestThree card content is collapsed on mobile by default', async () => {
+      const wrapper = mountComponent()
+      await flushPromises()
+      await setupAndRunBestThreeLocal(wrapper)
+
+      const content = wrapper.find('[data-testid="best-three-card-content-1"]')
+      expect(content.exists()).toBe(true)
+      // Should have 'hidden' class (collapsed on mobile)
+      expect(content.classes()).toContain('hidden')
+    })
+
+    it('clicking collapsed card header expands card content', async () => {
+      const wrapper = mountComponent()
+      await flushPromises()
+      await setupAndRunBestThreeLocal(wrapper)
+
+      const secondCard = wrapper.find('[data-testid="best-three-card-1"]')
+      const header = secondCard.find('[data-testid="best-three-card-header-1"]')
+      await header.trigger('click')
+      await flushPromises()
+
+      const content = wrapper.find('[data-testid="best-three-card-content-1"]')
+      expect(content.classes()).not.toContain('hidden')
+    })
+
+    it('clicking expanded card header collapses it', async () => {
+      const wrapper = mountComponent()
+      await flushPromises()
+      await setupAndRunBestThreeLocal(wrapper)
+
+      // First card is expanded by default; click header to collapse
+      const firstCard = wrapper.find('[data-testid="best-three-card-0"]')
+      const header = firstCard.find('[data-testid="best-three-card-header-0"]')
+      await header.trigger('click')
+      await flushPromises()
+
+      const content = wrapper.find('[data-testid="best-three-card-content-0"]')
+      expect(content.classes()).toContain('hidden')
+    })
+  })
+
+  describe('mobile line matchup 3-row layout', () => {
+    async function setupAndRunBestThreeLocal(wrapper) {
+      setupMockGet()
+      await wrapper.findAll('select')[0].setValue('team-1')
+      const opponentSelect = wrapper.findAll('select')[1]
+      await opponentSelect.setValue('team-2')
+      await opponentSelect.trigger('change')
+      await flushPromises()
+      await wrapper.findAll('select')[2].setValue('opp-lineup-1')
+      await wrapper.findAll('button').find(b => b.text().includes('查找最佳三阵')).trigger('click')
+      await flushPromises()
+    }
+
+    it('line matchup rows have mobile-stacked layout element', async () => {
+      const wrapper = mountComponent()
+      await flushPromises()
+      await setupAndRunBestThreeLocal(wrapper)
+
+      // The mobile stacked div should exist inside the first card
+      const mobileRows = wrapper.findAll('[data-testid="line-matchup-mobile"]')
+      expect(mobileRows.length).toBeGreaterThan(0)
+    })
+
+    it('line matchup rows have desktop layout element', async () => {
+      const wrapper = mountComponent()
+      await flushPromises()
+      await setupAndRunBestThreeLocal(wrapper)
+
+      const desktopRows = wrapper.findAll('[data-testid="line-matchup-desktop-own"]')
+      expect(desktopRows.length).toBeGreaterThan(0)
+    })
+  })
 })

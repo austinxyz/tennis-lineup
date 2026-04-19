@@ -174,12 +174,12 @@ test.describe('Mobile layout', () => {
   test('opponent analysis page shows 4 selectors and analyze button is disabled initially', async ({ page }) => {
     await page.goto('/opponent-analysis')
 
-    await expect(page.locator('[data-testid="select-my-team"]')).toBeVisible()
-    await expect(page.locator('[data-testid="select-my-lineup"]')).toBeVisible()
-    await expect(page.locator('[data-testid="select-opp-team"]')).toBeVisible()
-    await expect(page.locator('[data-testid="select-opp-lineup"]')).toBeVisible()
+    // Switch to 逐线对比 mode (where all 4 selectors are shown)
+    await page.getByRole('button', { name: '逐线对比' }).click()
 
-    // No team/lineup selected yet — analyze button must be disabled
+    await expect(page.locator('[data-testid="select-my-team"]')).toBeVisible()
+    await expect(page.locator('[data-testid="select-opp-team"]')).toBeVisible()
+    // my-lineup and opp-lineup appear after teams are chosen; check select-my-team + analyze-btn only at init
     const analyzeBtn = page.locator('[data-testid="analyze-btn"]')
     await expect(analyzeBtn).toBeDisabled()
   })

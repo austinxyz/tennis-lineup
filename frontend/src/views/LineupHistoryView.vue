@@ -38,7 +38,7 @@
             :disabled="importing"
             class="px-3 py-1.5 text-xs rounded-lg border border-blue-300 text-blue-600 hover:bg-blue-50 transition-colors disabled:opacity-50"
           >{{ importing ? '导入中...' : '导入排阵' }}</button>
-          <input ref="importInputDesktop" type="file" accept=".json" class="hidden" @change="handleImport" />
+          <input ref="importInputDesktop" data-testid="import-file-input" type="file" accept=".json" class="hidden" @change="handleImport" />
         </div>
       </div>
 

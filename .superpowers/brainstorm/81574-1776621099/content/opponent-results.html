@@ -1,0 +1,540 @@
+<h2>对比结果页 — Mobile 详细</h2>
+<p class="subtitle">最佳三阵和逐线对比两种结果页</p>
+
+<style>
+  .mobile-frame {
+    width: 380px;
+    border: 2px solid #e5e7eb;
+    border-radius: 24px;
+    background: white;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    overflow: hidden;
+  }
+  .mobile-header {
+    background: white;
+    border-bottom: 1px solid #e5e7eb;
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+  }
+  .mobile-body {
+    padding: 10px;
+    background: #f9fafb;
+    max-height: 720px;
+    overflow-y: auto;
+  }
+
+  /* Input recap (collapsed) */
+  .input-recap {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 8px 10px;
+    margin-bottom: 12px;
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .input-recap .pill {
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 11px;
+  }
+  .input-recap .pill.ours { background: #d1fae5; color: #065f46; }
+  .input-recap .pill.opp { background: #fee2e2; color: #991b1b; }
+
+  /* Result section label */
+  .result-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: #374151;
+    margin: 14px 0 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .result-label .badge {
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 10px;
+    font-weight: 600;
+  }
+  .badge.utr { background: #d1fae5; color: #065f46; }
+  .badge.ai { background: #ede9fe; color: #6d28d9; }
+
+  /* Result card */
+  .result-card {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    margin-bottom: 8px;
+    overflow: hidden;
+  }
+  .result-card.best {
+    border: 2px solid #86efac;
+  }
+  .result-card.ai {
+    border: 1.5px solid #d8b4fe;
+  }
+  .result-card-head {
+    padding: 10px 12px;
+    background: #f9fafb;
+    border-bottom: 1px solid #f3f4f6;
+  }
+  .result-card.ai .result-card-head {
+    background: #faf5ff;
+    border-bottom-color: #e9d5ff;
+  }
+  .result-card-head-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .result-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1f2937;
+  }
+  .result-card.ai .result-title { color: #6b21a8; }
+  .result-subtitle {
+    font-size: 10px;
+    color: #6b7280;
+    margin-top: 2px;
+  }
+  .result-score {
+    font-size: 10px;
+    color: #6b7280;
+    text-align: right;
+    white-space: nowrap;
+  }
+  .verdict-tag {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 600;
+  }
+  .verdict-win { background: #d1fae5; color: #065f46; }
+  .verdict-close { background: #fef3c7; color: #92400e; }
+  .verdict-lose { background: #fee2e2; color: #991b1b; }
+
+  /* Line matchup — vertical: our | verdict-row | opp */
+  .line-matchup {
+    display: grid;
+    grid-template-columns: 28px 1fr;
+    gap: 8px;
+    padding: 8px 12px;
+    border-top: 1px solid #f3f4f6;
+  }
+  .line-matchup:first-of-type { border-top: none; }
+  .line-pos {
+    font-size: 11px;
+    font-weight: 700;
+    color: #059669;
+    padding-top: 4px;
+  }
+  .line-pair {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .player-line {
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+  .player-line .name { font-weight: 500; color: #1f2937; }
+  .player-line.opp .name { color: #b91c1c; }
+  .player-line .utr { color: #9ca3af; font-size: 10px; }
+  .vs-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 2px 0;
+    padding: 2px 8px;
+    background: #f9fafb;
+    border-radius: 4px;
+    font-size: 10px;
+  }
+  .delta-tag {
+    font-weight: 600;
+  }
+  .delta-pos { color: #059669; }
+  .delta-neg { color: #dc2626; }
+  .delta-zero { color: #9ca3af; }
+  .win-pill {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 10px;
+  }
+  .win-high { background: #d1fae5; color: #065f46; }
+  .win-mid { background: #fef3c7; color: #92400e; }
+  .win-low { background: #fee2e2; color: #991b1b; }
+
+  .gender-tag {
+    font-size: 9px;
+    font-weight: 700;
+    padding: 1px 4px;
+    border-radius: 2px;
+  }
+  .gender-tag.f { background: #fce7f3; color: #be185d; }
+  .gender-tag.m { background: #dbeafe; color: #1d4ed8; }
+
+  /* AI explanation */
+  .ai-explain {
+    background: white;
+    padding: 10px 12px;
+    font-size: 11px;
+    color: #6b21a8;
+    line-height: 1.5;
+    border-top: 1px solid #e9d5ff;
+  }
+
+  .ai-trigger {
+    background: white;
+    border: 1.5px dashed #d8b4fe;
+    border-radius: 10px;
+    padding: 18px 12px;
+    text-align: center;
+    margin-bottom: 8px;
+  }
+  .btn-ai {
+    padding: 8px 18px;
+    background: #7c3aed;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-top: 8px;
+  }
+
+  /* Collapsed card placeholder */
+  .collapsed {
+    padding: 8px 12px;
+    font-size: 10px;
+    color: #9ca3af;
+    text-align: center;
+  }
+</style>
+
+<div style="display: flex; justify-content: center; gap: 16px; flex-wrap: wrap; align-items: flex-start;">
+
+  <!-- SCREEN A: 最佳三阵 result -->
+  <div>
+    <h3 style="text-align: center;">① 最佳三阵 结果</h3>
+    <div class="mobile-frame">
+      <div class="mobile-header">
+        <span style="color: #6b7280;">☰</span>
+        <span style="flex: 1; font-weight: 600; font-size: 12px;">对手策略分析</span>
+        <button style="font-size: 10px; color: #2563eb; border: 1px solid #bfdbfe; padding: 3px 8px; border-radius: 4px;">重新</button>
+      </div>
+      <div class="mobile-body">
+        <!-- Input recap -->
+        <div class="input-recap">
+          <span class="pill ours">浙江队</span>
+          <span style="color: #9ca3af;">vs</span>
+          <span class="pill opp">上海队 · 主力</span>
+        </div>
+
+        <!-- UTR Top 3 -->
+        <div class="result-label">
+          <span>UTR 最佳三阵</span>
+          <span class="badge utr">算法推荐</span>
+        </div>
+
+        <!-- #1 — expanded -->
+        <div class="result-card best">
+          <div class="result-card-head">
+            <div class="result-card-head-row">
+              <div>
+                <div class="result-title">#1 隐藏主力</div>
+                <div class="result-subtitle">UTR 40.15</div>
+              </div>
+              <div class="result-score">
+                <span class="verdict-tag verdict-win">能赢</span>
+                <div style="margin-top: 4px;">预期 <strong>7.2</strong>/10</div>
+                <div style="color: #dc2626;">对手 2.8</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="line-matchup">
+            <div class="line-pos">D1</div>
+            <div class="line-pair">
+              <div class="player-line">
+                <span class="gender-tag f">女</span><span class="name">May Wang</span><span class="utr">6.80</span>
+                <span class="gender-tag m">男</span><span class="name">Orien Xu</span><span class="utr">6.18</span>
+              </div>
+              <div class="vs-row">
+                <span class="delta-tag delta-pos">+2.3</span>
+                <span class="win-pill win-high">80% 赢</span>
+              </div>
+              <div class="player-line opp">
+                <span class="gender-tag m">男</span><span class="name">王大</span><span class="utr">6.5</span>
+                <span class="gender-tag m">男</span><span class="name">李二</span><span class="utr">5.8</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="line-matchup">
+            <div class="line-pos">D2</div>
+            <div class="line-pair">
+              <div class="player-line">
+                <span class="gender-tag m">男</span><span class="name">Bin Feng</span><span class="utr">6.80</span>
+                <span class="gender-tag f">女</span><span class="name">Chen Zhang</span><span class="utr">4.60</span>
+              </div>
+              <div class="vs-row">
+                <span class="delta-tag delta-pos">+1.4</span>
+                <span class="win-pill win-high">72% 赢</span>
+              </div>
+              <div class="player-line opp">
+                <span class="gender-tag f">女</span><span class="name">张三</span><span class="utr">5.2</span>
+                <span class="gender-tag m">男</span><span class="name">赵四</span><span class="utr">4.8</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="line-matchup">
+            <div class="line-pos">D3</div>
+            <div class="line-pair">
+              <div class="player-line">
+                <span class="gender-tag m">男</span><span class="name">Wei Jing</span><span class="utr">6.50</span>
+                <span class="gender-tag f">女</span><span class="name">Lucy Pan</span><span class="utr">4.00</span>
+              </div>
+              <div class="vs-row">
+                <span class="delta-tag delta-neg">-0.2</span>
+                <span class="win-pill win-mid">48%</span>
+              </div>
+              <div class="player-line opp">
+                <span class="gender-tag f">女</span><span class="name">陈五</span><span class="utr">4.5</span>
+                <span class="gender-tag m">男</span><span class="name">刘六</span><span class="utr">4.2</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="line-matchup">
+            <div class="line-pos">D4</div>
+            <div class="line-pair">
+              <div class="player-line">
+                <span class="gender-tag f">女</span><span class="name">Hanshan Ye</span><span class="utr">3.60</span>
+                <span class="gender-tag m">男</span><span class="name">Bill Wei</span><span class="utr">6.25</span>
+              </div>
+              <div class="vs-row">
+                <span class="delta-tag delta-pos">+2.5</span>
+                <span class="win-pill win-high">82% 赢</span>
+              </div>
+              <div class="player-line opp">
+                <span class="gender-tag m">男</span><span class="name">孙七</span><span class="utr">3.8</span>
+                <span class="gender-tag f">女</span><span class="name">周八</span><span class="utr">3.5</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- #2 — collapsed by default -->
+        <div class="result-card">
+          <div class="result-card-head">
+            <div class="result-card-head-row">
+              <div>
+                <div class="result-title">#2 男双加强 D2 <span style="font-size: 10px; color: #9ca3af;">▸ 展开</span></div>
+                <div class="result-subtitle">UTR 40.26</div>
+              </div>
+              <div class="result-score">
+                <span class="verdict-tag verdict-win">能赢</span>
+                <div style="margin-top: 4px;">6.1 vs 3.9</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- #3 — collapsed -->
+        <div class="result-card">
+          <div class="result-card-head">
+            <div class="result-card-head-row">
+              <div>
+                <div class="result-title">#3 D3 女生变化 <span style="font-size: 10px; color: #9ca3af;">▸ 展开</span></div>
+                <div class="result-subtitle">UTR 40.05</div>
+              </div>
+              <div class="result-score">
+                <span class="verdict-tag verdict-close">均势</span>
+                <div style="margin-top: 4px;">5.3 vs 4.7</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- AI trigger -->
+        <div class="result-label">
+          <span>AI 推荐</span>
+          <span class="badge ai">智能分析</span>
+        </div>
+        <div class="ai-trigger">
+          <div style="font-size: 11px; color: #6b7280;">基于球员特点 AI 推荐最佳出场</div>
+          <button class="btn-ai">获取 AI 推荐</button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- SCREEN B: 逐线对比 result (with AI already run) -->
+  <div>
+    <h3 style="text-align: center;">② 逐线对比 结果</h3>
+    <div class="mobile-frame">
+      <div class="mobile-header">
+        <span style="color: #6b7280;">☰</span>
+        <span style="flex: 1; font-weight: 600; font-size: 12px;">对手策略分析</span>
+        <button style="font-size: 10px; color: #2563eb; border: 1px solid #bfdbfe; padding: 3px 8px; border-radius: 4px;">重改</button>
+      </div>
+      <div class="mobile-body">
+        <div class="input-recap">
+          <span class="pill ours">浙江 · 主力</span>
+          <span style="color: #9ca3af;">vs</span>
+          <span class="pill opp">上海 · 主力</span>
+        </div>
+
+        <!-- UTR 比较分析 -->
+        <div class="result-label">
+          <span>UTR 比较分析</span>
+          <span class="badge utr">算法</span>
+        </div>
+
+        <div class="result-card">
+          <div class="result-card-head">
+            <div class="result-card-head-row">
+              <div>
+                <div class="result-title">整体评估</div>
+              </div>
+              <div class="result-score">
+                <span class="verdict-tag verdict-win">能赢</span>
+                <div style="margin-top: 4px;">预期 <strong>7.0</strong>/10</div>
+                <div style="color: #dc2626;">对手 3.0</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="line-matchup">
+            <div class="line-pos">D1</div>
+            <div class="line-pair">
+              <div class="player-line">
+                <span class="gender-tag f">女</span><span class="name">May Wang</span><span class="utr">6.80</span>
+                <span class="gender-tag m">男</span><span class="name">Orien Xu</span><span class="utr">6.18</span>
+              </div>
+              <div class="vs-row"><span class="delta-tag delta-pos">+2.3</span><span class="win-pill win-high">80% 赢</span></div>
+              <div class="player-line opp">
+                <span class="gender-tag m">男</span><span class="name">王大</span><span class="utr">6.5</span>
+                <span class="gender-tag m">男</span><span class="name">李二</span><span class="utr">5.8</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="line-matchup">
+            <div class="line-pos">D2</div>
+            <div class="line-pair">
+              <div class="player-line">
+                <span class="gender-tag m">男</span><span class="name">Bin Feng</span><span class="utr">6.80</span>
+                <span class="gender-tag f">女</span><span class="name">Chen Zhang</span><span class="utr">4.60</span>
+              </div>
+              <div class="vs-row"><span class="delta-tag delta-pos">+1.4</span><span class="win-pill win-high">72% 赢</span></div>
+              <div class="player-line opp">
+                <span class="gender-tag f">女</span><span class="name">张三</span><span class="utr">5.2</span>
+                <span class="gender-tag m">男</span><span class="name">赵四</span><span class="utr">4.8</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="line-matchup">
+            <div class="line-pos">D3</div>
+            <div class="line-pair">
+              <div class="player-line">
+                <span class="gender-tag m">男</span><span class="name">Wei Jing</span><span class="utr">6.50</span>
+                <span class="gender-tag f">女</span><span class="name">Lucy Pan</span><span class="utr">4.00</span>
+              </div>
+              <div class="vs-row"><span class="delta-tag delta-neg">-0.2</span><span class="win-pill win-mid">48%</span></div>
+              <div class="player-line opp">
+                <span class="gender-tag f">女</span><span class="name">陈五</span><span class="utr">4.5</span>
+                <span class="gender-tag m">男</span><span class="name">刘六</span><span class="utr">4.2</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="line-matchup">
+            <div class="line-pos">D4</div>
+            <div class="line-pair">
+              <div class="player-line">
+                <span class="gender-tag f">女</span><span class="name">Hanshan Ye</span><span class="utr">3.60</span>
+                <span class="gender-tag m">男</span><span class="name">Bill Wei</span><span class="utr">6.25</span>
+              </div>
+              <div class="vs-row"><span class="delta-tag delta-pos">+2.5</span><span class="win-pill win-high">82% 赢</span></div>
+              <div class="player-line opp">
+                <span class="gender-tag m">男</span><span class="name">孙七</span><span class="utr">3.8</span>
+                <span class="gender-tag f">女</span><span class="name">周八</span><span class="utr">3.5</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- AI 点评 -->
+        <div class="result-label">
+          <span>AI 点评</span>
+          <span class="badge ai">智能分析</span>
+        </div>
+
+        <div class="result-card ai">
+          <div class="result-card-head">
+            <div class="result-card-head-row">
+              <div>
+                <div class="result-title">✨ AI 综合点评</div>
+              </div>
+              <button style="font-size: 10px; color: #7c3aed; border: 1px solid #d8b4fe; padding: 3px 8px; border-radius: 4px;">重跑</button>
+            </div>
+          </div>
+          <div class="ai-explain">
+            我方整体 UTR 优势明显（总 22.7 vs 对手 17.9）。<strong>D1/D4 胜算高</strong>，配对稳定；<strong>D3 存在风险</strong>：Lucy 3.32 偏低，若 Wei 状态平平易被拖入僵局。建议考虑用 Bing Cai 替换 Lucy（UTR 3.26，但配对经验更丰富）。
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<h3 style="margin-top: 24px;">每条线 3 行 vs 4 列对比</h3>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; max-width: 800px; margin: 0 auto;">
+  <div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px;">
+    <div style="font-weight: 600; color: #6b7280; font-size: 12px;">❌ 桌面的 4 列（Mobile 挤爆）</div>
+    <div style="font-family: monospace; font-size: 10px; margin-top: 6px; color: #9ca3af; line-height: 1.8;">
+      D1 | 我方 | +1.0 | 对手<br/>
+      (320px 宽容不下这么多)
+    </div>
+  </div>
+  <div style="background: white; border: 1px solid #059669; border-radius: 8px; padding: 12px;">
+    <div style="font-weight: 600; color: #059669; font-size: 12px;">✓ Mobile 的 3 行</div>
+    <div style="font-family: monospace; font-size: 10px; margin-top: 6px; color: #374151; line-height: 1.8;">
+      D1 | May 6.8 / Orien 6.18<br/>
+      &nbsp;&nbsp;&nbsp;| +2.3  80% 赢<br/>
+      &nbsp;&nbsp;&nbsp;| 王大 6.5 / 李二 5.8
+    </div>
+  </div>
+</div>
+
+<div class="options" style="margin-top: 20px;">
+  <div class="option" data-choice="approve" onclick="toggleSelect(this)">
+    <div class="letter">✓</div>
+    <div class="content"><h3>通过</h3><p>两个结果页都可以，准备实施</p></div>
+  </div>
+  <div class="option" data-choice="adjust" onclick="toggleSelect(this)">
+    <div class="letter">✎</div>
+    <div class="content"><h3>调整</h3><p>留言具体哪里要改</p></div>
+  </div>
+</div>

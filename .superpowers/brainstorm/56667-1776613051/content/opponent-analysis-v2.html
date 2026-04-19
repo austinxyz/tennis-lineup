@@ -1,0 +1,209 @@
+<h2>对手分析 V2 — 简化输入</h2>
+<p class="subtitle">4 个下拉：我方队伍/排阵 + 对手队伍/排阵</p>
+
+<style>
+  .mobile-frame {
+    width: 380px;
+    border: 2px solid #e5e7eb;
+    border-radius: 24px;
+    background: white;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .mobile-header {
+    background: white;
+    border-bottom: 1px solid #e5e7eb;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+  }
+  .mobile-body {
+    padding: 12px;
+    background: #f9fafb;
+    max-height: 620px;
+    overflow-y: auto;
+  }
+  .field { margin-bottom: 10px; }
+  .field-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #6b7280;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .form-ctrl {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 12px;
+    background: white;
+    box-sizing: border-box;
+  }
+  .side-divider {
+    position: relative;
+    text-align: center;
+    margin: 14px 0 10px;
+    font-size: 11px;
+    color: #9ca3af;
+    font-weight: 600;
+    letter-spacing: 2px;
+  }
+  .side-divider::before, .side-divider::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    width: 30%;
+    height: 1px;
+    background: #e5e7eb;
+  }
+  .side-divider::before { left: 0; }
+  .side-divider::after { right: 0; }
+
+  .big-btn {
+    width: 100%;
+    padding: 12px;
+    background: #3b82f6;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    margin-top: 8px;
+  }
+  .big-btn:disabled {
+    background: #d1d5db;
+    cursor: not-allowed;
+  }
+
+  .preview {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 10px;
+    margin-top: 8px;
+    font-size: 11px;
+  }
+  .preview-title {
+    font-size: 10px;
+    color: #6b7280;
+    font-weight: 600;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+  }
+  .preview .row {
+    display: flex;
+    gap: 6px;
+    padding: 3px 0;
+    color: #4b5563;
+  }
+  .preview .pos { font-weight: 700; color: #059669; width: 28px; }
+  .gender-tag {
+    font-size: 9px;
+    font-weight: 700;
+    padding: 0 4px;
+    border-radius: 3px;
+  }
+  .gender-tag.f { background: #fce7f3; color: #be185d; }
+  .gender-tag.m { background: #dbeafe; color: #1d4ed8; }
+</style>
+
+<div style="display: flex; justify-content: center;">
+  <div class="mobile-frame">
+    <div class="mobile-header">
+      <span style="color: #6b7280;">☰</span>
+      <span style="flex: 1; font-weight: 600;">对手分析</span>
+    </div>
+    <div class="mobile-body">
+
+      <!-- Our side -->
+      <div class="side-divider">· 我 方 ·</div>
+
+      <div class="field">
+        <div class="field-label">队伍</div>
+        <select class="form-ctrl">
+          <option>浙江队 (16名球员)</option>
+          <option>鄂冠满赢</option>
+          <option>蜀道山</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <div class="field-label">排阵</div>
+        <select class="form-ctrl">
+          <option>⭐ 隐藏主力阵容 (总40.15, 实42.48)</option>
+          <option>男双加强 D2</option>
+          <option>D3女生可以是Bing/Lucy/Jing</option>
+        </select>
+      </div>
+
+      <!-- Preview of our lineup -->
+      <div class="preview">
+        <div class="preview-title">我方预览</div>
+        <div class="row"><span class="pos">D1</span><span class="gender-tag f">女</span>May / <span class="gender-tag m">男</span>Orien</div>
+        <div class="row"><span class="pos">D2</span><span class="gender-tag m">男</span>Bin / <span class="gender-tag f">女</span>Chen</div>
+        <div class="row"><span class="pos">D3</span><span class="gender-tag m">男</span>Wei / <span class="gender-tag f">女</span>Lucy</div>
+        <div class="row"><span class="pos">D4</span><span class="gender-tag f">女</span>Hanshan / <span class="gender-tag m">男</span>Bill</div>
+      </div>
+
+      <!-- Opponent side -->
+      <div class="side-divider">· 对 手 ·</div>
+
+      <div class="field">
+        <div class="field-label">队伍</div>
+        <select class="form-ctrl">
+          <option>上海队</option>
+          <option>北京福娃</option>
+          <option>大好河山</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <div class="field-label">对手排阵</div>
+        <select class="form-ctrl">
+          <option>主力阵容 (总38.5)</option>
+          <option>防御阵容</option>
+          <option>备选 C</option>
+        </select>
+      </div>
+
+      <!-- Preview of opponent lineup -->
+      <div class="preview" style="background: #fef2f2; border-color: #fecaca;">
+        <div class="preview-title" style="color: #991b1b;">对手预览</div>
+        <div class="row"><span class="pos">D1</span><span class="gender-tag m">男</span>王大 / <span class="gender-tag m">男</span>李二</div>
+        <div class="row"><span class="pos">D2</span><span class="gender-tag f">女</span>张三 / <span class="gender-tag m">男</span>赵四</div>
+        <div class="row"><span class="pos">D3</span><span class="gender-tag f">女</span>陈五 / <span class="gender-tag m">男</span>刘六</div>
+        <div class="row"><span class="pos">D4</span><span class="gender-tag m">男</span>孙七 / <span class="gender-tag f">女</span>周八</div>
+      </div>
+
+      <button class="big-btn">🔍 开始分析</button>
+
+      <div style="font-size: 10px; color: #9ca3af; text-align: center; margin-top: 12px;">
+        结果下方显示每线胜率和 AI 点评
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div class="options" style="margin-top: 20px;">
+  <div class="option" data-choice="approve" onclick="toggleSelect(this)">
+    <div class="letter">✓</div>
+    <div class="content"><h3>这样可以</h3><p>4 个下拉 + 我方/对手预览</p></div>
+  </div>
+  <div class="option" data-choice="adjust" onclick="toggleSelect(this)">
+    <div class="letter">✎</div>
+    <div class="content"><h3>需要调整</h3><p>留言告诉我</p></div>
+  </div>
+</div>
+
+<h3 style="margin-top: 20px;">后端依赖说明</h3>
+<p style="font-size: 12px; color: #6b7280;">
+  这要求"对手队伍"也作为一个正常队伍存在（有球员、有已保存排阵）。也就是说，你需要先把对手队伍创建出来并导入/保存它的主力阵容，才能在这里选。<br/>
+  <strong>如果可以直接在这里输入对手阵容</strong>（而不必先创建对手队伍），就退回到上一版的"文本输入"方式。请告诉我你倾向哪种工作流。
+</p>

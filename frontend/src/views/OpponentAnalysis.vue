@@ -30,6 +30,7 @@
           <label class="block text-sm font-medium text-gray-700 mb-1">己方队伍</label>
           <select
             v-model="ownTeamId"
+            data-testid="select-my-team"
             class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
             @change="onOwnTeamChange"
           >
@@ -45,6 +46,7 @@
           <label class="block text-sm font-medium text-gray-700 mb-1">对手队伍</label>
           <select
             v-model="opponentTeamId"
+            data-testid="select-opp-team"
             class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
             @change="onOpponentTeamChange"
           >
@@ -61,6 +63,7 @@
           <select
             v-if="opponentLineups.length > 0"
             v-model="opponentLineupId"
+            data-testid="select-opp-lineup"
             class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
           >
             <option value="" disabled>请选择排阵</option>
@@ -99,6 +102,7 @@
         <select
           v-if="ownLineups.length > 0"
           v-model="ownLineupId"
+          data-testid="select-my-lineup"
           class="w-full md:w-1/3 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
         >
           <option value="" disabled>请选择己方排阵</option>
@@ -120,6 +124,7 @@
       <div class="mt-4 flex items-center gap-3">
         <button
           v-if="analysisMode === 'bestThree'"
+          data-testid="analyze-btn"
           :disabled="!canRunBestThree || loading"
           class="px-5 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
           @click="onRunBestThree"
@@ -129,6 +134,7 @@
 
         <button
           v-else
+          data-testid="analyze-btn"
           :disabled="!canRunHeadToHead || loading"
           class="px-5 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
           @click="onRunHeadToHead"
@@ -140,11 +146,31 @@
       </div>
     </div>
 
-    <!-- 最佳三阵 results: two-column layout -->
-    <div v-if="analysisMode === 'bestThree' && bestThreeResults.length > 0" class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+    <!-- 最佳三阵 results -->
+    <div v-if="analysisMode === 'bestThree' && bestThreeResults.length > 0">
 
-      <!-- Left column: UTR-based top 3 -->
-      <div class="space-y-4">
+      <!-- Mobile tab bar (hidden on desktop) -->
+      <div data-testid="mobile-result-tabs" class="lg:hidden flex gap-1 bg-gray-100 rounded-lg p-1 w-fit mb-4">
+        <button
+          data-testid="result-tab-utr"
+          class="px-4 py-1.5 text-sm font-medium rounded-md transition"
+          :class="resultTab === 'utr' ? 'bg-white text-green-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'"
+          @click="resultTab = 'utr'"
+        >
+          算法推荐
+        </button>
+        <button
+          data-testid="result-tab-ai"
+          class="px-4 py-1.5 text-sm font-medium rounded-md transition"
+          :class="resultTab === 'ai' ? 'bg-white text-purple-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'"
+          @click="resultTab = 'ai'"
+        >
+          AI 推荐
+        </button>
+      </div>
+
+      <!-- Mobile UTR tab panel -->
+      <div v-if="resultTab === 'utr'" class="lg:hidden space-y-4 mb-4">
         <div class="flex items-center gap-2 mb-1">
           <span class="text-sm font-semibold text-gray-700">UTR 最佳三阵</span>
           <span class="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full">算法推荐</span>
@@ -152,9 +178,15 @@
         <div
           v-for="(res, idx) in bestThreeResults"
           :key="res.lineup.id"
+          :data-testid="`best-three-card-${idx}`"
           class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden"
         >
-          <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100 bg-gray-50">
+          <!-- Card header — clickable to expand/collapse on mobile -->
+          <div
+            :data-testid="`best-three-card-header-${idx}`"
+            class="flex items-center justify-between px-5 py-3 border-b border-gray-100 bg-gray-50 cursor-pointer"
+            @click="toggleExpand(res.lineup.id)"
+          >
             <span class="text-sm font-medium text-gray-600">#{{ idx + 1 }} {{ formatLineupLabel(res.lineup) }}</span>
             <div class="flex items-center gap-3">
               <span class="text-xs text-gray-500">预期得分 <span class="font-semibold text-gray-800">{{ res.expectedScore }}</span> / 10</span>
@@ -164,18 +196,39 @@
             </div>
           </div>
 
-          <div class="divide-y divide-gray-50">
+          <!-- Card content — collapsed on mobile for cards 2 & 3, always visible on desktop -->
+          <div
+            :data-testid="`best-three-card-content-${idx}`"
+            :class="[expandedBestThreeIds.has(res.lineup.id) ? '' : 'hidden', 'lg:block']"
+            class="divide-y divide-gray-50"
+          >
             <div
               v-for="line in res.lineAnalysis"
               :key="line.position"
-              class="grid grid-cols-[auto_1fr_auto_1fr] items-center gap-x-3 px-5 py-3"
+              class="grid grid-cols-[28px_1fr] lg:grid-cols-[auto_1fr_auto_1fr] gap-2 lg:gap-x-3 px-3 lg:px-5 py-2 lg:py-3 items-center"
             >
-              <span class="w-8 text-xs font-bold text-green-600">{{ line.position }}</span>
-              <div class="text-sm text-gray-800 min-w-0">
+              <span class="w-7 text-xs font-bold text-green-600">{{ line.position }}</span>
+
+              <!-- Mobile: 3-row stacked layout -->
+              <div data-testid="line-matchup-mobile" class="lg:hidden space-y-1">
+                <div class="text-sm text-gray-800">{{ pairText(res.lineup, line.position) }}</div>
+                <div class="flex justify-between text-xs bg-gray-50 rounded px-2 py-0.5">
+                  <span class="font-medium" :class="line.delta > 0 ? 'text-green-600' : line.delta < 0 ? 'text-red-500' : 'text-gray-400'">
+                    {{ line.delta > 0 ? '+' : '' }}{{ line.delta.toFixed(1) }}
+                  </span>
+                  <span :class="winLabelClass(line.winProbability)" class="px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap">
+                    {{ line.label }}
+                  </span>
+                </div>
+                <div class="text-sm text-red-700">{{ pairText(opponentLineupObj, line.position) }}</div>
+              </div>
+
+              <!-- Desktop: original 3-column layout -->
+              <div data-testid="line-matchup-desktop-own" class="hidden lg:block text-sm text-gray-800 min-w-0">
                 {{ pairText(res.lineup, line.position) }}
                 <span class="text-xs text-gray-400 ml-1">{{ dualUtrLabel(line.ownCombinedRegularUtr, line.ownCombinedUtr) }}</span>
               </div>
-              <div class="flex flex-col items-center gap-1 px-2">
+              <div class="hidden lg:flex flex-col items-center gap-1 px-2">
                 <span class="text-xs font-medium" :class="line.delta > 0 ? 'text-green-600' : line.delta < 0 ? 'text-red-500' : 'text-gray-400'">
                   {{ line.delta > 0 ? '+' : '' }}{{ line.delta.toFixed(1) }}
                 </span>
@@ -183,7 +236,7 @@
                   {{ line.label }}
                 </span>
               </div>
-              <div class="text-sm text-gray-500 min-w-0 text-right">
+              <div class="hidden lg:block text-sm text-gray-500 min-w-0 text-right">
                 {{ pairText(opponentLineupObj, line.position) }}
                 <span class="text-xs text-gray-400 ml-1">{{ dualUtrLabel(line.opponentCombinedUtr, line.opponentCombinedActualUtr) }}</span>
               </div>
@@ -192,8 +245,8 @@
         </div>
       </div>
 
-      <!-- Right column: AI recommendation -->
-      <div class="space-y-4">
+      <!-- Mobile AI tab panel -->
+      <div v-if="resultTab === 'ai'" data-testid="mobile-ai-panel" class="lg:hidden space-y-4 mb-4">
         <div class="flex items-center gap-2 mb-1">
           <span class="text-sm font-semibold text-gray-700">AI 推荐</span>
           <span class="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs rounded-full">智能分析</span>
@@ -237,14 +290,26 @@
             <div
               v-for="line in aiResult.lineAnalysis"
               :key="line.position"
-              class="grid grid-cols-[auto_1fr_auto_1fr] items-center gap-x-3 px-5 py-3"
+              class="grid grid-cols-[28px_1fr] lg:grid-cols-[auto_1fr_auto_1fr] gap-2 lg:gap-x-3 px-3 lg:px-5 py-2 lg:py-3 items-center"
             >
-              <span class="w-8 text-xs font-bold text-green-600">{{ line.position }}</span>
-              <div class="text-sm text-gray-800 min-w-0">
+              <span class="w-7 text-xs font-bold text-green-600">{{ line.position }}</span>
+              <div data-testid="line-matchup-mobile" class="lg:hidden space-y-1">
+                <div class="text-sm text-gray-800">{{ pairText(aiResult.lineup, line.position) }}</div>
+                <div class="flex justify-between text-xs bg-gray-50 rounded px-2 py-0.5">
+                  <span class="font-medium" :class="line.delta > 0 ? 'text-green-600' : line.delta < 0 ? 'text-red-500' : 'text-gray-400'">
+                    {{ line.delta > 0 ? '+' : '' }}{{ line.delta.toFixed(1) }}
+                  </span>
+                  <span :class="winLabelClass(line.winProbability)" class="px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap">
+                    {{ line.label }}
+                  </span>
+                </div>
+                <div class="text-sm text-red-700">{{ pairText(aiResult.opponentLineup, line.position) }}</div>
+              </div>
+              <div data-testid="line-matchup-desktop-own" class="hidden lg:block text-sm text-gray-800 min-w-0">
                 {{ pairText(aiResult.lineup, line.position) }}
                 <span class="text-xs text-gray-400 ml-1">{{ dualUtrLabel(line.ownCombinedRegularUtr, line.ownCombinedUtr) }}</span>
               </div>
-              <div class="flex flex-col items-center gap-1 px-2">
+              <div class="hidden lg:flex flex-col items-center gap-1 px-2">
                 <span class="text-xs font-medium" :class="line.delta > 0 ? 'text-green-600' : line.delta < 0 ? 'text-red-500' : 'text-gray-400'">
                   {{ line.delta > 0 ? '+' : '' }}{{ line.delta.toFixed(1) }}
                 </span>
@@ -252,7 +317,7 @@
                   {{ line.label }}
                 </span>
               </div>
-              <div class="text-sm text-gray-500 min-w-0 text-right">
+              <div class="hidden lg:block text-sm text-gray-500 min-w-0 text-right">
                 {{ pairText(aiResult.opponentLineup, line.position) }}
                 <span class="text-xs text-gray-400 ml-1">{{ dualUtrLabel(line.opponentCombinedUtr, line.opponentCombinedActualUtr) }}</span>
               </div>
@@ -261,6 +326,128 @@
         </div>
       </div>
 
+      <!-- Desktop two-column grid (hidden on mobile) -->
+      <div data-testid="desktop-result-grid" class="hidden lg:grid grid-cols-2 gap-6 items-start">
+
+        <!-- Left column: UTR-based top 3 -->
+        <div class="space-y-4">
+          <div class="flex items-center gap-2 mb-1">
+            <span class="text-sm font-semibold text-gray-700">UTR 最佳三阵</span>
+            <span class="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full">算法推荐</span>
+          </div>
+          <div
+            v-for="(res, idx) in bestThreeResults"
+            :key="res.lineup.id"
+            class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden"
+          >
+            <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100 bg-gray-50">
+              <span class="text-sm font-medium text-gray-600">#{{ idx + 1 }} {{ formatLineupLabel(res.lineup) }}</span>
+              <div class="flex items-center gap-3">
+                <span class="text-xs text-gray-500">预期得分 <span class="font-semibold text-gray-800">{{ res.expectedScore }}</span> / 10</span>
+                <span class="px-3 py-1 rounded-full text-xs font-semibold" :class="verdictClass(res.verdict)">
+                  {{ res.verdict }}
+                </span>
+              </div>
+            </div>
+
+            <div class="divide-y divide-gray-50">
+              <div
+                v-for="line in res.lineAnalysis"
+                :key="line.position"
+                class="grid grid-cols-[auto_1fr_auto_1fr] items-center gap-x-3 px-5 py-3"
+              >
+                <span class="w-8 text-xs font-bold text-green-600">{{ line.position }}</span>
+                <div class="text-sm text-gray-800 min-w-0">
+                  {{ pairText(res.lineup, line.position) }}
+                  <span class="text-xs text-gray-400 ml-1">{{ dualUtrLabel(line.ownCombinedRegularUtr, line.ownCombinedUtr) }}</span>
+                </div>
+                <div class="flex flex-col items-center gap-1 px-2">
+                  <span class="text-xs font-medium" :class="line.delta > 0 ? 'text-green-600' : line.delta < 0 ? 'text-red-500' : 'text-gray-400'">
+                    {{ line.delta > 0 ? '+' : '' }}{{ line.delta.toFixed(1) }}
+                  </span>
+                  <span :class="winLabelClass(line.winProbability)" class="px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap">
+                    {{ line.label }}
+                  </span>
+                </div>
+                <div class="text-sm text-gray-500 min-w-0 text-right">
+                  {{ pairText(opponentLineupObj, line.position) }}
+                  <span class="text-xs text-gray-400 ml-1">{{ dualUtrLabel(line.opponentCombinedUtr, line.opponentCombinedActualUtr) }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right column: AI recommendation -->
+        <div class="space-y-4">
+          <div class="flex items-center gap-2 mb-1">
+            <span class="text-sm font-semibold text-gray-700">AI 推荐</span>
+            <span class="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs rounded-full">智能分析</span>
+          </div>
+
+          <!-- Trigger button (before result) -->
+          <div v-if="!aiResult" class="flex flex-col items-center justify-center bg-white rounded-xl border border-dashed border-purple-200 px-6 py-12 gap-3">
+            <span class="text-sm text-gray-400">基于比赛策略和球员特点，AI 给出最佳出场推荐</span>
+            <span v-if="aiError" class="text-xs text-red-500">{{ aiError }}</span>
+            <button
+              :disabled="aiLoading"
+              class="px-5 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+              @click="onRunBestThreeAi"
+            >
+              {{ aiLoading ? 'AI 分析中…' : '获取 AI 推荐' }}
+            </button>
+          </div>
+
+          <!-- AI result card -->
+          <div v-else class="bg-white rounded-xl border border-purple-200 shadow-sm overflow-hidden">
+            <div class="flex items-center justify-between px-5 py-3 border-b border-purple-100 bg-purple-50">
+              <div class="flex items-center gap-2">
+                <span class="text-sm font-semibold text-purple-800">AI 推荐排阵</span>
+                <span v-if="!aiResult.aiUsed" class="px-2 py-0.5 bg-yellow-100 text-yellow-700 text-xs rounded-full">AI 不可用</span>
+              </div>
+              <div class="flex items-center gap-3">
+                <span class="text-xs text-gray-500">预期得分 <span class="font-semibold text-gray-800">{{ aiResult.expectedScore }}</span> / 10</span>
+                <button
+                  :disabled="aiLoading"
+                  class="px-3 py-1 text-xs text-purple-600 border border-purple-300 rounded-lg hover:bg-purple-100 disabled:opacity-50 transition"
+                  @click="onRunBestThreeAi"
+                >
+                  {{ aiLoading ? '分析中…' : '重新分析' }}
+                </button>
+              </div>
+            </div>
+            <div v-if="aiResult.explanation" class="px-5 py-2 text-sm text-purple-700 border-b border-purple-100 bg-purple-50/50">
+              {{ aiResult.explanation }}
+            </div>
+            <div class="divide-y divide-gray-50">
+              <div
+                v-for="line in aiResult.lineAnalysis"
+                :key="line.position"
+                class="grid grid-cols-[auto_1fr_auto_1fr] items-center gap-x-3 px-5 py-3"
+              >
+                <span class="w-8 text-xs font-bold text-green-600">{{ line.position }}</span>
+                <div class="text-sm text-gray-800 min-w-0">
+                  {{ pairText(aiResult.lineup, line.position) }}
+                  <span class="text-xs text-gray-400 ml-1">{{ dualUtrLabel(line.ownCombinedRegularUtr, line.ownCombinedUtr) }}</span>
+                </div>
+                <div class="flex flex-col items-center gap-1 px-2">
+                  <span class="text-xs font-medium" :class="line.delta > 0 ? 'text-green-600' : line.delta < 0 ? 'text-red-500' : 'text-gray-400'">
+                    {{ line.delta > 0 ? '+' : '' }}{{ line.delta.toFixed(1) }}
+                  </span>
+                  <span :class="winLabelClass(line.winProbability)" class="px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap">
+                    {{ line.label }}
+                  </span>
+                </div>
+                <div class="text-sm text-gray-500 min-w-0 text-right">
+                  {{ pairText(aiResult.opponentLineup, line.position) }}
+                  <span class="text-xs text-gray-400 ml-1">{{ dualUtrLabel(line.opponentCombinedUtr, line.opponentCombinedActualUtr) }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
     </div>
 
     <!-- 逐线对比 results -->
@@ -284,14 +471,30 @@
           <div
             v-for="line in headToHeadResult.lineAnalysis"
             :key="line.position"
-            class="grid grid-cols-[auto_1fr_auto_1fr] items-center gap-x-3 px-5 py-3"
+            class="grid grid-cols-[28px_1fr] lg:grid-cols-[auto_1fr_auto_1fr] gap-2 lg:gap-x-3 px-3 lg:px-5 py-2 lg:py-3 items-center"
           >
-            <span class="w-8 text-xs font-bold text-green-600">{{ line.position }}</span>
-            <div class="text-sm text-gray-800 min-w-0">
+            <span class="w-7 text-xs font-bold text-green-600">{{ line.position }}</span>
+
+            <!-- Mobile: 3-row stacked layout -->
+            <div data-testid="line-matchup-mobile" class="lg:hidden space-y-1">
+              <div class="text-sm text-gray-800">{{ pairText(headToHeadResult.lineup, line.position) }}</div>
+              <div class="flex justify-between text-xs bg-gray-50 rounded px-2 py-0.5">
+                <span class="font-medium" :class="line.delta > 0 ? 'text-green-600' : line.delta < 0 ? 'text-red-500' : 'text-gray-400'">
+                  {{ line.delta > 0 ? '+' : '' }}{{ line.delta.toFixed(1) }}
+                </span>
+                <span :class="winLabelClass(line.winProbability)" class="px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap">
+                  {{ line.label }}
+                </span>
+              </div>
+              <div class="text-sm text-red-700">{{ pairText(opponentLineupObj, line.position) }}</div>
+            </div>
+
+            <!-- Desktop: original 3-column layout -->
+            <div data-testid="line-matchup-desktop-own" class="hidden lg:block text-sm text-gray-800 min-w-0">
               {{ pairText(headToHeadResult.lineup, line.position) }}
               <span class="text-xs text-gray-400 ml-1">{{ dualUtrLabel(line.ownCombinedRegularUtr, line.ownCombinedUtr) }}</span>
             </div>
-            <div class="flex flex-col items-center gap-1 px-2">
+            <div class="hidden lg:flex flex-col items-center gap-1 px-2">
               <span class="text-xs font-medium" :class="line.delta > 0 ? 'text-green-600' : line.delta < 0 ? 'text-red-500' : 'text-gray-400'">
                 {{ line.delta > 0 ? '+' : '' }}{{ line.delta.toFixed(1) }}
               </span>
@@ -299,7 +502,7 @@
                 {{ line.label }}
               </span>
             </div>
-            <div class="text-sm text-gray-500 min-w-0 text-right">
+            <div class="hidden lg:block text-sm text-gray-500 min-w-0 text-right">
               {{ pairText(opponentLineupObj, line.position) }}
               <span class="text-xs text-gray-400 ml-1">{{ dualUtrLabel(line.opponentCombinedUtr, line.opponentCombinedActualUtr) }}</span>
             </div>
@@ -387,6 +590,12 @@ const headToHeadResult = ref(null)
 const aiResult = ref(null)
 const commentaryResult = ref(null)
 
+// Mobile result tab state
+const resultTab = ref('utr')
+
+// Mobile card expand/collapse state — first card expanded by default (set after results load)
+const expandedBestThreeIds = ref(new Set())
+
 const canRunBestThree = computed(() => ownTeamId.value && opponentLineupId.value)
 const canRunHeadToHead = computed(() => ownTeamId.value && ownLineupId.value && opponentLineupId.value)
 const opponentLineupObj = computed(() => opponentLineups.value.find(l => l.id === opponentLineupId.value) || null)
@@ -406,6 +615,18 @@ function onModeChange(newMode) {
   aiError.value = ''
   commentaryResult.value = null
   commentaryError.value = ''
+  resultTab.value = 'utr'
+  expandedBestThreeIds.value = new Set()
+}
+
+function toggleExpand(id) {
+  const next = new Set(expandedBestThreeIds.value)
+  if (next.has(id)) {
+    next.delete(id)
+  } else {
+    next.add(id)
+  }
+  expandedBestThreeIds.value = next
 }
 
 async function onOwnTeamChange() {
@@ -439,8 +660,14 @@ async function onOpponentTeamChange() {
 
 async function onRunBestThree() {
   bestThreeResults.value = []
+  expandedBestThreeIds.value = new Set()
   try {
-    bestThreeResults.value = await runBestThree(ownTeamId.value, opponentTeamId.value, opponentLineupId.value)
+    const results = await runBestThree(ownTeamId.value, opponentTeamId.value, opponentLineupId.value)
+    bestThreeResults.value = results
+    // Auto-expand first card on mobile
+    if (results.length > 0) {
+      expandedBestThreeIds.value = new Set([results[0].lineup.id])
+    }
   } catch (_) {
     // error ref already set in composable
   }

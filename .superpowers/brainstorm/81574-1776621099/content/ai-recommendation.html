@@ -1,0 +1,426 @@
+<h2>获取 AI 推荐 — 三个状态</h2>
+<p class="subtitle">加载中 → 结果 → 可重跑</p>
+
+<style>
+  .mobile-frame {
+    width: 380px;
+    border: 2px solid #e5e7eb;
+    border-radius: 24px;
+    background: white;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    overflow: hidden;
+  }
+  .mobile-header {
+    background: white;
+    border-bottom: 1px solid #e5e7eb;
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+  }
+  .mobile-body {
+    padding: 10px;
+    background: #f9fafb;
+    max-height: 720px;
+    overflow-y: auto;
+  }
+
+  .result-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: #374151;
+    margin: 14px 0 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .badge {
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 10px;
+    font-weight: 600;
+  }
+  .badge.ai { background: #ede9fe; color: #6d28d9; }
+
+  /* AI states */
+  .ai-trigger {
+    background: white;
+    border: 1.5px dashed #d8b4fe;
+    border-radius: 10px;
+    padding: 18px 12px;
+    text-align: center;
+  }
+  .btn-ai {
+    padding: 8px 20px;
+    background: #7c3aed;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-top: 8px;
+  }
+  .btn-ai:disabled { opacity: 0.6; }
+
+  /* Loading state */
+  .ai-loading {
+    background: white;
+    border: 1.5px solid #d8b4fe;
+    border-radius: 10px;
+    padding: 20px 12px;
+    text-align: center;
+  }
+  .spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid #e9d5ff;
+    border-top-color: #7c3aed;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-right: 8px;
+    vertical-align: middle;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Result state */
+  .ai-result {
+    background: white;
+    border: 1.5px solid #d8b4fe;
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 8px;
+  }
+  .ai-result-head {
+    background: #faf5ff;
+    padding: 10px 12px;
+    border-bottom: 1px solid #e9d5ff;
+  }
+  .ai-result-head-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 6px;
+  }
+  .ai-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #6b21a8;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .ai-label-tag {
+    font-size: 10px;
+    background: #e9d5ff;
+    color: #6b21a8;
+    padding: 1px 6px;
+    border-radius: 10px;
+  }
+  .ai-score {
+    font-size: 10px;
+    text-align: right;
+    white-space: nowrap;
+  }
+  .verdict-tag {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 600;
+  }
+  .verdict-win { background: #d1fae5; color: #065f46; }
+
+  .ai-explain {
+    padding: 10px 12px;
+    font-size: 11px;
+    color: #6b21a8;
+    line-height: 1.6;
+    background: #faf5ff;
+  }
+  .ai-explain strong { color: #4c1d95; }
+
+  .rerun-btn {
+    font-size: 10px;
+    color: #7c3aed;
+    border: 1px solid #d8b4fe;
+    background: white;
+    padding: 3px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+
+  /* Line matchup in AI card */
+  .line-matchup {
+    display: grid;
+    grid-template-columns: 28px 1fr;
+    gap: 8px;
+    padding: 8px 12px;
+    border-top: 1px solid #f3f4f6;
+  }
+  .line-pos {
+    font-size: 11px;
+    font-weight: 700;
+    color: #059669;
+    padding-top: 4px;
+  }
+  .line-pair { display: flex; flex-direction: column; gap: 3px; }
+  .player-line {
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+  .player-line .name { font-weight: 500; color: #1f2937; }
+  .player-line.opp .name { color: #b91c1c; }
+  .player-line .utr { color: #9ca3af; font-size: 10px; }
+  .vs-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 2px 8px;
+    background: #faf5ff;
+    border-radius: 4px;
+    font-size: 10px;
+  }
+  .delta-pos { color: #059669; font-weight: 600; }
+  .delta-neg { color: #dc2626; font-weight: 600; }
+  .win-pill {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 10px;
+  }
+  .win-high { background: #d1fae5; color: #065f46; }
+  .win-mid { background: #fef3c7; color: #92400e; }
+
+  .gender-tag {
+    font-size: 9px;
+    font-weight: 700;
+    padding: 1px 4px;
+    border-radius: 2px;
+  }
+  .gender-tag.f { background: #fce7f3; color: #be185d; }
+  .gender-tag.m { background: #dbeafe; color: #1d4ed8; }
+
+  /* Highlight which pairing is AI's unique choice vs UTR Top 1 */
+  .ai-diff-hint {
+    display: inline-block;
+    background: #fef3c7;
+    color: #92400e;
+    padding: 0 4px;
+    font-size: 9px;
+    border-radius: 2px;
+    margin-left: 3px;
+  }
+</style>
+
+<div style="display: flex; justify-content: center; gap: 16px; flex-wrap: wrap; align-items: flex-start;">
+
+  <!-- STATE 1: Before (trigger button) -->
+  <div>
+    <h3 style="text-align: center;">① 未点击</h3>
+    <div class="mobile-frame" style="height: 380px;">
+      <div class="mobile-header">
+        <span style="color: #6b7280;">☰</span>
+        <span style="flex: 1; font-weight: 600; font-size: 12px;">对手策略分析</span>
+      </div>
+      <div class="mobile-body">
+        <div style="font-size: 11px; color: #9ca3af; text-align: center; padding: 12px;">...上方是 UTR Top 3...</div>
+
+        <div class="result-label">
+          <span>AI 推荐</span>
+          <span class="badge ai">智能分析</span>
+        </div>
+
+        <div class="ai-trigger">
+          <div style="font-size: 11px; color: #6b7280;">
+            基于比赛策略和球员特点<br/>
+            AI 给出最佳出场推荐
+          </div>
+          <button class="btn-ai">获取 AI 推荐</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STATE 2: Loading -->
+  <div>
+    <h3 style="text-align: center;">② 加载中</h3>
+    <div class="mobile-frame" style="height: 380px;">
+      <div class="mobile-header">
+        <span style="color: #6b7280;">☰</span>
+        <span style="flex: 1; font-weight: 600; font-size: 12px;">对手策略分析</span>
+      </div>
+      <div class="mobile-body">
+        <div style="font-size: 11px; color: #9ca3af; text-align: center; padding: 12px;">...上方是 UTR Top 3...</div>
+
+        <div class="result-label">
+          <span>AI 推荐</span>
+          <span class="badge ai">智能分析</span>
+        </div>
+
+        <div class="ai-loading">
+          <span class="spinner"></span>
+          <span style="font-size: 12px; color: #7c3aed; font-weight: 600;">AI 分析中…</span>
+          <div style="font-size: 10px; color: #9ca3af; margin-top: 8px;">
+            考虑搭档笔记和球员特点
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STATE 3: Result -->
+  <div>
+    <h3 style="text-align: center;">③ 返回推荐结果</h3>
+    <div class="mobile-frame">
+      <div class="mobile-header">
+        <span style="color: #6b7280;">☰</span>
+        <span style="flex: 1; font-weight: 600; font-size: 12px;">对手策略分析</span>
+      </div>
+      <div class="mobile-body">
+        <div style="font-size: 11px; color: #9ca3af; text-align: center; padding: 8px 12px; background: #f9fafb;">
+          ↑ 上方是 UTR Top 3（未在此截图显示）
+        </div>
+
+        <div class="result-label">
+          <span>AI 推荐</span>
+          <span class="badge ai">智能分析</span>
+        </div>
+
+        <div class="ai-result">
+          <div class="ai-result-head">
+            <div class="ai-result-head-row">
+              <div>
+                <div class="ai-title">
+                  ✨ AI 推荐排阵
+                </div>
+                <div style="margin-top: 4px; display: flex; align-items: center; gap: 4px; flex-wrap: wrap;">
+                  <span class="ai-label-tag">基于：男双加强 D2</span>
+                  <span style="font-size: 10px; color: #9ca3af;">UTR 40.26</span>
+                </div>
+              </div>
+              <div class="ai-score">
+                <span class="verdict-tag verdict-win">能赢</span>
+                <div style="margin-top: 4px; color: #6b7280;">预期 <strong>7.5</strong>/10</div>
+                <div style="color: #dc2626;">对手 2.5</div>
+              </div>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end;">
+              <button class="rerun-btn">重新分析</button>
+            </div>
+          </div>
+
+          <!-- AI explanation -->
+          <div class="ai-explain">
+            <strong>💡 为什么选这个？</strong><br/>
+            对手 D1/D2 是男双组合，我方用男双加强 D2 可以正面对抗。
+            Shuanglong 近期配合默契度高（搭档笔记提到）；
+            D3 用 Kris/Wei 利用对手 D3 女子组合 UTR 偏低的弱点；
+            D4 Mao/Neil 搭档相对轻松锁定分数。
+          </div>
+
+          <!-- Line-by-line (same format as UTR cards) -->
+          <div class="line-matchup">
+            <div class="line-pos">D1</div>
+            <div class="line-pair">
+              <div class="player-line">
+                <span class="gender-tag f">女</span><span class="name">May Wang</span><span class="utr">6.80</span>
+                <span class="gender-tag m">男</span><span class="name">Orien Xu</span><span class="utr">6.18</span>
+              </div>
+              <div class="vs-row">
+                <span class="delta-pos">+2.3</span><span class="win-pill win-high">80% 赢</span>
+              </div>
+              <div class="player-line opp">
+                <span class="gender-tag m">男</span><span class="name">王大</span><span class="utr">6.5</span>
+                <span class="gender-tag m">男</span><span class="name">李二</span><span class="utr">5.8</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="line-matchup">
+            <div class="line-pos">D2</div>
+            <div class="line-pair">
+              <div class="player-line">
+                <span class="gender-tag m">男</span><span class="name">Bin Feng</span><span class="utr">6.80</span>
+                <span class="gender-tag m">男</span><span class="name">Shuang Zhang<span class="ai-diff-hint">AI 换入</span></span><span class="utr">5.50</span>
+              </div>
+              <div class="vs-row">
+                <span class="delta-pos">+2.3</span><span class="win-pill win-high">78% 赢</span>
+              </div>
+              <div class="player-line opp">
+                <span class="gender-tag f">女</span><span class="name">张三</span><span class="utr">5.2</span>
+                <span class="gender-tag m">男</span><span class="name">赵四</span><span class="utr">4.8</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="line-matchup">
+            <div class="line-pos">D3</div>
+            <div class="line-pair">
+              <div class="player-line">
+                <span class="gender-tag f">女</span><span class="name">Kris Yuen<span class="ai-diff-hint">AI 换入</span></span><span class="utr">3.30</span>
+                <span class="gender-tag m">男</span><span class="name">Wei Jing</span><span class="utr">6.50</span>
+              </div>
+              <div class="vs-row">
+                <span class="delta-pos">+1.1</span><span class="win-pill win-high">62% 赢</span>
+              </div>
+              <div class="player-line opp">
+                <span class="gender-tag f">女</span><span class="name">陈五</span><span class="utr">4.5</span>
+                <span class="gender-tag m">男</span><span class="name">刘六</span><span class="utr">4.2</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="line-matchup">
+            <div class="line-pos">D4</div>
+            <div class="line-pair">
+              <div class="player-line">
+                <span class="gender-tag m">男</span><span class="name">Mao Gao<span class="ai-diff-hint">AI 换入</span></span><span class="utr">5.78</span>
+                <span class="gender-tag m">男</span><span class="name">Neil Mao</span><span class="utr">5.00</span>
+              </div>
+              <div class="vs-row">
+                <span class="delta-pos">+3.5</span><span class="win-pill win-high">88% 赢</span>
+              </div>
+              <div class="player-line opp">
+                <span class="gender-tag m">男</span><span class="name">孙七</span><span class="utr">3.8</span>
+                <span class="gender-tag f">女</span><span class="name">周八</span><span class="utr">3.5</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<h3 style="margin-top: 24px;">AI 推荐的关键设计点</h3>
+<ul style="font-size: 13px; line-height: 1.8; color: #4b5563;">
+  <li>🟣 <strong>紫色主题</strong>，和绿色的 UTR 推荐视觉区分</li>
+  <li><strong>"基于：xxx"标签</strong> — 显示 AI 选的是哪个已保存排阵（可能和 UTR Top 1 不同）</li>
+  <li><strong>AI 换入标记</strong> — 对比 UTR Top 1，AI 用了哪些替换（黄色 "AI 换入" 小标）</li>
+  <li><strong>解释卡</strong>（紫色背景）— AI 给出 "为什么选这个"</li>
+  <li><strong>逐线同格式</strong> — 与 UTR 卡一致的 3 行布局，方便对比</li>
+  <li><strong>「重新分析」</strong>— 按钮，AI 可能每次返回略不同的推荐</li>
+  <li>⚠️ 如果 AI 服务不可用（backend 降级），头部显示黄色 "AI 不可用" 徽章并用启发式推荐</li>
+</ul>
+
+<div class="options" style="margin-top: 20px;">
+  <div class="option" data-choice="approve" onclick="toggleSelect(this)">
+    <div class="letter">✓</div>
+    <div class="content"><h3>通过</h3><p>整体设计都 OK，准备实施</p></div>
+  </div>
+  <div class="option" data-choice="no-diff-hint" onclick="toggleSelect(this)">
+    <div class="letter">-</div>
+    <div class="content"><h3>去掉 "AI 换入" 小标</h3><p>让 AI 推荐看起来独立，不必标注差异</p></div>
+  </div>
+  <div class="option" data-choice="adjust" onclick="toggleSelect(this)">
+    <div class="letter">✎</div>
+    <div class="content"><h3>其他调整</h3><p>留言具体</p></div>
+  </div>
+</div>

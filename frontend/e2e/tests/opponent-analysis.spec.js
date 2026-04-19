@@ -158,9 +158,10 @@ test.describe('对手策略分析', () => {
     await analysisPage.clickFindBestThree()
     await analysisPage.waitForResults()
 
-    // Should show at least 1 result with per-line comparison
-    await expect(page.locator('text=D1').first()).toBeVisible()
-    await expect(page.locator('text=预期得分').first()).toBeVisible()
+    // Should show at least 1 result with per-line comparison (scope to visible desktop grid)
+    const grid = page.locator('[data-testid="desktop-result-grid"]')
+    await expect(grid.locator('text=D1').first()).toBeVisible()
+    await expect(grid.locator('text=预期得分').first()).toBeVisible()
   })
 
   test('最佳三阵：结果显示胜负判断标签', async ({ page }) => {
@@ -172,8 +173,9 @@ test.describe('对手策略分析', () => {
     await analysisPage.clickFindBestThree()
     await analysisPage.waitForResults()
 
-    // At least one verdict badge should be present
-    const verdicts = page.locator('.rounded-full').filter({ hasText: /能赢|势均力敌|劣势/ })
+    // At least one verdict badge should be present (scope to visible desktop grid)
+    const grid = page.locator('[data-testid="desktop-result-grid"]')
+    const verdicts = grid.locator('.rounded-full').filter({ hasText: /能赢|势均力敌|劣势/ })
     await expect(verdicts.first()).toBeVisible()
   })
 

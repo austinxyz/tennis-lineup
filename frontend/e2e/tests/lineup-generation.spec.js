@@ -104,10 +104,10 @@ test.describe('排阵生成', () => {
     await lineupPage.clickGenerate()
     await lineupPage.waitForResults()
     await lineupPage.waitForLineupCard()
-    // Per-player UTR is shown inline (e.g. "张三 (6.00)")
-    // At least one player UTR should be visible as a decimal number
-    const utrPattern = page.locator('text=/\\(\\d+\\.\\d+\\)/')
-    await expect(utrPattern.first()).toBeVisible()
+    // Per-player UTR is shown inline inside each pair-player-row in LineupCard.
+    // Find a row whose text contains a decimal UTR (e.g. "5.5" or "6.00")
+    const row = page.locator('[data-testid="pair-player-row"]').filter({ hasText: /\d+\.\d+/ })
+    await expect(row.first()).toBeVisible()
   })
 
   test('位置约束：指定球员打 D1', async ({ page }) => {

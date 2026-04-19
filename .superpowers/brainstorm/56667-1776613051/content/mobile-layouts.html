@@ -1,0 +1,187 @@
+<h2>Mobile 布局设计 — 三种关键视图</h2>
+<p class="subtitle">各屏幕的导航结构。选 A 作为默认方案，如需要调整点选对应的选项。</p>
+
+<style>
+  .mobile-frame {
+    width: 280px;
+    height: 560px;
+    border: 2px solid #e5e7eb;
+    border-radius: 24px;
+    background: white;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+  }
+  .mobile-header {
+    background: white;
+    border-bottom: 1px solid #e5e7eb;
+    padding: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    flex-shrink: 0;
+  }
+  .hamburger { cursor: pointer; padding: 4px 8px; font-size: 18px; color: #6b7280; }
+  .back-btn { cursor: pointer; padding: 4px 8px; color: #2563eb; font-weight: 500; }
+  .header-title { flex: 1; font-weight: 600; color: #1f2937; }
+  .mobile-body {
+    flex: 1;
+    padding: 12px;
+    overflow-y: auto;
+    background: #f9fafb;
+    font-size: 11px;
+  }
+  .drawer-overlay {
+    position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.4);
+    display: flex;
+  }
+  .drawer {
+    width: 200px;
+    background: white;
+    padding: 16px 12px;
+    font-size: 12px;
+  }
+  .drawer-item {
+    padding: 8px 10px;
+    border-radius: 6px;
+    margin-bottom: 4px;
+    color: #6b7280;
+  }
+  .drawer-item.active { background: #ecfdf5; color: #059669; font-weight: 600; }
+  .team-row {
+    padding: 10px 12px;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .team-row.active { background: #ecfdf5; border-color: #86efac; }
+  .team-avatar {
+    width: 24px; height: 24px; border-radius: 50%;
+    background: #e5e7eb; display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: bold;
+  }
+  .team-row.active .team-avatar { background: #059669; color: white; }
+  .lineup-card {
+    background: white; border: 1px solid #e5e7eb; border-radius: 8px;
+    padding: 10px; margin-bottom: 8px; font-size: 10px;
+  }
+  .lineup-card .hdr { font-weight: 600; margin-bottom: 6px; color: #1f2937; }
+  .lineup-card .pair { color: #6b7280; margin-bottom: 2px; }
+  .player-row {
+    padding: 8px 10px;
+    background: white;
+    border-bottom: 1px solid #f3f4f6;
+    font-size: 11px;
+    display: flex;
+    justify-content: space-between;
+  }
+</style>
+
+<div class="cards" style="grid-template-columns: repeat(3, 1fr);">
+
+  <!-- Screen 1: Team Manager - List View (no team selected) -->
+  <div class="card" data-choice="screen1" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding: 12px; display: flex; justify-content: center; background: #f3f4f6;">
+      <div class="mobile-frame">
+        <div class="mobile-header">
+          <span class="hamburger">☰</span>
+          <span class="header-title">队伍列表</span>
+          <span style="font-size: 18px; color: #10b981;">+</span>
+        </div>
+        <div class="mobile-body">
+          <div class="team-row"><div class="team-avatar">浙</div>浙江队</div>
+          <div class="team-row"><div class="team-avatar">鄂</div>鄂冠满赢</div>
+          <div class="team-row"><div class="team-avatar">蜀</div>蜀道山</div>
+          <div class="team-row"><div class="team-avatar">苏</div>苏格拉底</div>
+          <div class="team-row"><div class="team-avatar">大</div>大好河山</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>① 队伍列表（未选）</h3>
+      <p>汉堡菜单 + 全宽队伍列表</p>
+    </div>
+  </div>
+
+  <!-- Screen 2: Team Detail (team selected, list hidden) -->
+  <div class="card" data-choice="screen2" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding: 12px; display: flex; justify-content: center; background: #f3f4f6;">
+      <div class="mobile-frame">
+        <div class="mobile-header">
+          <span class="hamburger">☰</span>
+          <span class="back-btn">← 队伍</span>
+          <span class="header-title" style="font-size: 12px;">浙江队</span>
+        </div>
+        <div class="mobile-body" style="background: white;">
+          <div style="font-size: 10px; color: #6b7280; margin-bottom: 8px;">创建于 2026-01-15 · 16 名球员</div>
+          <div style="display: flex; gap: 4px; margin-bottom: 10px;">
+            <button class="mock-button" style="font-size: 10px; padding: 4px 8px;">+ 添加</button>
+            <button class="mock-button" style="font-size: 10px; padding: 4px 8px; background: white; color: #6b7280; border: 1px solid #d1d5db;">批量</button>
+          </div>
+          <div class="player-row"><span>May Wang</span><span style="color: #059669;">5.05</span></div>
+          <div class="player-row"><span>Orien Xu</span><span style="color: #059669;">6.18</span></div>
+          <div class="player-row"><span>Bill Wei</span><span style="color: #059669;">5.69</span></div>
+          <div class="player-row"><span>Chenchen Zhang</span><span style="color: #059669;">4.28</span></div>
+          <div class="player-row"><span>Wei Jing</span><span style="color: #059669;">6.16</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>② 队伍详情（已选）</h3>
+      <p>← 返回按钮 + 全宽详情</p>
+    </div>
+  </div>
+
+  <!-- Screen 3: Saved Lineups (single column on mobile) -->
+  <div class="card" data-choice="screen3" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding: 12px; display: flex; justify-content: center; background: #f3f4f6;">
+      <div class="mobile-frame">
+        <div class="mobile-header">
+          <span class="hamburger">☰</span>
+          <span class="back-btn">← 队伍</span>
+          <span class="header-title" style="font-size: 11px;">已保存排阵</span>
+        </div>
+        <div class="mobile-body">
+          <div class="lineup-card">
+            <div class="hdr">⭐ 主力阵容</div>
+            <div class="pair">D1 May/Orien · 11.2</div>
+            <div class="pair">D2 Bin/Chen · 10.6</div>
+            <div class="pair">D3 Wei/Lucy · 9.5</div>
+            <div class="pair">D4 Hanshan/Bill · 8.9</div>
+          </div>
+          <div class="lineup-card">
+            <div class="hdr">男双加强 D2</div>
+            <div class="pair">D1 May/Orien · 11.2</div>
+            <div class="pair">D2 Bin/Shuang · 11.2</div>
+            <div class="pair">D3 Kris/Wei · 9.0</div>
+            <div class="pair">D4 Hanshan/Bill · 8.9</div>
+          </div>
+          <div class="lineup-card" style="opacity: 0.7;">
+            <div class="hdr">D3女生Jing/Bing</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>③ 已保存排阵</h3>
+      <p>单列堆叠，每个卡片独占一行</p>
+    </div>
+  </div>
+
+</div>
+
+<h3 style="margin-top: 24px;">交互规则</h3>
+<ul style="font-size: 13px; line-height: 1.7;">
+  <li><strong>汉堡菜单 ☰</strong> — 所有页面都有，点击从左侧滑出侧边栏（队伍管理/排阵生成/对手分析），点背景半透明层关闭</li>
+  <li><strong>返回按钮 ← 队伍</strong> — 只在队伍详情和已保存排阵页显示，回到队伍列表</li>
+  <li><strong>断点：<code>lg</code> (1024px)</strong> — 下面走 mobile 布局，上面保持现有桌面两栏/多栏</li>
+  <li><strong>已保存排阵</strong> — 小屏 grid-cols-1，大屏 lg:grid-cols-2（已有代码）</li>
+</ul>

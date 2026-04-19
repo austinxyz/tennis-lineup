@@ -135,7 +135,7 @@ test.describe('排阵导出导入', () => {
     await expect(page.getByRole('button', { name: '导入排阵' })).toBeVisible({ timeout: 8000 })
 
     // Upload the fixture export JSON
-    const fileInput = page.locator('input[type="file"][accept=".json"]')
+    const fileInput = page.locator('[data-testid="import-file-input"]')
     await fileInput.setInputFiles(exportFilePath)
 
     // Wait for success message
@@ -154,7 +154,7 @@ test.describe('排阵导出导入', () => {
     await expect(page.getByRole('button', { name: '导入排阵' })).toBeVisible({ timeout: 8000 })
 
     // Import the same file again — all lineups already exist (by player name)
-    const fileInput = page.locator('input[type="file"][accept=".json"]')
+    const fileInput = page.locator('[data-testid="import-file-input"]')
     await fileInput.setInputFiles(exportFilePath)
 
     const resultMsg = page.locator('[data-testid="import-result"]')
@@ -172,7 +172,7 @@ test.describe('排阵导出导入', () => {
     const badFile = path.join(os.tmpdir(), `bad-${Date.now()}.json`)
     fs.writeFileSync(badFile, 'not-valid-json', 'utf-8')
 
-    const fileInput = page.locator('input[type="file"][accept=".json"]')
+    const fileInput = page.locator('[data-testid="import-file-input"]')
     await fileInput.setInputFiles(badFile)
 
     const errorMsg = page.locator('[data-testid="import-result"]')

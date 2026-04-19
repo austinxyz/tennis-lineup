@@ -1,0 +1,498 @@
+<h2>对手分析 Mobile — 关键屏幕</h2>
+<p class="subtitle">桌面不变，这里只展示 &lt; 1024px 的移动端版本。</p>
+
+<style>
+  .mobile-frame {
+    width: 360px;
+    border: 2px solid #e5e7eb;
+    border-radius: 24px;
+    background: white;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    overflow: hidden;
+  }
+  .mobile-header {
+    background: white;
+    border-bottom: 1px solid #e5e7eb;
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+  }
+  .mobile-body {
+    padding: 10px;
+    background: #f9fafb;
+    max-height: 620px;
+    overflow-y: auto;
+  }
+
+  /* Mode toggle */
+  .mode-tabs {
+    display: flex;
+    gap: 4px;
+    background: #f3f4f6;
+    border-radius: 8px;
+    padding: 3px;
+    margin-bottom: 10px;
+  }
+  .mode-tab {
+    flex: 1;
+    padding: 8px;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 500;
+    border-radius: 6px;
+    color: #6b7280;
+  }
+  .mode-tab.active {
+    background: white;
+    color: #059669;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  }
+
+  /* Form */
+  .field-label {
+    font-size: 11px;
+    color: #6b7280;
+    font-weight: 600;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .select {
+    width: 100%;
+    padding: 8px 10px;
+    font-size: 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    background: white;
+    margin-bottom: 10px;
+  }
+
+  /* Preview inline */
+  .preview {
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-radius: 6px;
+    padding: 6px 8px;
+    font-size: 10px;
+    color: #065f46;
+    margin-top: -6px;
+    margin-bottom: 10px;
+    line-height: 1.5;
+  }
+  .preview.opp {
+    background: #fef2f2;
+    border-color: #fecaca;
+    color: #991b1b;
+  }
+
+  .btn-primary {
+    width: 100%;
+    padding: 11px;
+    background: #059669;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .gender-tag {
+    font-size: 9px;
+    font-weight: 700;
+    padding: 1px 4px;
+    border-radius: 2px;
+  }
+  .gender-tag.f { background: #fce7f3; color: #be185d; }
+  .gender-tag.m { background: #dbeafe; color: #1d4ed8; }
+
+  /* Result cards — stacked layout (NOT horizontal) */
+  .result-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: #374151;
+    margin: 14px 0 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .result-label .badge {
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 10px;
+  }
+  .result-label .badge.utr { background: #d1fae5; color: #065f46; }
+  .result-label .badge.ai { background: #ede9fe; color: #6d28d9; }
+
+  .result-card {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 10px;
+    margin-bottom: 8px;
+  }
+  .result-card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .result-title { font-size: 12px; font-weight: 600; color: #1f2937; }
+  .result-score {
+    font-size: 10px;
+    text-align: right;
+    white-space: nowrap;
+  }
+  .verdict-tag {
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-weight: 600;
+  }
+  .verdict-win { background: #d1fae5; color: #065f46; }
+  .verdict-close { background: #fef3c7; color: #92400e; }
+
+  /* Line matchup — vertical stack instead of 4-col */
+  .line-matchup {
+    display: grid;
+    grid-template-columns: 28px 1fr;
+    gap: 8px;
+    padding: 6px 0;
+    border-top: 1px solid #f3f4f6;
+  }
+  .line-pos {
+    font-size: 11px;
+    font-weight: 700;
+    color: #059669;
+    padding-top: 3px;
+  }
+  .line-pair {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .player-line {
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .player-line .name { font-weight: 500; }
+  .player-line .utr { color: #6b7280; font-size: 10px; }
+  .vs-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 4px 0;
+    font-size: 10px;
+  }
+  .vs-row .vs { color: #9ca3af; padding: 0 6px; }
+  .win-pill {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 8px;
+  }
+  .win-high { background: #d1fae5; color: #065f46; }
+  .win-mid { background: #fef3c7; color: #92400e; }
+  .win-low { background: #fee2e2; color: #991b1b; }
+  .opp-pair .player-line .name { color: #dc2626; }
+
+  /* AI card */
+  .ai-card {
+    background: linear-gradient(135deg, #faf5ff, #f3e8ff);
+    border: 1px solid #d8b4fe;
+    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 8px;
+  }
+  .ai-explain {
+    background: white;
+    border-radius: 6px;
+    padding: 8px;
+    font-size: 11px;
+    color: #6b21a8;
+    line-height: 1.5;
+    margin-bottom: 8px;
+  }
+  .ai-trigger {
+    background: white;
+    border: 1.5px dashed #d8b4fe;
+    border-radius: 10px;
+    padding: 20px 12px;
+    text-align: center;
+    margin-bottom: 8px;
+  }
+  .btn-ai {
+    padding: 8px 16px;
+    background: #7c3aed;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-top: 8px;
+  }
+</style>
+
+<div style="display: flex; justify-content: center; gap: 16px; flex-wrap: wrap; align-items: flex-start;">
+
+  <!-- SCREEN 1: Input form with 最佳三阵 tab -->
+  <div>
+    <h3 style="text-align: center;">① 输入 — 最佳三阵</h3>
+    <div class="mobile-frame">
+      <div class="mobile-header">
+        <span style="color: #6b7280;">☰</span>
+        <span style="flex: 1; font-weight: 600;">对手策略分析</span>
+      </div>
+      <div class="mobile-body">
+        <div class="mode-tabs">
+          <div class="mode-tab active">最佳三阵</div>
+          <div class="mode-tab">逐线对比</div>
+        </div>
+
+        <div class="field-label">我方队伍</div>
+        <select class="select"><option>浙江队 (16名)</option></select>
+
+        <div class="field-label">对手队伍</div>
+        <select class="select"><option>上海队</option></select>
+
+        <div class="field-label">对手排阵</div>
+        <select class="select"><option>主力阵容 (UTR 38.5)</option></select>
+        <div class="preview opp">
+          D1 男王大/男李二 · D2 女张三/男赵四<br/>
+          D3 女陈五/男刘六 · D4 男孙七/女周八
+        </div>
+
+        <details style="margin-bottom: 10px;">
+          <summary style="font-size: 11px; color: #6b7280; cursor: pointer; padding: 4px 0;">
+            📝 对手搭档笔记 (选填)
+          </summary>
+          <div style="font-size: 10px; padding: 6px 0; color: #9ca3af;">
+            （点击展开后可添加笔记）
+          </div>
+        </details>
+
+        <button class="btn-primary">查找最佳三阵</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCREEN 2: Best Three results — stacked: UTR top 3, then AI recommendation -->
+  <div>
+    <h3 style="text-align: center;">② 最佳三阵结果</h3>
+    <div class="mobile-frame">
+      <div class="mobile-header">
+        <span style="color: #6b7280;">☰</span>
+        <span style="flex: 1; font-weight: 600; font-size: 12px;">对手策略分析</span>
+      </div>
+      <div class="mobile-body">
+        <!-- UTR top 3 first -->
+        <div class="result-label">
+          <span>UTR 最佳三阵</span>
+          <span class="badge utr">算法推荐</span>
+        </div>
+
+        <div class="result-card">
+          <div class="result-card-head">
+            <div>
+              <div class="result-title">#1 主力阵容</div>
+              <div style="font-size: 10px; color: #6b7280; margin-top: 2px;">UTR 40.15</div>
+            </div>
+            <div class="result-score">
+              <span class="verdict-tag verdict-win">能赢</span>
+              <div style="margin-top: 2px; color: #6b7280;">预期 7.2/10</div>
+            </div>
+          </div>
+
+          <!-- Per-line matchup — vertical instead of horizontal 4-col -->
+          <div class="line-matchup">
+            <div class="line-pos">D1</div>
+            <div class="line-pair">
+              <div class="player-line">
+                <span class="gender-tag f">女</span>
+                <span class="name">May</span>
+                <span class="utr">6.80</span>
+                <span class="gender-tag m">男</span>
+                <span class="name">Orien</span>
+                <span class="utr">6.18</span>
+              </div>
+              <div class="vs-row">
+                <span style="color: #059669; font-weight: 600;">+1.0</span>
+                <span class="win-pill win-high">80% 赢</span>
+              </div>
+              <div class="player-line opp-pair" style="color: #dc2626;">
+                <span class="gender-tag m">男</span>
+                <span class="name" style="color: #dc2626;">王大</span>
+                <span class="utr">6.5</span>
+                <span class="gender-tag m">男</span>
+                <span class="name" style="color: #dc2626;">李二</span>
+                <span class="utr">5.8</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="line-matchup">
+            <div class="line-pos">D2</div>
+            <div class="line-pair">
+              <div class="player-line"><span class="gender-tag m">男</span><span class="name">Bin</span><span class="utr">6.80</span><span class="gender-tag f">女</span><span class="name">Chen</span><span class="utr">4.60</span></div>
+              <div class="vs-row"><span style="color: #059669; font-weight: 600;">+0.4</span><span class="win-pill win-high">65% 赢</span></div>
+              <div class="player-line opp-pair" style="color: #dc2626;"><span class="gender-tag f">女</span><span class="name" style="color: #dc2626;">张三</span><span class="utr">5.2</span><span class="gender-tag m">男</span><span class="name" style="color: #dc2626;">赵四</span><span class="utr">4.8</span></div>
+            </div>
+          </div>
+
+          <div style="text-align: center; font-size: 10px; color: #9ca3af; padding: 6px 0;">D3, D4 展开查看...</div>
+        </div>
+
+        <div class="result-card" style="opacity: 0.85;">
+          <div class="result-card-head">
+            <div>
+              <div class="result-title">#2 男双加强 D2</div>
+              <div style="font-size: 10px; color: #6b7280; margin-top: 2px;">UTR 40.26</div>
+            </div>
+            <div class="result-score">
+              <span class="verdict-tag verdict-close">均势</span>
+              <div style="margin-top: 2px; color: #6b7280;">预期 5.3/10</div>
+            </div>
+          </div>
+          <div style="font-size: 10px; color: #9ca3af; text-align: center; padding: 4px;">点击展开详情</div>
+        </div>
+
+        <div class="result-card" style="opacity: 0.85;">
+          <div class="result-card-head">
+            <div>
+              <div class="result-title">#3 D3 女生 Jing/Bing</div>
+            </div>
+            <div class="result-score"><span class="verdict-tag verdict-close">均势</span></div>
+          </div>
+        </div>
+
+        <!-- AI recommendation (on-demand trigger) -->
+        <div class="result-label" style="margin-top: 16px;">
+          <span>AI 推荐</span>
+          <span class="badge ai">智能分析</span>
+        </div>
+
+        <div class="ai-trigger">
+          <div style="font-size: 11px; color: #6b7280; margin-bottom: 4px;">
+            基于策略和球员特点，AI 推荐最佳出场
+          </div>
+          <button class="btn-ai">获取 AI 推荐</button>
+        </div>
+
+        <!-- If AI has run, show result card (example) -->
+        <div class="ai-card" style="display: none;">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+            <span style="font-weight: 600; color: #6b21a8;">AI 推荐排阵</span>
+            <span class="verdict-tag verdict-win">能赢</span>
+          </div>
+          <div class="ai-explain">
+            ⚡ D1 组合 UTR 优势明显。将 Bin/Chen 放在 D2 可以用男双优势碾压对手女子组合...
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- SCREEN 3: Head-to-head comparison result -->
+  <div>
+    <h3 style="text-align: center;">③ 逐线对比结果</h3>
+    <div class="mobile-frame">
+      <div class="mobile-header">
+        <span style="color: #6b7280;">☰</span>
+        <span style="flex: 1; font-weight: 600; font-size: 12px;">对手策略分析</span>
+      </div>
+      <div class="mobile-body">
+        <div class="mode-tabs">
+          <div class="mode-tab">最佳三阵</div>
+          <div class="mode-tab active">逐线对比</div>
+        </div>
+
+        <!-- Compact form recap (already filled) -->
+        <div style="background: white; padding: 8px 10px; border: 1px solid #e5e7eb; border-radius: 6px; margin-bottom: 10px; font-size: 11px;">
+          <div style="color: #059669; font-weight: 600;">浙江队 主力阵容</div>
+          <div style="color: #6b7280; font-size: 10px; margin: 2px 0;">vs</div>
+          <div style="color: #dc2626; font-weight: 600;">上海队 主力阵容</div>
+        </div>
+
+        <!-- UTR comparison card -->
+        <div class="result-label">
+          <span>UTR 比较分析</span>
+          <span class="badge utr">算法</span>
+        </div>
+
+        <div class="result-card">
+          <div class="result-card-head">
+            <div class="result-title">整体评估</div>
+            <div class="result-score">
+              <span class="verdict-tag verdict-win">能赢</span>
+              <div style="margin-top: 2px; color: #6b7280;">7.0 vs 3.0</div>
+            </div>
+          </div>
+
+          <div class="line-matchup">
+            <div class="line-pos">D1</div>
+            <div class="line-pair">
+              <div class="player-line"><span class="gender-tag f">女</span><span class="name">May</span><span class="utr">6.80</span><span class="gender-tag m">男</span><span class="name">Orien</span><span class="utr">6.18</span></div>
+              <div class="vs-row"><span style="color: #059669; font-weight: 600;">+1.0</span><span class="win-pill win-high">80% 赢</span></div>
+              <div class="player-line opp-pair" style="color: #dc2626;"><span class="gender-tag m">男</span><span class="name" style="color: #dc2626;">王大</span><span class="utr">6.5</span><span class="gender-tag m">男</span><span class="name" style="color: #dc2626;">李二</span><span class="utr">5.8</span></div>
+            </div>
+          </div>
+
+          <div class="line-matchup">
+            <div class="line-pos">D3</div>
+            <div class="line-pair">
+              <div class="player-line"><span class="gender-tag m">男</span><span class="name">Wei</span><span class="utr">6.50</span><span class="gender-tag f">女</span><span class="name">Lucy</span><span class="utr">4.00</span></div>
+              <div class="vs-row"><span style="color: #f59e0b; font-weight: 600;">-0.2</span><span class="win-pill win-mid">48%</span></div>
+              <div class="player-line opp-pair" style="color: #dc2626;"><span class="gender-tag f">女</span><span class="name" style="color: #dc2626;">陈五</span><span class="utr">4.5</span><span class="gender-tag m">男</span><span class="name" style="color: #dc2626;">刘六</span><span class="utr">4.2</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- AI commentary -->
+        <div class="result-label" style="margin-top: 14px;">
+          <span>AI 点评</span>
+          <span class="badge ai">智能分析</span>
+        </div>
+
+        <div class="ai-trigger" style="padding: 16px 12px;">
+          <div style="font-size: 11px; color: #6b7280;">针对此次对阵生成 AI 点评</div>
+          <button class="btn-ai">获取 AI 点评</button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<h3 style="margin-top: 24px;">Mobile 关键改动</h3>
+<ul style="font-size: 13px; line-height: 1.8; color: #4b5563;">
+  <li>✅ <strong>模式 Tab</strong> 紧凑放在顶部（最佳三阵 / 逐线对比）</li>
+  <li>✅ <strong>表单纵向堆叠</strong>（原来 `md:grid-cols-3` 在小屏已经变单列，需确认）</li>
+  <li>✅ <strong>最佳三阵结果</strong>：UTR Top 3 和 AI 推荐由桌面的 <strong>左右两列</strong> 改为 <strong>上下堆叠</strong>（UTR 先，AI 后）</li>
+  <li>✅ <strong>每条线对战</strong>：从桌面的 <code>我方 | Δ | 对手</code> 4 列改为<strong>上下 3 行</strong>（我方球员 / 胜率 pill / 对手球员），避免横向挤压</li>
+  <li>✅ <strong>AI 推荐按需触发</strong> — 大按钮卡片，用户主动点击才调用</li>
+  <li>✅ <strong>已展开 Top 1</strong>，Top 2/3 默认折叠（点击展开详情，节省滚动）</li>
+</ul>
+
+<div class="options" style="margin-top: 20px;">
+  <div class="option" data-choice="approve" onclick="toggleSelect(this)">
+    <div class="letter">✓</div>
+    <div class="content"><h3>方向正确</h3><p>按这个方案实施</p></div>
+  </div>
+  <div class="option" data-choice="keep-expanded" onclick="toggleSelect(this)">
+    <div class="letter">≡</div>
+    <div class="content"><h3>Top 1/2/3 都展开</h3><p>不要默认折叠 Top 2/3</p></div>
+  </div>
+  <div class="option" data-choice="horizontal-keep" onclick="toggleSelect(this)">
+    <div class="letter">↔</div>
+    <div class="content"><h3>每条线保留左右对比</h3><p>即使挤压也要我方/对手并排</p></div>
+  </div>
+  <div class="option" data-choice="adjust" onclick="toggleSelect(this)">
+    <div class="letter">✎</div>
+    <div class="content"><h3>其他调整</h3><p>留言告诉我</p></div>
+  </div>
+</div>
