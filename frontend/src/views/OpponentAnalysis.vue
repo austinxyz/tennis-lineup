@@ -1,494 +1,337 @@
 <template>
-  <div class="p-6">
-    <h2 class="text-2xl font-bold text-gray-900 mb-6">对手策略分析</h2>
+  <div class="flex flex-col min-h-full">
+    <AppHeader title="对手分析" />
 
-    <!-- Mode radio toggle -->
-    <div class="flex gap-1 bg-gray-100 rounded-lg p-1 w-fit mb-6">
-      <button
-        class="px-5 py-2 text-sm font-medium rounded-md transition"
-        :class="analysisMode === 'bestThree' ? 'bg-white text-green-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'"
-        @click="onModeChange('bestThree')"
+    <div class="pt-14 lg:pt-0 p-4 lg:p-6 max-w-3xl mx-auto w-full">
+
+      <!-- ── Our side ── -->
+      <div class="text-center text-xs text-gray-500 font-semibold tracking-widest my-3">· 我 方 ·</div>
+
+      <label class="block text-xs text-gray-500 font-semibold mb-1 uppercase">队伍</label>
+      <select
+        data-testid="select-my-team"
+        v-model="myTeamId"
+        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-500"
       >
-        最佳三阵
-      </button>
-      <button
-        class="px-5 py-2 text-sm font-medium rounded-md transition"
-        :class="analysisMode === 'headToHead' ? 'bg-white text-green-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'"
-        @click="onModeChange('headToHead')"
+        <option value="" disabled>选择我方队伍</option>
+        <option v-for="t in teams" :key="t.id" :value="t.id" :disabled="t.id === oppTeamId">{{ t.name }}</option>
+      </select>
+
+      <label class="block text-xs text-gray-500 font-semibold mb-1 mt-3 uppercase">排阵</label>
+      <select
+        data-testid="select-my-lineup"
+        v-model="myLineupId"
+        :disabled="!myTeamId || myLineups.length === 0"
+        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white disabled:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500"
       >
-        逐线对比
-      </button>
-    </div>
+        <option value="" disabled>
+          {{ !myTeamId ? '请先选队伍' : (myLineups.length ? '选择排阵' : '该队伍暂无排阵，请先添加') }}
+        </option>
+        <option v-for="l in myLineups" :key="l.id" :value="l.id">
+          {{ l.label || l.strategy }} (总{{ (l.totalUtr || 0).toFixed(2) }})
+        </option>
+      </select>
 
-    <!-- Shared controls -->
-    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5 mb-6">
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <!-- Own team selector -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">己方队伍</label>
-          <select
-            v-model="ownTeamId"
-            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-            @change="onOwnTeamChange"
-          >
-            <option value="" disabled>请选择队伍</option>
-            <option v-for="team in teams" :key="team.id" :value="team.id">
-              {{ team.name }}
-            </option>
-          </select>
-        </div>
-
-        <!-- Opponent team selector -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">对手队伍</label>
-          <select
-            v-model="opponentTeamId"
-            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-            @change="onOpponentTeamChange"
-          >
-            <option value="" disabled>请选择对手</option>
-            <option v-for="team in teams" :key="team.id" :value="team.id">
-              {{ team.name }}
-            </option>
-          </select>
-        </div>
-
-        <!-- Opponent lineup selector + preview -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">对手排阵</label>
-          <select
-            v-if="opponentLineups.length > 0"
-            v-model="opponentLineupId"
-            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-          >
-            <option value="" disabled>请选择排阵</option>
-            <option v-for="lineup in opponentLineups" :key="lineup.id" :value="lineup.id">
-              {{ formatLineupLabel(lineup) }}
-            </option>
-          </select>
-          <p v-else-if="opponentTeamId" class="text-sm text-yellow-600 mt-2">对手队伍暂无保存排阵</p>
-          <p v-else class="text-sm text-gray-400 mt-2">请先选择对手队伍</p>
-          <!-- Opponent lineup preview -->
-          <div v-if="opponentLineupPreviewPairs.length > 0" class="mt-2 text-xs text-gray-400 space-y-0.5">
-            <div v-for="pair in opponentLineupPreviewPairs" :key="pair.position">
-              {{ pair.position }}: {{ pairPreviewText(pair) }}
-            </div>
+      <!-- My lineup preview -->
+      <div
+        v-if="myLineup"
+        data-testid="my-preview"
+        class="mt-2 bg-white border border-gray-200 rounded-lg p-3 text-xs"
+      >
+        <div class="text-gray-500 font-semibold uppercase mb-1">我方预览</div>
+        <div v-for="pair in sortedPairs(myLineup)" :key="pair.position" class="flex items-center gap-2 py-1">
+          <span class="w-7 text-xs font-bold text-green-600">{{ pair.position }}</span>
+          <div class="flex-1 flex flex-wrap gap-1 items-center">
+            <span
+              v-if="pair.player1Gender"
+              class="text-xs font-bold px-1 rounded"
+              :class="pair.player1Gender === 'female' ? 'bg-pink-100 text-pink-700' : 'bg-blue-100 text-blue-700'"
+            >{{ pair.player1Gender === 'female' ? '女' : '男' }}</span>
+            <span class="font-medium">{{ pair.player1Name }}</span>
+            <span class="text-gray-400">/</span>
+            <span
+              v-if="pair.player2Gender"
+              class="text-xs font-bold px-1 rounded"
+              :class="pair.player2Gender === 'female' ? 'bg-pink-100 text-pink-700' : 'bg-blue-100 text-blue-700'"
+            >{{ pair.player2Gender === 'female' ? '女' : '男' }}</span>
+            <span class="font-medium">{{ pair.player2Name }}</span>
           </div>
         </div>
       </div>
 
-      <!-- Opponent partner notes (scouting notes) -->
-      <div v-if="opponentTeamId && opponentPlayers.length >= 2" class="mt-3">
-        <button
-          @click="showOppNotes = !showOppNotes"
-          class="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1"
-        >
-          <span>对手搭档笔记</span>
-          <span>{{ showOppNotes ? '▲' : '▼' }}</span>
-        </button>
-        <div v-if="showOppNotes" class="mt-2 bg-gray-50 rounded-lg border border-gray-200 p-3">
-          <PartnerNotesEditor :teamId="opponentTeamId" :players="opponentPlayers" />
-        </div>
+      <!-- Lineup load error (if any fetch failed) -->
+      <div v-if="lineupLoadError" data-testid="lineup-load-error" class="mt-2 px-3 py-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">
+        {{ lineupLoadError }}
       </div>
 
-      <!-- 逐线对比 mode: own lineup selector + preview -->
-      <div v-if="analysisMode === 'headToHead'" class="mt-4">
-        <label class="block text-sm font-medium text-gray-700 mb-1">己方排阵</label>
-        <select
-          v-if="ownLineups.length > 0"
-          v-model="ownLineupId"
-          class="w-full md:w-1/3 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-        >
-          <option value="" disabled>请选择己方排阵</option>
-          <option v-for="lineup in ownLineups" :key="lineup.id" :value="lineup.id">
-            {{ formatLineupLabel(lineup) }}
-          </option>
-        </select>
-        <p v-else-if="ownTeamId" class="text-sm text-yellow-600 mt-1">己方队伍暂无保存排阵，请先保存排阵</p>
-        <p v-else class="text-sm text-gray-400 mt-1">请先选择己方队伍</p>
-        <!-- Own lineup preview -->
-        <div v-if="ownLineupPreviewPairs.length > 0" class="mt-2 text-xs text-gray-400 space-y-0.5">
-          <div v-for="pair in ownLineupPreviewPairs" :key="pair.position">
-            {{ pair.position }}: {{ pair.player1Name }} + {{ pair.player2Name }}
-          </div>
-        </div>
-      </div>
+      <!-- ── Opponent side ── -->
+      <div class="text-center text-xs text-gray-500 font-semibold tracking-widest my-4">· 对 手 ·</div>
 
-      <!-- Action buttons -->
-      <div class="mt-4 flex items-center gap-3">
-        <button
-          v-if="analysisMode === 'bestThree'"
-          :disabled="!canRunBestThree || loading"
-          class="px-5 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
-          @click="onRunBestThree"
-        >
-          {{ loading ? '查找中…' : '查找最佳三阵' }}
-        </button>
+      <label class="block text-xs text-gray-500 font-semibold mb-1 uppercase">队伍</label>
+      <select
+        data-testid="select-opp-team"
+        v-model="oppTeamId"
+        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-500"
+      >
+        <option value="" disabled>选择对手队伍</option>
+        <option v-for="t in teams" :key="t.id" :value="t.id" :disabled="t.id === myTeamId">
+          {{ t.name }}
+        </option>
+      </select>
 
-        <button
-          v-else
-          :disabled="!canRunHeadToHead || loading"
-          class="px-5 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
-          @click="onRunHeadToHead"
-        >
-          {{ loading ? '对比中…' : '对比分析' }}
-        </button>
+      <label class="block text-xs text-gray-500 font-semibold mb-1 mt-3 uppercase">对手排阵</label>
+      <select
+        data-testid="select-opp-lineup"
+        v-model="oppLineupId"
+        :disabled="!oppTeamId || oppLineups.length === 0"
+        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white disabled:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500"
+      >
+        <option value="" disabled>
+          {{ !oppTeamId ? '请先选对手' : (oppLineups.length ? '选择排阵' : '该队伍暂无排阵，请先添加') }}
+        </option>
+        <option v-for="l in oppLineups" :key="l.id" :value="l.id">
+          {{ l.label || l.strategy }} (总{{ (l.totalUtr || 0).toFixed(2) }})
+        </option>
+      </select>
 
-        <span v-if="error" class="text-sm text-red-500">{{ error }}</span>
-      </div>
-    </div>
-
-    <!-- 最佳三阵 results: two-column layout -->
-    <div v-if="analysisMode === 'bestThree' && bestThreeResults.length > 0" class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-
-      <!-- Left column: UTR-based top 3 -->
-      <div class="space-y-4">
-        <div class="flex items-center gap-2 mb-1">
-          <span class="text-sm font-semibold text-gray-700">UTR 最佳三阵</span>
-          <span class="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full">算法推荐</span>
-        </div>
-        <div
-          v-for="(res, idx) in bestThreeResults"
-          :key="res.lineup.id"
-          class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden"
-        >
-          <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100 bg-gray-50">
-            <span class="text-sm font-medium text-gray-600">#{{ idx + 1 }} {{ formatLineupLabel(res.lineup) }}</span>
-            <div class="flex items-center gap-3">
-              <span class="text-xs text-gray-500">预期得分 <span class="font-semibold text-gray-800">{{ res.expectedScore }}</span> / 10</span>
-              <span class="px-3 py-1 rounded-full text-xs font-semibold" :class="verdictClass(res.verdict)">
-                {{ res.verdict }}
-              </span>
-            </div>
-          </div>
-
-          <div class="divide-y divide-gray-50">
-            <div
-              v-for="line in res.lineAnalysis"
-              :key="line.position"
-              class="grid grid-cols-[auto_1fr_auto_1fr] items-center gap-x-3 px-5 py-3"
-            >
-              <span class="w-8 text-xs font-bold text-green-600">{{ line.position }}</span>
-              <div class="text-sm text-gray-800 min-w-0">
-                {{ pairText(res.lineup, line.position) }}
-                <span class="text-xs text-gray-400 ml-1">{{ dualUtrLabel(line.ownCombinedRegularUtr, line.ownCombinedUtr) }}</span>
-              </div>
-              <div class="flex flex-col items-center gap-1 px-2">
-                <span class="text-xs font-medium" :class="line.delta > 0 ? 'text-green-600' : line.delta < 0 ? 'text-red-500' : 'text-gray-400'">
-                  {{ line.delta > 0 ? '+' : '' }}{{ line.delta.toFixed(1) }}
-                </span>
-                <span :class="winLabelClass(line.winProbability)" class="px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap">
-                  {{ line.label }}
-                </span>
-              </div>
-              <div class="text-sm text-gray-500 min-w-0 text-right">
-                {{ pairText(opponentLineupObj, line.position) }}
-                <span class="text-xs text-gray-400 ml-1">{{ dualUtrLabel(line.opponentCombinedUtr, line.opponentCombinedActualUtr) }}</span>
-              </div>
-            </div>
+      <!-- Opponent lineup preview (red-tinted) -->
+      <div
+        v-if="oppLineup"
+        data-testid="opp-preview"
+        class="mt-2 bg-red-50 border border-red-200 rounded-lg p-3 text-xs"
+      >
+        <div class="text-red-700 font-semibold uppercase mb-1">对手预览</div>
+        <div v-for="pair in sortedPairs(oppLineup)" :key="pair.position" class="flex items-center gap-2 py-1">
+          <span class="w-7 text-xs font-bold text-red-600">{{ pair.position }}</span>
+          <div class="flex-1 flex flex-wrap gap-1 items-center">
+            <span
+              v-if="pair.player1Gender"
+              class="text-xs font-bold px-1 rounded"
+              :class="pair.player1Gender === 'female' ? 'bg-pink-100 text-pink-700' : 'bg-blue-100 text-blue-700'"
+            >{{ pair.player1Gender === 'female' ? '女' : '男' }}</span>
+            <span class="font-medium">{{ pair.player1Name }}</span>
+            <span class="text-gray-400">/</span>
+            <span
+              v-if="pair.player2Gender"
+              class="text-xs font-bold px-1 rounded"
+              :class="pair.player2Gender === 'female' ? 'bg-pink-100 text-pink-700' : 'bg-blue-100 text-blue-700'"
+            >{{ pair.player2Gender === 'female' ? '女' : '男' }}</span>
+            <span class="font-medium">{{ pair.player2Name }}</span>
           </div>
         </div>
       </div>
 
-      <!-- Right column: AI recommendation -->
-      <div class="space-y-4">
-        <div class="flex items-center gap-2 mb-1">
-          <span class="text-sm font-semibold text-gray-700">AI 推荐</span>
-          <span class="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs rounded-full">智能分析</span>
-        </div>
+      <!-- ── Analyze button ── -->
+      <button
+        data-testid="analyze-btn"
+        type="button"
+        @click="analyze"
+        :disabled="!canAnalyze || analyzing"
+        class="w-full mt-4 py-3 bg-blue-600 text-white rounded-lg font-semibold disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-blue-700 transition"
+      >{{ analyzing ? '分析中...' : '开始分析' }}</button>
 
-        <!-- Trigger button (before result) -->
-        <div v-if="!aiResult" class="flex flex-col items-center justify-center bg-white rounded-xl border border-dashed border-purple-200 px-6 py-12 gap-3">
-          <span class="text-sm text-gray-400">基于比赛策略和球员特点，AI 给出最佳出场推荐</span>
-          <span v-if="aiError" class="text-xs text-red-500">{{ aiError }}</span>
-          <button
-            :disabled="aiLoading"
-            class="px-5 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
-            @click="onRunBestThreeAi"
-          >
-            {{ aiLoading ? 'AI 分析中…' : '获取 AI 推荐' }}
-          </button>
-        </div>
+      <span v-if="analyzeError" class="block mt-2 text-sm text-red-500 text-center">{{ analyzeError }}</span>
 
-        <!-- AI result card -->
-        <div v-else class="bg-white rounded-xl border border-purple-200 shadow-sm overflow-hidden">
-          <div class="flex items-center justify-between px-5 py-3 border-b border-purple-100 bg-purple-50">
-            <div class="flex items-center gap-2">
-              <span class="text-sm font-semibold text-purple-800">AI 推荐排阵</span>
-              <span v-if="!aiResult.aiUsed" class="px-2 py-0.5 bg-yellow-100 text-yellow-700 text-xs rounded-full">AI 不可用</span>
-            </div>
-            <div class="flex items-center gap-3">
-              <span class="text-xs text-gray-500">预期得分 <span class="font-semibold text-gray-800">{{ aiResult.expectedScore }}</span> / 10</span>
-              <button
-                :disabled="aiLoading"
-                class="px-3 py-1 text-xs text-purple-600 border border-purple-300 rounded-lg hover:bg-purple-100 disabled:opacity-50 transition"
-                @click="onRunBestThreeAi"
-              >
-                {{ aiLoading ? '分析中…' : '重新分析' }}
-              </button>
-            </div>
-          </div>
-          <div v-if="aiResult.explanation" class="px-5 py-2 text-sm text-purple-700 border-b border-purple-100 bg-purple-50/50">
-            {{ aiResult.explanation }}
-          </div>
-          <div class="divide-y divide-gray-50">
-            <div
-              v-for="line in aiResult.lineAnalysis"
-              :key="line.position"
-              class="grid grid-cols-[auto_1fr_auto_1fr] items-center gap-x-3 px-5 py-3"
-            >
-              <span class="w-8 text-xs font-bold text-green-600">{{ line.position }}</span>
-              <div class="text-sm text-gray-800 min-w-0">
-                {{ pairText(aiResult.lineup, line.position) }}
-                <span class="text-xs text-gray-400 ml-1">{{ dualUtrLabel(line.ownCombinedRegularUtr, line.ownCombinedUtr) }}</span>
-              </div>
-              <div class="flex flex-col items-center gap-1 px-2">
-                <span class="text-xs font-medium" :class="line.delta > 0 ? 'text-green-600' : line.delta < 0 ? 'text-red-500' : 'text-gray-400'">
-                  {{ line.delta > 0 ? '+' : '' }}{{ line.delta.toFixed(1) }}
-                </span>
-                <span :class="winLabelClass(line.winProbability)" class="px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap">
-                  {{ line.label }}
-                </span>
-              </div>
-              <div class="text-sm text-gray-500 min-w-0 text-right">
-                {{ pairText(aiResult.opponentLineup, line.position) }}
-                <span class="text-xs text-gray-400 ml-1">{{ dualUtrLabel(line.opponentCombinedUtr, line.opponentCombinedActualUtr) }}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <!-- ── Results section ── -->
+      <div v-if="result" data-testid="analysis-result" class="mt-6 space-y-6">
 
-    </div>
-
-    <!-- 逐线对比 results -->
-    <div v-if="analysisMode === 'headToHead' && headToHeadResult" class="space-y-4">
-
-      <!-- UTR comparison card -->
-      <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-        <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100 bg-gray-50">
-          <span class="text-sm font-semibold text-gray-700">UTR 比较分析</span>
-          <div class="flex items-center gap-3">
-            <span class="text-xs text-gray-500">预期得分 <span class="font-semibold text-gray-800">{{ headToHeadResult.expectedScore }}</span> / 10
-              <span class="text-gray-400 ml-1">(对手 {{ headToHeadResult.opponentExpectedScore }})</span>
-            </span>
-            <span class="px-3 py-1 rounded-full text-xs font-semibold" :class="verdictClass(headToHeadResult.verdict)">
-              {{ headToHeadResult.verdict }}
-            </span>
-          </div>
-        </div>
-
-        <div class="divide-y divide-gray-50">
+        <!-- Per-lineup result cards -->
+        <template v-if="result.results && result.results.length > 0">
           <div
-            v-for="line in headToHeadResult.lineAnalysis"
-            :key="line.position"
-            class="grid grid-cols-[auto_1fr_auto_1fr] items-center gap-x-3 px-5 py-3"
+            v-for="(res, idx) in result.results"
+            :key="res.lineup ? res.lineup.id : idx"
+            class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden"
           >
-            <span class="w-8 text-xs font-bold text-green-600">{{ line.position }}</span>
-            <div class="text-sm text-gray-800 min-w-0">
-              {{ pairText(headToHeadResult.lineup, line.position) }}
-              <span class="text-xs text-gray-400 ml-1">{{ dualUtrLabel(line.ownCombinedRegularUtr, line.ownCombinedUtr) }}</span>
+            <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100 bg-gray-50">
+              <span class="text-sm font-medium text-gray-600">#{{ idx + 1 }}</span>
+              <div class="flex items-center gap-3">
+                <span class="text-xs text-gray-500">预期得分 <span class="font-semibold text-gray-800">{{ res.expectedScore }}</span> / 10</span>
+                <span class="px-3 py-1 rounded-full text-xs font-semibold" :class="verdictClass(res.verdict)">
+                  {{ res.verdict }}
+                </span>
+              </div>
             </div>
-            <div class="flex flex-col items-center gap-1 px-2">
-              <span class="text-xs font-medium" :class="line.delta > 0 ? 'text-green-600' : line.delta < 0 ? 'text-red-500' : 'text-gray-400'">
-                {{ line.delta > 0 ? '+' : '' }}{{ line.delta.toFixed(1) }}
-              </span>
-              <span :class="winLabelClass(line.winProbability)" class="px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap">
-                {{ line.label }}
-              </span>
-            </div>
-            <div class="text-sm text-gray-500 min-w-0 text-right">
-              {{ pairText(opponentLineupObj, line.position) }}
-              <span class="text-xs text-gray-400 ml-1">{{ dualUtrLabel(line.opponentCombinedUtr, line.opponentCombinedActualUtr) }}</span>
-            </div>
-          </div>
-        </div>
-      </div>
 
-      <!-- AI 逐线评析 card -->
-      <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-        <!-- Not triggered yet -->
-        <div v-if="!commentaryResult" class="px-5 py-4 flex items-center justify-between">
-          <span class="text-sm font-semibold text-gray-700">AI 逐线评析</span>
-          <div class="flex items-center gap-3">
-            <span v-if="commentaryError" class="text-xs text-red-500">{{ commentaryError }}</span>
-            <button
-              :disabled="commentaryLoading"
-              class="px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
-              @click="onRunCommentary"
-            >
-              {{ commentaryLoading ? 'AI 分析中…' : 'AI 逐线评析' }}
-            </button>
-          </div>
-        </div>
-
-        <!-- Commentary result -->
-        <template v-else>
-          <div class="flex items-center justify-between px-5 py-3 border-b border-purple-100 bg-purple-50">
-            <div class="flex items-center gap-2">
-              <span class="text-sm font-semibold text-purple-800">AI 逐线评析</span>
-              <span v-if="!commentaryResult.aiUsed" class="px-2 py-0.5 bg-yellow-100 text-yellow-700 text-xs rounded-full">AI 不可用</span>
-            </div>
-            <button
-              :disabled="commentaryLoading"
-              class="px-3 py-1 text-xs text-purple-600 border border-purple-300 rounded-lg hover:bg-purple-100 disabled:opacity-50 transition"
-              @click="onRunCommentary"
-            >
-              {{ commentaryLoading ? '分析中…' : '重新分析' }}
-            </button>
-          </div>
-          <div class="divide-y divide-gray-50">
-            <div
-              v-for="line in commentaryResult.lines"
-              :key="line.position"
-              class="px-5 py-3 flex items-start gap-3"
-            >
-              <span class="w-8 text-xs font-bold text-green-600 shrink-0">{{ line.position }}</span>
-              <span class="text-sm text-gray-700">{{ line.commentary }}</span>
+            <div class="divide-y divide-gray-50">
+              <div
+                v-for="line in res.lineAnalysis"
+                :key="line.position"
+                class="grid grid-cols-[auto_1fr_auto_1fr] items-center gap-x-3 px-5 py-3"
+              >
+                <span class="w-8 text-xs font-bold text-green-600">{{ line.position }}</span>
+                <div class="text-sm text-gray-800 min-w-0">
+                  {{ pairText(res.lineup, line.position) }}
+                  <span class="text-xs text-gray-400 ml-1">{{ dualUtrLabel(line.ownCombinedRegularUtr, line.ownCombinedUtr) }}</span>
+                </div>
+                <div class="flex flex-col items-center gap-1 px-2">
+                  <span class="text-xs font-medium" :class="line.delta > 0 ? 'text-green-600' : line.delta < 0 ? 'text-red-500' : 'text-gray-400'">
+                    {{ line.delta > 0 ? '+' : '' }}{{ line.delta.toFixed(1) }}
+                  </span>
+                  <span :class="winLabelClass(line.winProbability)" class="px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap">
+                    {{ line.label }}
+                  </span>
+                </div>
+                <div class="text-sm text-gray-500 min-w-0 text-right">
+                  {{ pairText(oppLineup, line.position) }}
+                  <span class="text-xs text-gray-400 ml-1">{{ dualUtrLabel(line.opponentCombinedUtr, line.opponentCombinedActualUtr) }}</span>
+                </div>
+              </div>
             </div>
           </div>
         </template>
+
+        <!-- AI Recommendation card -->
+        <div
+          v-if="result.aiRecommendation"
+          class="bg-white rounded-xl border border-purple-200 shadow-sm overflow-hidden"
+        >
+          <div class="flex items-center justify-between px-5 py-3 border-b border-purple-100 bg-purple-50">
+            <div class="flex items-center gap-2">
+              <span class="text-sm font-semibold text-purple-800">AI 推荐排阵</span>
+              <span v-if="!result.aiRecommendation.aiUsed" class="px-2 py-0.5 bg-yellow-100 text-yellow-700 text-xs rounded-full">AI 不可用</span>
+            </div>
+            <span class="text-xs text-gray-500">预期得分 <span class="font-semibold text-gray-800">{{ result.aiRecommendation.expectedScore }}</span> / 10</span>
+          </div>
+
+          <div v-if="result.aiRecommendation.explanation" class="px-5 py-2 text-sm text-purple-700 border-b border-purple-100 bg-purple-50/50">
+            {{ result.aiRecommendation.explanation }}
+          </div>
+
+          <div class="divide-y divide-gray-50">
+            <div
+              v-for="line in result.aiRecommendation.lineAnalysis"
+              :key="line.position"
+              class="grid grid-cols-[auto_1fr_auto_1fr] items-center gap-x-3 px-5 py-3"
+            >
+              <span class="w-8 text-xs font-bold text-green-600">{{ line.position }}</span>
+              <div class="text-sm text-gray-800 min-w-0">
+                {{ pairText(result.aiRecommendation.lineup, line.position) }}
+                <span class="text-xs text-gray-400 ml-1">{{ dualUtrLabel(line.ownCombinedRegularUtr, line.ownCombinedUtr) }}</span>
+              </div>
+              <div class="flex flex-col items-center gap-1 px-2">
+                <span class="text-xs font-medium" :class="line.delta > 0 ? 'text-green-600' : line.delta < 0 ? 'text-red-500' : 'text-gray-400'">
+                  {{ line.delta > 0 ? '+' : '' }}{{ line.delta.toFixed(1) }}
+                </span>
+                <span :class="winLabelClass(line.winProbability)" class="px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap">
+                  {{ line.label }}
+                </span>
+              </div>
+              <div class="text-sm text-gray-500 min-w-0 text-right">
+                {{ pairText(result.aiRecommendation.opponentLineup, line.position) }}
+                <span class="text-xs text-gray-400 ml-1">{{ dualUtrLabel(line.opponentCombinedUtr, line.opponentCombinedActualUtr) }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
+import AppHeader from '../components/AppHeader.vue'
 import { useTeams } from '../composables/useTeams'
-import { useOpponentMatchup } from '../composables/useOpponentMatchup'
 import { useApi } from '../composables/useApi'
-import PartnerNotesEditor from '../components/PartnerNotesEditor.vue'
 
 const { teams, fetchTeams } = useTeams()
-const { loading, error, runBestThree, runHeadToHead, runAiAnalysis, runCommentary } = useOpponentMatchup()
-const { get } = useApi()
+const { get, post } = useApi()
 
-const analysisMode = ref('bestThree')
-const ownTeamId = ref('')
-const opponentTeamId = ref('')
-const opponentLineupId = ref('')
-const ownLineupId = ref('')
-const opponentLineups = ref([])
-const ownLineups = ref([])
-const opponentPlayers = ref([])
-const showOppNotes = ref(false)
-const aiLoading = ref(false)
-const aiError = ref('')
-const commentaryLoading = ref(false)
-const commentaryError = ref('')
+// ── State ──
+const myTeamId = ref('')
+const myLineupId = ref('')
+const oppTeamId = ref('')
+const oppLineupId = ref('')
+const myLineups = ref([])
+const oppLineups = ref([])
+const analyzing = ref(false)
+const analyzeError = ref('')
+const result = ref(null)
 
-const bestThreeResults = ref([])
-const headToHeadResult = ref(null)
-const aiResult = ref(null)
-const commentaryResult = ref(null)
+onMounted(() => fetchTeams())
 
-const canRunBestThree = computed(() => ownTeamId.value && opponentLineupId.value)
-const canRunHeadToHead = computed(() => ownTeamId.value && ownLineupId.value && opponentLineupId.value)
-const opponentLineupObj = computed(() => opponentLineups.value.find(l => l.id === opponentLineupId.value) || null)
-const ownLineupObj = computed(() => ownLineups.value.find(l => l.id === ownLineupId.value) || null)
-const opponentLineupPreviewPairs = computed(() => opponentLineupObj.value?.pairs || [])
-const ownLineupPreviewPairs = computed(() => ownLineupObj.value?.pairs || [])
+// ── Watches: load lineups on team change ──
+const lineupLoadError = ref('')
 
-onMounted(() => {
-  fetchTeams()
+watch(myTeamId, async (id) => {
+  myLineupId.value = ''
+  myLineups.value = []
+  lineupLoadError.value = ''
+  if (!id) return
+  try {
+    myLineups.value = await get(`/api/teams/${id}/lineups`)
+  } catch (err) {
+    lineupLoadError.value = err.message || '加载我方排阵失败，请重试'
+  }
 })
 
-function onModeChange(newMode) {
-  analysisMode.value = newMode
-  bestThreeResults.value = []
-  headToHeadResult.value = null
-  aiResult.value = null
-  aiError.value = ''
-  commentaryResult.value = null
-  commentaryError.value = ''
-}
-
-async function onOwnTeamChange() {
-  ownLineups.value = []
-  ownLineupId.value = ''
-  if (!ownTeamId.value) return
+watch(oppTeamId, async (id) => {
+  oppLineupId.value = ''
+  oppLineups.value = []
+  lineupLoadError.value = ''
+  if (!id) return
   try {
-    ownLineups.value = await get(`/api/teams/${ownTeamId.value}/lineups`)
+    oppLineups.value = await get(`/api/teams/${id}/lineups`)
   } catch (err) {
-    console.error('Failed to fetch own lineups:', err)
+    lineupLoadError.value = err.message || '加载对手排阵失败，请重试'
   }
-}
+})
 
-async function onOpponentTeamChange() {
-  opponentLineupId.value = ''
-  opponentLineups.value = []
-  opponentPlayers.value = []
-  showOppNotes.value = false
-  if (!opponentTeamId.value) return
+// ── Computed ──
+const myLineup = computed(() => myLineups.value.find(l => l.id === myLineupId.value) || null)
+const oppLineup = computed(() => oppLineups.value.find(l => l.id === oppLineupId.value) || null)
+const canAnalyze = computed(() => Boolean(myLineup.value) && Boolean(oppLineup.value))
+
+// ── Analyze ──
+async function analyze() {
+  if (!canAnalyze.value) return
+  analyzing.value = true
+  analyzeError.value = ''
+  result.value = null
   try {
-    const [lineups, players] = await Promise.all([
-      get(`/api/teams/${opponentTeamId.value}/lineups`),
-      get(`/api/teams/${opponentTeamId.value}/players`),
-    ])
-    opponentLineups.value = lineups
-    opponentPlayers.value = players
+    result.value = await post('/api/lineups/matchup', {
+      teamId: myTeamId.value,
+      opponentTeamId: oppTeamId.value,
+      ownLineupId: myLineupId.value,
+      opponentLineupId: oppLineupId.value,
+      includeAi: true,
+      ownPartnerNotes: buildPartnerNotes(myLineup.value),
+      opponentPartnerNotes: buildPartnerNotes(oppLineup.value),
+    })
   } catch (err) {
-    console.error('Failed to fetch opponent data:', err)
-  }
-}
-
-async function onRunBestThree() {
-  bestThreeResults.value = []
-  try {
-    bestThreeResults.value = await runBestThree(ownTeamId.value, opponentTeamId.value, opponentLineupId.value)
-  } catch (_) {
-    // error ref already set in composable
-  }
-}
-
-async function onRunHeadToHead() {
-  headToHeadResult.value = null
-  commentaryResult.value = null
-  commentaryError.value = ''
-  try {
-    headToHeadResult.value = await runHeadToHead(ownTeamId.value, ownLineupId.value, opponentTeamId.value, opponentLineupId.value)
-  } catch (_) {
-    // error ref already set in composable
-  }
-}
-
-async function onRunBestThreeAi() {
-  aiError.value = ''
-  aiLoading.value = true
-  try {
-    aiResult.value = await runAiAnalysis(ownTeamId.value, opponentTeamId.value, opponentLineupId.value)
-  } catch (err) {
-    aiError.value = err.message || 'AI 分析失败，请重试'
+    analyzeError.value = err.message || '分析失败，请重试'
   } finally {
-    aiLoading.value = false
+    analyzing.value = false
   }
 }
 
-async function onRunCommentary() {
-  commentaryError.value = ''
-  commentaryLoading.value = true
-  try {
-    commentaryResult.value = await runCommentary(ownTeamId.value, ownLineupId.value, opponentTeamId.value, opponentLineupId.value)
-  } catch (err) {
-    commentaryError.value = err.message || 'AI 评析失败，请重试'
-  } finally {
-    commentaryLoading.value = false
+// ── Helpers ──
+// Pair stores notes per-player (player1Notes/player2Notes), not on the pair itself.
+// Combine both into a single DTO note when either is present.
+function buildPartnerNotes(lineup) {
+  if (!lineup?.pairs) return []
+  const result = []
+  for (const p of lineup.pairs) {
+    const notes = [p.player1Notes, p.player2Notes].filter(Boolean)
+    if (notes.length === 0) continue
+    result.push({
+      player1Name: p.player1Name,
+      player2Name: p.player2Name,
+      note: notes.join(' | '),
+    })
   }
+  return result
 }
 
-function formatLineupLabel(lineup) {
-  const date = lineup.createdAt ? new Date(lineup.createdAt).toLocaleDateString('zh-CN') : ''
-  const utr = lineup.totalUtr != null ? ` (UTR ${lineup.totalUtr.toFixed(1)})` : ''
-  return `${date}${utr}`
-}
-
-function winLabelClass(winProbability) {
-  if (winProbability >= 0.7) return 'bg-green-100 text-green-700'
-  if (winProbability >= 0.55) return 'bg-green-50 text-green-600'
-  if (winProbability === 0.5) return 'bg-gray-100 text-gray-600'
-  if (winProbability >= 0.35) return 'bg-red-50 text-red-500'
-  return 'bg-red-100 text-red-600'
+function sortedPairs(lineup) {
+  if (!lineup?.pairs) return []
+  const order = ['D1', 'D2', 'D3', 'D4', 'S1', 'S2', 'S3']
+  return [...lineup.pairs].sort((a, b) => {
+    const ai = order.indexOf(a.position)
+    const bi = order.indexOf(b.position)
+    return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi)
+  })
 }
 
 function pairText(lineup, position) {
@@ -510,12 +353,6 @@ function playerUtrLabel(utr, actualUtr) {
   return `${utr}`
 }
 
-function pairPreviewText(pair) {
-  const p1 = playerUtrLabel(pair.player1Utr, pair.player1ActualUtr)
-  const p2 = playerUtrLabel(pair.player2Utr, pair.player2ActualUtr)
-  return `${pair.player1Name}(${p1}) + ${pair.player2Name}(${p2})`
-}
-
 function dualUtrLabel(regularUtr, actualUtr) {
   if (regularUtr == null && actualUtr == null) return ''
   const base = actualUtr != null ? actualUtr : regularUtr
@@ -523,6 +360,15 @@ function dualUtrLabel(regularUtr, actualUtr) {
     return `(${regularUtr.toFixed(1)}/实${actualUtr.toFixed(1)})`
   }
   return `(${base.toFixed(1)})`
+}
+
+function winLabelClass(winProbability) {
+  if (winProbability >= 0.7) return 'bg-green-100 text-green-700'
+  if (winProbability >= 0.55) return 'bg-green-50 text-green-600'
+  // Tolerant 50/50 band (floating-point safe: 0.5 ± ~0.05 → neutral)
+  if (winProbability >= 0.45 && winProbability <= 0.55) return 'bg-gray-100 text-gray-600'
+  if (winProbability >= 0.35) return 'bg-red-50 text-red-500'
+  return 'bg-red-100 text-red-600'
 }
 
 function verdictClass(verdict) {
