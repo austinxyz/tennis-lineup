@@ -64,13 +64,19 @@ context: |
   - 成功响应：直接返回数据对象或数组（无包装层）
   - 错误响应格式：
     ```json
-    { "code": "VALIDATION_ERROR", "message": "描述", "details": null }
+    { "code": "<SCREAMING_SNAKE>", "message": "中文描述", "details": null | object }
     ```
+    `details` 字段为 `Object`（可为 `null`/字符串/结构化 Map），Jackson 透传序列化
   - HTTP 状态码映射：
     - 400 → IllegalArgumentException（VALIDATION_ERROR）
     - 404 → NotFoundException（NOT_FOUND）
+    - 409 → 特定状态冲突异常，如 TeamNotEmptyException（TEAM_NOT_EMPTY），用于
+      "请求格式正确，但当前资源状态不允许此操作"
     - 500 → RuntimeException（INTERNAL_ERROR）
-  - 注意：NotFoundException extends IllegalArgumentException，Spring 优先匹配具体类型
+  - 注意事项：
+    - NotFoundException extends IllegalArgumentException，Spring 优先匹配具体类型
+    - 409 异常类**不要**继承 IllegalArgumentException，否则会被 400 handler 提前拦截；
+      直接 extends RuntimeException，并在 GlobalExceptionHandler 注册对应 handler
 
   ### 已实现 API 端点
   ```
@@ -271,9 +277,15 @@ rules:
     - 引入 mobile/desktop 双份渲染（`lg:hidden` + `hidden lg:block`）时，desktop 容器必须加 `data-testid`（如 `desktop-result-grid`），避免 E2E `.first()` 误命中隐藏副本
     - 改动 Service 层状态的功能须审查是否存在 TOCTOU：跨 `readData`/`writeData` 的非原子组合必须改用 `JsonRepository.updateData(UnaryOperator<TeamData>)`
     - 部署任务须包含生产 smoke test：`GET https://tennis-lineup.fly.dev/` 与 `GET /api/teams` 均返回 200
-    - OpenSpec 归档前须运行 `openspec-sync-specs`，把 delta specs 合入 `openspec/specs/<capability>/spec.md`，而非只把 change 文件夹移走
+    - 归档顺序：先 git commit（代码 + `openspec/changes/<name>/`）+ push，**再** `openspec archive <name>`（该命令自动合并 delta 到 `openspec/specs/<capability>/spec.md`），最后 commit archive 变更。不要先 archive 再 commit，否则实现变更与 spec 归档混在同一 commit 难读
+    - tasks.md 中如要求修改某 .vue/.js 文件，必须先验证该文件被 router/父组件引用；若是 dead code（无引用），在 proposal 阶段改为"提议删除"而非"镜像修改"
+    - 新增测试时若既有实现已满足 spec 要求（无新生产代码），标注为 "regression guard"；首次 PASS 不违反 TDD（Iron Law 的前提是存在新生产代码）
   api:
     - Follow RESTful conventions
-    - 错误响应格式：{ code, message, details }，参见 GlobalExceptionHandler
-    - 新异常类型继承 IllegalArgumentException（400）或直接用 NotFoundException（404）
+    - 错误响应格式：{ code: SCREAMING_SNAKE, message: 中文, details: null | object }
+    - HTTP 400（VALIDATION_ERROR）：输入格式/取值非法 — 异常继承 IllegalArgumentException
+    - HTTP 404（NOT_FOUND）：资源不存在 — 用 NotFoundException（已继承 IllegalArgumentException 但被更具体的 handler 优先匹配）
+    - HTTP 409（`<RESOURCE>_<CONDITION>`）：请求合法但资源状态不允许此操作（如 TEAM_NOT_EMPTY、LINEUP_INVALID）—
+      异常**直接继承 RuntimeException**，并在 GlobalExceptionHandler 注册 @ExceptionHandler；
+      结构化 context（如计数、冲突 ID）放 `details` 的 Map 里，不要塞进 message 字符串
     - Include request/response examples

@@ -191,4 +191,61 @@ describe('TeamListPanel', () => {
     mountPanel()
     expect(mockFetchTeams).toHaveBeenCalled()
   })
+
+  describe('delete button guard', () => {
+    it('disables delete button when team has players', () => {
+      mockTeams.value = [
+        { id: '1', name: 'Team With Players', players: [{ id: 'p1' }], lineups: [] },
+      ]
+      const wrapper = mountPanel()
+      const deleteBtn = wrapper.find('button[class*="opacity-0"]')
+      expect(deleteBtn.attributes('disabled')).toBeDefined()
+      expect(deleteBtn.attributes('title')).toContain('请先移除球员')
+    })
+
+    it('disables delete button when team has saved lineups', () => {
+      mockTeams.value = [
+        { id: '1', name: 'Team With Lineups', players: [], lineups: [{ id: 'l1' }] },
+      ]
+      const wrapper = mountPanel()
+      const deleteBtn = wrapper.find('button[class*="opacity-0"]')
+      expect(deleteBtn.attributes('disabled')).toBeDefined()
+      expect(deleteBtn.attributes('title')).toContain('已保存的排阵')
+    })
+
+    it('enables delete button when team is empty', () => {
+      mockTeams.value = [
+        { id: '1', name: 'Empty Team', players: [], lineups: [] },
+      ]
+      const wrapper = mountPanel()
+      const deleteBtn = wrapper.find('button[class*="opacity-0"]')
+      expect(deleteBtn.attributes('disabled')).toBeUndefined()
+    })
+
+    it('treats missing lineups field (legacy data) as empty', () => {
+      mockTeams.value = [
+        { id: '1', name: 'Legacy Team', players: [] },
+      ]
+      const wrapper = mountPanel()
+      const deleteBtn = wrapper.find('button[class*="opacity-0"]')
+      expect(deleteBtn.attributes('disabled')).toBeUndefined()
+    })
+
+    it('shows alert when server rejects with 409 on enabled button click', async () => {
+      mockTeams.value = [{ id: '1', name: 'Stale View Team', players: [], lineups: [] }]
+      vi.spyOn(window, 'confirm').mockReturnValue(true)
+      const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {})
+      mockDeleteTeam.mockRejectedValueOnce(new Error('队伍中还有球员或已保存的排阵，无法删除'))
+
+      const wrapper = mountPanel()
+      const deleteBtn = wrapper.find('button[class*="opacity-0"]')
+      await deleteBtn.trigger('click')
+
+      await vi.waitFor(() => {
+        expect(alertSpy).toHaveBeenCalledWith(
+          expect.stringContaining('队伍中还有球员或已保存的排阵')
+        )
+      })
+    })
+  })
 })

@@ -199,6 +199,32 @@ describe('useTeams', () => {
       await deleteTeam(1)
       expect(confirmMock).toHaveBeenCalledWith('确定要删除这个队伍吗？此操作不可撤销。')
     })
+
+    it('rejects with server message on 409 TEAM_NOT_EMPTY and leaves teams unchanged', async () => {
+      const initial = [
+        { id: 1, name: 'Team A', players: [{ id: 'p1' }], lineups: [] },
+        { id: 2, name: 'Team B', players: [], lineups: [] },
+      ]
+      vi.stubGlobal('confirm', vi.fn().mockReturnValue(true))
+
+      const fetchMock = vi.fn()
+        .mockResolvedValueOnce({ ok: true, json: vi.fn().mockResolvedValue(initial) })
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 409,
+          json: vi.fn().mockResolvedValue({
+            code: 'TEAM_NOT_EMPTY',
+            message: '队伍中还有球员或已保存的排阵，无法删除',
+            details: { playerCount: 1, lineupCount: 0 },
+          }),
+        })
+      vi.stubGlobal('fetch', fetchMock)
+
+      const { teams, fetchTeams, deleteTeam } = useTeams()
+      await fetchTeams()
+      await expect(deleteTeam(1)).rejects.toThrow('队伍中还有球员或已保存的排阵，无法删除')
+      expect(teams.value).toEqual(initial)
+    })
   })
 
   describe('loading state', () => {

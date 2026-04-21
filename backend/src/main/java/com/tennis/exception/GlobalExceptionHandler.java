@@ -7,6 +7,8 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import java.util.Map;
+
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -32,6 +34,17 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleNotFoundException(NotFoundException ex) {
         ErrorResponse error = new ErrorResponse("NOT_FOUND", ex.getMessage());
         return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(TeamNotEmptyException.class)
+    public ResponseEntity<ErrorResponse> handleTeamNotEmptyException(TeamNotEmptyException ex) {
+        ErrorResponse error = new ErrorResponse(
+                "TEAM_NOT_EMPTY",
+                ex.getMessage(),
+                Map.of(
+                        "playerCount", ex.getPlayerCount(),
+                        "lineupCount", ex.getLineupCount()));
+        return new ResponseEntity<>(error, HttpStatus.CONFLICT);
     }
 
     @ExceptionHandler(InternalErrorException.class)

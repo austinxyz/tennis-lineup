@@ -1,5 +1,8 @@
 package com.tennis.service;
 
+import com.tennis.exception.TeamNotEmptyException;
+import com.tennis.model.Lineup;
+import com.tennis.model.Player;
 import com.tennis.model.Team;
 import com.tennis.model.TeamData;
 import com.tennis.repository.JsonRepository;
@@ -248,6 +251,91 @@ class TeamServiceTest {
         assertThrows(IllegalArgumentException.class, () -> {
             teamService.deleteTeam("non-existent-id");
         });
+    }
+
+    @Test
+    @DisplayName("deleteTeam throws TeamNotEmptyException when team has players")
+    void deleteTeam_whenTeamHasPlayers_throwsTeamNotEmptyException() {
+        // Arrange — team with one player, no lineups
+        String teamId = "team-with-players";
+        Team team = new Team();
+        team.setId(teamId);
+        team.setName("Team With Players");
+        team.setCreatedAt(Instant.now());
+        Player player = new Player();
+        player.setId("player-1");
+        player.setName("Alice");
+        team.setPlayers(new java.util.ArrayList<>(List.of(player)));
+        team.setLineups(new java.util.ArrayList<>());
+        mockTeamData.getTeams().add(team);
+
+        when(jsonRepository.readData()).thenReturn(mockTeamData);
+
+        // Act & Assert
+        TeamNotEmptyException ex = assertThrows(
+                TeamNotEmptyException.class,
+                () -> teamService.deleteTeam(teamId));
+        assertEquals(1, ex.getPlayerCount());
+        assertEquals(0, ex.getLineupCount());
+        assertEquals(1, mockTeamData.getTeams().size(), "team must NOT be removed");
+        verify(jsonRepository, never()).writeData(any());
+    }
+
+    @Test
+    @DisplayName("deleteTeam throws TeamNotEmptyException when team has only saved lineups")
+    void deleteTeam_whenTeamHasOnlyLineups_throwsTeamNotEmptyException() {
+        // Arrange — team with no players, but one saved lineup
+        String teamId = "team-with-lineups";
+        Team team = new Team();
+        team.setId(teamId);
+        team.setName("Team With Lineups");
+        team.setCreatedAt(Instant.now());
+        team.setPlayers(new java.util.ArrayList<>());
+        Lineup lineup = new Lineup();
+        lineup.setId("lineup-1");
+        team.setLineups(new java.util.ArrayList<>(List.of(lineup)));
+        mockTeamData.getTeams().add(team);
+
+        when(jsonRepository.readData()).thenReturn(mockTeamData);
+
+        // Act & Assert
+        TeamNotEmptyException ex = assertThrows(
+                TeamNotEmptyException.class,
+                () -> teamService.deleteTeam(teamId));
+        assertEquals(0, ex.getPlayerCount());
+        assertEquals(1, ex.getLineupCount());
+        assertEquals(1, mockTeamData.getTeams().size());
+        verify(jsonRepository, never()).writeData(any());
+    }
+
+    @Test
+    @DisplayName("deleteTeam throws TeamNotEmptyException when both players and lineups exist")
+    void deleteTeam_whenBothPlayersAndLineups_throwsTeamNotEmptyException() {
+        // Arrange — team with 2 players and 3 lineups
+        String teamId = "team-both";
+        Team team = new Team();
+        team.setId(teamId);
+        team.setName("Team Both");
+        team.setCreatedAt(Instant.now());
+        Player p1 = new Player(); p1.setId("p-1"); p1.setName("Alice");
+        Player p2 = new Player(); p2.setId("p-2"); p2.setName("Bob");
+        team.setPlayers(new java.util.ArrayList<>(List.of(p1, p2)));
+        Lineup l1 = new Lineup(); l1.setId("l-1");
+        Lineup l2 = new Lineup(); l2.setId("l-2");
+        Lineup l3 = new Lineup(); l3.setId("l-3");
+        team.setLineups(new java.util.ArrayList<>(List.of(l1, l2, l3)));
+        mockTeamData.getTeams().add(team);
+
+        when(jsonRepository.readData()).thenReturn(mockTeamData);
+
+        // Act & Assert
+        TeamNotEmptyException ex = assertThrows(
+                TeamNotEmptyException.class,
+                () -> teamService.deleteTeam(teamId));
+        assertEquals(2, ex.getPlayerCount());
+        assertEquals(3, ex.getLineupCount());
+        assertEquals(1, mockTeamData.getTeams().size());
+        verify(jsonRepository, never()).writeData(any());
     }
 
     @Test

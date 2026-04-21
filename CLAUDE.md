@@ -70,8 +70,10 @@ Examples:
 ```bash
 # Windows: kill backend and restart
 powershell -Command "Get-Process java | Stop-Process -Force"
-cd backend && JAVA_TOOL_OPTIONS="-Dfile.encoding=UTF-8 -Xmx384m -XX:+UseG1GC" /c/Users/lorra/tools/apache-maven-3.9.6/bin/mvn spring-boot:run
+cd backend && JAVA_TOOL_OPTIONS="-Dfile.encoding=UTF-8 -Xmx384m -XX:+UseG1GC" /c/Users/lorra/tools/apache-maven-3.9.6/bin/mvn spring-boot:run -Dspring-boot.run.profiles=local
 ```
+
+**ALWAYS start backend with `-Dspring-boot.run.profiles=local`** — `application-local.yml` (gitignored) holds the Zhipu AI key. Without the profile flag, Spring only reads `application.yml` where `zhipu.api.key: ${ZHIPU_API_KEY:}` resolves to empty, and every AI call falls back to UTR heuristics (logs: `Zhipu AI API key not configured, using fallback`). Symptom in UI: yellow "AI 不可用" badges everywhere.
 
 ## Common Anti-Patterns
 
@@ -89,6 +91,12 @@ cd backend && JAVA_TOOL_OPTIONS="-Dfile.encoding=UTF-8 -Xmx384m -XX:+UseG1GC" /c
 
 ❌ **Don't**: Run `npm run build` during development
 ✅ **Do**: Use `npm run dev` for development with hot reload
+
+❌ **Don't**: Mirror changes into a `.vue`/`.js` file just because tasks.md lists it
+✅ **Do**: Verify the file is reachable (imported by router or a live parent) first. `grep -rn "import.*X" frontend/src` + check `router/index.js`. If unrouted → propose deleting it, not mirroring. Dead-code churn wastes review effort and hides real coverage gaps.
+
+❌ **Don't**: Derive 409/409-like exceptions from `IllegalArgumentException`
+✅ **Do**: Extend `RuntimeException` directly and register a dedicated `@ExceptionHandler` in `GlobalExceptionHandler`. `IllegalArgumentException` is already mapped to 400 VALIDATION_ERROR — a subclass gets shadowed and returns 400 even if you registered a 409 handler. This is the same footgun as `NotFoundException extends IllegalArgumentException` (which works only because Spring prefers the most-specific handler — fragile; don't add another layer).
 
 ## Architecture Quick Reference
 
@@ -116,7 +124,7 @@ tennis/
 MVN=/c/Users/lorra/tools/apache-maven-3.9.6/bin/mvn
 
 # 1. Start backend
-cd backend && JAVA_TOOL_OPTIONS=-Dfile.encoding=UTF-8 /c/Users/lorra/tools/apache-maven-3.9.6/bin/mvn spring-boot:run
+cd backend && JAVA_TOOL_OPTIONS=-Dfile.encoding=UTF-8 /c/Users/lorra/tools/apache-maven-3.9.6/bin/mvn spring-boot:run -Dspring-boot.run.profiles=local
 
 # 2. Frontend development
 npm run dev              # HMR at localhost:5173 (Vite default)
@@ -188,6 +196,8 @@ npm run test:e2e:ui      # Interactive UI mode
 
 **E2E test fails with "unexpected value hidden" on an element that clearly exists** → Mobile/desktop dual-render pattern (`lg:hidden` + `hidden lg:block`) leaves BOTH copies in DOM. `.first()` picks the hidden one by DOM order. Fix: scope the locator to a desktop-only container (e.g., `page.locator('[data-testid="desktop-result-grid"]').locator(...)`) OR use `.filter({ visible: true })`. **When adding any mobile/desktop dual layout, give the desktop container a `data-testid` so future E2E tests can scope to it.**
 
+**New 409 handler returns 400 VALIDATION_ERROR instead** → Your exception probably `extends IllegalArgumentException`. Spring picks the 400 handler first. Fix: `extends RuntimeException` directly, and confirm `@ExceptionHandler(YourException.class)` in `GlobalExceptionHandler` sits alongside (not above, not below matters less than inheritance). `ErrorResponse.details` is `Object` — pass `Map.of("key", value, ...)` for structured context; don't stringify.
+
 ## External Documentation
 
 For detailed information not covered by these guardrails:
@@ -211,6 +221,16 @@ cd /c/Users/lorra/projects/tennis && openspec new change "my-change"
 ```
 
 All changes, specs, and archives live under `openspec/` at the project root.
+
+**Archive ordering** — `openspec archive <name>` already merges delta specs into `openspec/specs/<capability>/spec.md` (no separate sync command needed). But the command is destructive-before-commit:
+
+1. `git commit` + `git push` the implementation + `openspec/changes/<name>/` first.
+2. Then run `openspec archive <name>`.
+3. Finally commit the archive move + spec sync as a separate `docs: archive <name>` commit.
+
+Reversing the order mixes implementation and archive bookkeeping into one muddy commit.
+
+**TDD regression-guard exemption** — when new spec requirements are already satisfied by existing code (no new production code written), an added test that passes on first run is NOT a TDD violation. Label it "regression guard" in the test-report and dev log so future readers don't mistake it for tests-after.
 
 ## Context Management
 

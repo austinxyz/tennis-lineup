@@ -119,9 +119,26 @@ Content-Type: application/json
 DELETE /api/teams/{id}
 ```
 
+**约束**：仅当队伍为空（无球员且无已保存排阵）时才允许删除。
+
 **响应 204**：删除成功（无响应体）
 
 **响应 404**：队伍不存在
+
+**响应 409**：队伍非空（有球员或已保存排阵），拒绝删除
+
+```json
+{
+  "code": "TEAM_NOT_EMPTY",
+  "message": "队伍中还有球员或已保存的排阵，无法删除",
+  "details": {
+    "playerCount": 3,
+    "lineupCount": 2
+  }
+}
+```
+
+> 要删除非空队伍，请先通过 `DELETE /api/teams/{id}/players/{playerId}` 移除所有球员，以及移除保存的排阵。
 
 ---
 

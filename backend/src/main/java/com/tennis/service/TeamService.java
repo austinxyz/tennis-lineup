@@ -1,6 +1,7 @@
 package com.tennis.service;
 
 import com.tennis.exception.NotFoundException;
+import com.tennis.exception.TeamNotEmptyException;
 import com.tennis.model.Player;
 import com.tennis.model.Team;
 import com.tennis.model.TeamData;
@@ -101,11 +102,18 @@ public class TeamService {
     public void deleteTeam(String teamId) {
         TeamData teamData = jsonRepository.readData();
 
-        boolean removed = teamData.getTeams().removeIf(team -> team.getId().equals(teamId));
-        if (!removed) {
-            throw new IllegalArgumentException("队伍不存在");
+        Team target = teamData.getTeams().stream()
+                .filter(team -> team.getId().equals(teamId))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("队伍不存在"));
+
+        int playerCount = target.getPlayers() == null ? 0 : target.getPlayers().size();
+        int lineupCount = target.getLineups() == null ? 0 : target.getLineups().size();
+        if (playerCount > 0 || lineupCount > 0) {
+            throw new TeamNotEmptyException(playerCount, lineupCount);
         }
 
+        teamData.getTeams().remove(target);
         jsonRepository.writeData(teamData);
         log.info("Deleted team: {}", teamId);
     }

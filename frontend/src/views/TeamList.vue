@@ -49,7 +49,9 @@
             </div>
             <button
               @click="confirmDelete(team)"
-              class="text-red-600 hover:text-red-800 p-1">
+              :disabled="!isDeletable(team)"
+              :title="deleteDisabledReason(team)"
+              class="text-red-600 hover:text-red-800 p-1 disabled:cursor-not-allowed disabled:text-gray-300 disabled:hover:text-gray-300">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
               </svg>
@@ -126,9 +128,25 @@ const formatDate = (dateString) => {
   return new Date(dateString).toLocaleDateString('zh-CN')
 }
 
-const confirmDelete = (team) => {
-  if (confirm(`确定要删除队伍 "${team.name}" 吗？此操作不可撤销。`)) {
-    deleteTeam(team.id)
+const isDeletable = (team) =>
+  (team.players?.length ?? 0) === 0 && (team.lineups?.length ?? 0) === 0
+
+const deleteDisabledReason = (team) => {
+  const hasPlayers = (team.players?.length ?? 0) > 0
+  const hasLineups = (team.lineups?.length ?? 0) > 0
+  if (hasPlayers && hasLineups) return '请先移除球员和已保存的排阵后再删除队伍'
+  if (hasPlayers) return '请先移除球员后再删除队伍'
+  if (hasLineups) return '请先移除已保存的排阵后再删除队伍'
+  return ''
+}
+
+const confirmDelete = async (team) => {
+  if (!isDeletable(team)) return
+  if (!confirm(`确定要删除队伍 "${team.name}" 吗？此操作不可撤销。`)) return
+  try {
+    await deleteTeam(team.id)
+  } catch (err) {
+    alert(`删除失败: ${err.message}`)
   }
 }
 

@@ -19,6 +19,7 @@ import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.servlet.MockMvc;
 
 import com.tennis.exception.NotFoundException;
+import com.tennis.exception.TeamNotEmptyException;
 import com.tennis.model.Player;
 
 import java.time.Instant;
@@ -186,6 +187,22 @@ class TeamControllerTest {
         // Act & Assert
         mockMvc.perform(delete("/api/teams/team-1"))
                 .andExpect(status().isNoContent());
+    }
+
+    @Test
+    @DisplayName("DELETE returns 409 TEAM_NOT_EMPTY when service throws TeamNotEmptyException")
+    void deleteTeam_whenTeamNotEmpty_returns409WithPayload() throws Exception {
+        // Arrange — service throws with counts 3 players / 2 lineups
+        doThrow(new TeamNotEmptyException(3, 2))
+                .when(teamService).deleteTeam("team-1");
+
+        // Act & Assert
+        mockMvc.perform(delete("/api/teams/team-1"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("TEAM_NOT_EMPTY"))
+                .andExpect(jsonPath("$.message").value("队伍中还有球员或已保存的排阵，无法删除"))
+                .andExpect(jsonPath("$.details.playerCount").value(3))
+                .andExpect(jsonPath("$.details.lineupCount").value(2));
     }
 
     @Test
